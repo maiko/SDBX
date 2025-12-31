@@ -55,7 +55,7 @@ changelog:
 release:
   github:
     owner: maiko
-    name: sdbx
+    name: SDBX
   draft: false
   prerelease: auto
   name_template: "SDBX v{{.Version}}"
