@@ -20,8 +20,8 @@ func TestEmbeddedSourceLoad(t *testing.T) {
 
 	t.Logf("Loaded %d services from embedded source", len(services))
 
-	// Verify expected core services
-	expectedCore := []string{"traefik", "authelia", "sonarr", "radarr", "prowlarr", "qbittorrent", "plex", "homepage", "watchtower"}
+	// Verify expected core services (essential infrastructure only)
+	expectedCore := []string{"traefik", "authelia", "qbittorrent", "plex"}
 	for _, name := range expectedCore {
 		def, err := src.LoadService(ctx, name)
 		if err != nil {
@@ -33,8 +33,11 @@ func TestEmbeddedSourceLoad(t *testing.T) {
 		}
 	}
 
-	// Verify expected addon services
-	expectedAddons := []string{"overseerr", "wizarr", "tautulli", "lidarr", "readarr", "bazarr", "flaresolverr"}
+	// Verify expected addon services (including former core services now optional)
+	expectedAddons := []string{
+		"sonarr", "radarr", "prowlarr", "homepage", "watchtower", "recyclarr", "unpackerr",
+		"overseerr", "wizarr", "tautulli", "lidarr", "readarr", "bazarr", "flaresolverr",
+	}
 	for _, name := range expectedAddons {
 		def, err := src.LoadService(ctx, name)
 		if err != nil {
@@ -122,6 +125,11 @@ func TestSonarrServiceDefinition(t *testing.T) {
 	}
 	if def.Metadata.Category != CategoryMedia {
 		t.Errorf("expected category media, got %s", def.Metadata.Category)
+	}
+
+	// Verify sonarr is now an addon (not core)
+	if !def.Conditions.RequireAddon {
+		t.Error("expected sonarr to require addon (it's now an optional service)")
 	}
 
 	// Verify routing
