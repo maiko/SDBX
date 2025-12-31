@@ -1,22 +1,22 @@
 apiVersion: sdbx.io/v1
 kind: Service
 metadata:
-  name: radarr
+  name: sonarr
   version: 1.0.0
   category: media
-  description: "Movies automation and management"
-  homepage: https://radarr.video
-  documentation: https://wiki.servarr.com/radarr
+  description: "TV Shows automation and management"
+  homepage: https://sonarr.tv
+  documentation: https://wiki.servarr.com/sonarr
   maintainer: sdbx-official
   tags:
     - arr-stack
     - linuxserver
-    - movies
+    - tv
     - media
 
 spec:
   image:
-    repository: linuxserver/radarr
+    repository: linuxserver/sonarr
     tag: latest
     registry: docker.io
 
@@ -32,23 +32,23 @@ spec:
         value: "{{ .Config.PUID }}"
       - name: PGID
         value: "{{ .Config.PGID }}"
-      - name: RADARR__AUTH__METHOD
+      - name: SONARR__AUTH__METHOD
         value: External
-      - name: RADARR__AUTH__APIKEY
+      - name: SONARR__AUTH__APIKEY
         valueFrom:
-          secretRef: radarr_api_key
+          secretRef: sonarr_api_key
     conditional:
-      - name: RADARR__APP__URLBASE
-        value: /radarr
+      - name: SONARR__APP__URLBASE
+        value: /sonarr
         when: '{{ eq .Config.Routing.Strategy "path" }}'
 
   volumes:
     - name: config
-      hostPath: "./configs/radarr"
+      hostPath: "./configs/sonarr"
       containerPath: /config
-    - name: movies
-      hostPath: "{{ .Config.MediaPath }}/movies"
-      containerPath: /movies
+    - name: tv
+      hostPath: "{{ .Config.MediaPath }}/tv"
+      containerPath: /tv
     - name: downloads
       hostPath: "{{ .Config.DownloadsPath }}"
       containerPath: /downloads
@@ -63,20 +63,20 @@ spec:
 
 routing:
   enabled: true
-  port: 7878
-  subdomain: radarr
-  path: /radarr
+  port: 8989
+  subdomain: sonarr
+  path: /sonarr
   pathRouting:
     strategy: stripPrefix
-    urlBaseEnvVar: RADARR__APP__URLBASE
+    urlBaseEnvVar: SONARR__APP__URLBASE
   auth:
     required: true
 
 secrets:
-  - name: radarr_api_key
+  - name: sonarr_api_key
     type: auto
     length: 32
-    description: "Radarr API key for external integrations"
+    description: "Sonarr API key for external integrations"
 
 integrations:
   watchtower:
@@ -86,13 +86,13 @@ integrations:
   homepage:
     enabled: true
     group: Media
-    icon: radarr.svg
-    description: "Movies"
+    icon: sonarr.svg
+    description: "TV Shows"
   unpackerr:
     enabled: true
-    urlEnvVar: UN_RADARR_0_URL
-    apiKeyEnvVar: UN_RADARR_0_API_KEY
-    internalUrl: "http://sdbx-radarr:7878"
+    urlEnvVar: UN_SONARR_0_URL
+    apiKeyEnvVar: UN_SONARR_0_API_KEY
+    internalUrl: "http://sdbx-sonarr:8989"
 
 conditions:
-  always: true
+  requireAddon: true

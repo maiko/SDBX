@@ -49,4 +49,4 @@ integrations:
     enabled: false
 
 conditions:
-  always: true
+  requireAddon: true

@@ -80,8 +80,8 @@ internal/
     cache.go           # Source caching
     lock.go            # Lock file management
     services/          # Embedded service definitions (YAML)
-      core/            # Core services (13): traefik, authelia, sonarr, etc.
-      addons/          # Addon services (7): overseerr, wizarr, etc.
+      core/            # Core services (6): traefik, authelia, plex, qbittorrent, gluetun, cloudflared
+      addons/          # Addon services (14): sonarr, radarr, prowlarr, overseerr, homepage, etc.
   tui/                 # Terminal UI styles and helpers
 ```
 
@@ -90,11 +90,11 @@ internal/
 **1. Registry-Based Service Definitions**
 - Services are defined in YAML files with a schema similar to Kubernetes/Helm
 - Each service definition includes: metadata, container spec, routing, integrations, conditions
-- Embedded source bundles 20 services (13 core + 7 addons) into the binary
+- Embedded source bundles 20 services (6 core + 14 addons) into the binary
 - Multiple Git sources can be added like Homebrew taps
 - Lock files (`.sdbx.lock`) pin versions for reproducibility
 
-Example service definition (`internal/registry/services/core/sonarr/service.yaml`):
+Example service definition (`internal/registry/services/addons/sonarr/service.yaml`):
 ```yaml
 apiVersion: sdbx.io/v1
 kind: Service
@@ -119,7 +119,7 @@ routing:
   auth:
     required: true
 conditions:
-  always: true  # Core service, always included
+  requireAddon: true  # Addon service, requires explicit enable
 ```
 
 **2. Source Management**
