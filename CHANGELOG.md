@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0-alpha] - 2026-01-01
+
+### Changed
+
+#### Modular Core/Addon Architecture
+Reorganized services into a leaner core + optional addons model for more flexible deployments.
+
+**Core (6 services)** - Essential infrastructure only:
+- Traefik, Authelia, qBittorrent, Plex, Gluetun, Cloudflared
+
+**Addons (14 services)** - Enable what you need:
+- **Media automation**: Sonarr, Radarr, Prowlarr, Lidarr, Readarr, Bazarr
+- **Utilities**: Recyclarr, Unpackerr, Watchtower, Homepage
+- **Streaming**: Overseerr, Tautulli, Wizarr
+- **Downloads**: FlareSolverr
+
+This allows users to start with a minimal setup (just qBittorrent + Plex + security) and add services as needed with `sdbx addon enable`.
+
+### Fixed
+- Documentation updated to reflect new architecture
+- Removed references to non-existent CLI commands
+
+---
+
 ## [0.1.0-alpha] - 2025-12-31
 
 ### Added
@@ -21,7 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Health monitoring** - Built-in diagnostic checks with `sdbx doctor`
 - **Secret management** - Automatic generation and rotation of secrets
 - **Registry-based services** - YAML service definitions with multiple sources
-- **Addon system** - Modular addons (Overseerr, Tautulli, Wizarr, etc.)
+- **Addon system** - Modular addons
 
 #### CLI Commands
 - `sdbx init` - Initialize new project with interactive wizard
@@ -36,13 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `sdbx config` - View and modify configuration
 
 #### Services Included
-**Core (13 services):**
-- Traefik, Authelia, Homepage, qBittorrent, Gluetun
-- Prowlarr, Sonarr, Radarr, Plex
-- Recyclarr, Unpackerr, Watchtower, Cloudflared
-
-**Addons (7 services):**
-- Overseerr, Wizarr, Tautulli, Lidarr, Readarr, Bazarr, FlareSolverr
+Initial release with 20 services (13 core + 7 addons)
 
 #### VPN Providers
 - NordVPN, Mullvad, Private Internet Access, Surfshark, ProtonVPN, Custom OpenVPN
@@ -61,10 +79,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Roadmap
 
-### v0.2.0 (Planned)
+### v0.3.0 (Planned)
 - Additional VPN providers
-- More addon options
-- Performance improvements
+- Jellyfin support as Plex alternative
+- Backup/restore improvements
 
 ### v1.0.0 (Stable)
 - Production-ready release
