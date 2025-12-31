@@ -62,9 +62,6 @@ Updates a configuration value in the `.env` file and applies changes to relevant
 ### `sdbx secrets generate`
 Generates fresh secrets for Authelia and other services requiring sensitive data.
 
-### `sdbx secrets rotate`
-Rotates existing secrets. **Warning**: This may require re-authenticating and manual migration for some services.
-
 ---
 
 ## 🧩 Addons
@@ -77,6 +74,41 @@ Enables a specific addon (e.g., `sdbx addon enable overseerr`). This will update
 
 ### `sdbx addon disable NAME`
 Disables and removes a specific addon.
+
+### `sdbx addon search QUERY`
+Searches for addons matching the query.
+
+### `sdbx addon info NAME`
+Shows detailed information about a specific addon.
+
+---
+
+## 📦 Source Management
+
+### `sdbx source list`
+Lists all configured service definition sources.
+
+### `sdbx source add NAME URL`
+Adds a new Git repository as a service source (like Homebrew taps).
+
+### `sdbx source remove NAME`
+Removes a configured source.
+
+### `sdbx source update [NAME]`
+Updates sources to fetch latest service definitions. Updates all if no name specified.
+
+---
+
+## 🔒 Lock File
+
+### `sdbx lock`
+Generates or updates the `.sdbx.lock` file to pin service versions.
+
+### `sdbx lock verify`
+Verifies the lock file integrity against current sources.
+
+### `sdbx lock diff`
+Shows differences between current state and lock file.
 
 ---
 
@@ -92,9 +124,6 @@ Creates a timestamped backup of your configuration and database volumes.
 
 ### `sdbx backup restore`
 Lists available backups and allows you to restore to a previous state.
-
-### `sdbx prune`
-Cleans up unused Docker objects (images, containers, and networks) to free up space.
 
 ### `sdbx version`
 Prints the current version of the `sdbx` CLI.

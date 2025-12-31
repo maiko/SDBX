@@ -238,18 +238,14 @@ sdbx update
 ### How do I rotate secrets?
 
 ```bash
-# List secrets
-sdbx secrets list
-
-# Rotate specific secret
-sdbx secrets rotate authelia_jwt_secret.txt
-
-# Rotate all auto-generated secrets
-sdbx secrets rotate-all
+# Generate new secrets
+sdbx secrets generate
 
 # Restart affected services
-sdbx restart authelia
+sdbx down && sdbx up
 ```
+
+**Note**: Rotating secrets may require re-authenticating users. The old secrets are backed up before regeneration.
 
 ### How do I view logs?
 

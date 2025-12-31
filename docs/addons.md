@@ -13,25 +13,13 @@ SDBX is modular. You can enable additional features and services using the `sdbx
 | **Lidarr** | Music collection manager and automation tool. | `sdbx addon enable lidarr` |
 | **Readarr** | Book and audiobook collection manager. | `sdbx addon enable readarr` |
 | **Bazarr** | Automated subtitle management for Sonarr and Radarr. | `sdbx addon enable bazarr` |
-| **Unpackerr** | Automated extraction of archives for the *arr suite. | `sdbx addon enable unpackerr` |
-
-## 🛠️ Performance & Utility Addons
-
-### `prometheus-metrics`
-Enables a Prometheus/Grafana stack to monitor host metrics and Docker container health.
-Usage: `sdbx addon enable prometheus-metrics`
-
-### `wireguard-client`
-Allows you to connect your server to another Wireguard network, useful for site-to-site connectivity.
-Usage: `sdbx addon enable wireguard-client`
-
 ## ⚙️ How Addons Work
 
 When you enable an addon:
-1. SDBX looks for a template in `internal/generator/templates/addons/`.
-2. It merges the service definition into your `compose.yaml`.
-3. It adds necessary environment variables to your `.env` (prefixed with the addon name).
-4. it restarts the stack to apply changes.
+1. SDBX looks up the service definition from the registry (embedded or external sources).
+2. It updates your configuration to include the addon.
+3. Run `sdbx generate` to regenerate your `compose.yaml` with the new service.
+4. Run `sdbx up` to start the updated stack.
 
 ## 🗑️ Disabling Addons
 
