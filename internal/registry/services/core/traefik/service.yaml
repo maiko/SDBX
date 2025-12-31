@@ -1,0 +1,74 @@
+apiVersion: sdbx.io/v1
+kind: Service
+metadata:
+  name: traefik
+  version: 1.0.0
+  category: networking
+  description: "Modern HTTP reverse proxy and load balancer"
+  homepage: https://traefik.io
+  documentation: https://doc.traefik.io/traefik/
+  maintainer: sdbx-official
+  tags:
+    - reverse-proxy
+    - networking
+    - core
+
+spec:
+  image:
+    repository: traefik
+    tag: v2.11
+    registry: docker.io
+
+  container:
+    name_template: "sdbx-{{ .Name }}"
+    restart: unless-stopped
+
+  environment:
+    static:
+      - name: TZ
+        value: "{{ .Config.Timezone }}"
+
+  volumes:
+    - name: docker-socket
+      hostPath: /var/run/docker.sock
+      containerPath: /var/run/docker.sock
+      readOnly: true
+    - name: config
+      hostPath: "./configs/traefik/traefik.yml"
+      containerPath: /etc/traefik/traefik.yml
+      readOnly: true
+    - name: dynamic
+      hostPath: "./configs/traefik/dynamic"
+      containerPath: /etc/traefik/dynamic
+      readOnly: true
+
+  ports:
+    conditional:
+      - port: "80:80"
+        when: '{{ or (eq .Config.Expose.Mode "lan") (eq .Config.Expose.Mode "direct") }}'
+      - port: "443:443"
+        when: '{{ eq .Config.Expose.Mode "direct" }}'
+
+  networking:
+    networks:
+      - name: proxy
+
+  healthcheck:
+    test: ["CMD", "traefik", "healthcheck", "--ping"]
+    interval: 10s
+    timeout: 3s
+    retries: 10
+
+routing:
+  enabled: false
+
+integrations:
+  watchtower:
+    enabled: true
+  cloudflared:
+    enabled: false
+  homepage:
+    enabled: false
+
+conditions:
+  always: true

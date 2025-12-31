@@ -1,0 +1,167 @@
+name: Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Cache Go modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Verify dependencies
+        run: go mod verify
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Run tests
+        run: |
+          go test -v -race -coverprofile=coverage.out ./...
+
+      - name: Generate coverage report
+        run: |
+          go tool cover -func=coverage.out -o=coverage.txt
+          go tool cover -html=coverage.out -o=coverage.html
+
+      - name: Check test coverage
+        run: |
+          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print substr($3, 1, length($3)-1)}')
+          echo "Total test coverage: ${COVERAGE}%"
+          echo "COVERAGE=${COVERAGE}" >> $GITHUB_ENV
+
+          # Set color based on coverage level
+          if (( $(echo "$COVERAGE >= 80" | bc -l) )); then
+            echo "COLOR=green" >> $GITHUB_ENV
+            echo "::notice::Excellent! Test coverage is ${COVERAGE}% ✓"
+          elif (( $(echo "$COVERAGE >= 60" | bc -l) )); then
+            echo "COLOR=yellow" >> $GITHUB_ENV
+            echo "::notice::Good test coverage: ${COVERAGE}%"
+          elif (( $(echo "$COVERAGE >= 40" | bc -l) )); then
+            echo "COLOR=orange" >> $GITHUB_ENV
+            echo "::warning::Test coverage is ${COVERAGE}% - target is 80%"
+          else
+            echo "COLOR=red" >> $GITHUB_ENV
+            echo "::warning::Test coverage is low: ${COVERAGE}% (target: 80%)"
+          fi
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-report
+          path: |
+            coverage.out
+            coverage.txt
+            coverage.html
+
+      - name: Comment coverage on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const coverage = process.env.COVERAGE;
+            const color = process.env.COLOR;
+
+            // Read coverage details
+            const coverageText = fs.readFileSync('coverage.txt', 'utf8');
+            const lines = coverageText.split('\n');
+
+            // Build package coverage table
+            let packageTable = '| Package | Coverage |\n|---------|----------|\n';
+            for (const line of lines) {
+              if (line.includes('/internal/') || line.includes('/cmd/')) {
+                const parts = line.split('\t').filter(p => p.trim());
+                if (parts.length >= 2) {
+                  const pkg = parts[0].trim();
+                  const cov = parts[1].trim();
+                  packageTable += `| ${pkg} | ${cov} |\n`;
+                }
+              }
+            }
+
+            const body = `## 📊 Test Coverage Report
+
+            **Total Coverage:** ${coverage}% ![${color}](https://img.shields.io/badge/coverage-${coverage}%25-${color})
+
+            ### Coverage by Package
+            ${packageTable}
+
+            ### Targets
+            - 🎯 Project Goal: **80%**
+            - ⚠️  Minimum: **40%**
+
+            ${coverage >= 80 ? '✅ Excellent coverage!' : coverage >= 60 ? '✓ Good progress!' : '📈 Keep improving!'}
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
+          args: --timeout=5m
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Build
+        run: make build
+
+      - name: Verify build
+        run: |
+          if [ ! -f bin/sdbx ]; then
+            echo "::error::Build failed - binary not found"
+            exit 1
+          fi
+          ./bin/sdbx --help
+          ./bin/sdbx version

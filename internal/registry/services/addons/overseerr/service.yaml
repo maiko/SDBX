@@ -1,0 +1,67 @@
+apiVersion: sdbx.io/v1
+kind: Service
+metadata:
+  name: overseerr
+  version: 1.0.0
+  category: media
+  description: "Media request management for Plex"
+  homepage: https://overseerr.dev
+  documentation: https://docs.overseerr.dev
+  maintainer: sdbx-official
+  tags:
+    - linuxserver
+    - requests
+    - plex
+
+spec:
+  image:
+    repository: linuxserver/overseerr
+    tag: latest
+    registry: docker.io
+
+  container:
+    name_template: "sdbx-{{ .Name }}"
+    restart: unless-stopped
+
+  environment:
+    static:
+      - name: TZ
+        value: "{{ .Config.Timezone }}"
+      - name: PUID
+        value: "{{ .Config.PUID }}"
+      - name: PGID
+        value: "{{ .Config.PGID }}"
+
+  volumes:
+    - name: config
+      hostPath: "./configs/overseerr"
+      containerPath: /config
+
+  networking:
+    networks:
+      - name: proxy
+
+routing:
+  enabled: true
+  port: 5055
+  subdomain: overseerr
+  path: /overseerr
+  pathRouting:
+    strategy: stripPrefix
+  auth:
+    required: false
+    bypass: true
+
+integrations:
+  watchtower:
+    enabled: true
+  cloudflared:
+    enabled: true
+  homepage:
+    enabled: true
+    group: Media
+    icon: overseerr.svg
+    description: "Requests"
+
+conditions:
+  requireAddon: true

@@ -1,0 +1,82 @@
+apiVersion: sdbx.io/v1
+kind: Service
+metadata:
+  name: bazarr
+  version: 1.0.0
+  category: media
+  description: "Subtitle management for movies and TV"
+  homepage: https://www.bazarr.media
+  documentation: https://wiki.bazarr.media
+  maintainer: sdbx-official
+  tags:
+    - linuxserver
+    - subtitles
+    - media
+
+spec:
+  image:
+    repository: linuxserver/bazarr
+    tag: latest
+    registry: docker.io
+
+  container:
+    name_template: "sdbx-{{ .Name }}"
+    restart: unless-stopped
+
+  environment:
+    static:
+      - name: TZ
+        value: "{{ .Config.Timezone }}"
+      - name: PUID
+        value: "{{ .Config.PUID }}"
+      - name: PGID
+        value: "{{ .Config.PGID }}"
+    conditional:
+      - name: BAZARR__APP__URLBASE
+        value: /bazarr
+        when: '{{ eq .Config.Routing.Strategy "path" }}'
+
+  volumes:
+    - name: config
+      hostPath: "./configs/bazarr"
+      containerPath: /config
+    - name: movies
+      hostPath: "{{ .Config.MediaPath }}/movies"
+      containerPath: /movies
+    - name: tv
+      hostPath: "{{ .Config.MediaPath }}/tv"
+      containerPath: /tv
+
+  networking:
+    networks:
+      - name: proxy
+
+  dependencies:
+    optional:
+      - sonarr
+      - radarr
+
+routing:
+  enabled: true
+  port: 6767
+  subdomain: bazarr
+  path: /bazarr
+  pathRouting:
+    strategy: stripPrefix
+    urlBaseEnvVar: BAZARR__APP__URLBASE
+  auth:
+    required: true
+
+integrations:
+  watchtower:
+    enabled: true
+  cloudflared:
+    enabled: true
+  homepage:
+    enabled: true
+    group: Media
+    icon: bazarr.svg
+    description: "Subtitles"
+
+conditions:
+  requireAddon: true

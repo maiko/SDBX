@@ -1,0 +1,52 @@
+apiVersion: sdbx.io/v1
+kind: Service
+metadata:
+  name: recyclarr
+  version: 1.0.0
+  category: utility
+  description: "Quality profile sync for Sonarr and Radarr"
+  homepage: https://recyclarr.dev
+  documentation: https://recyclarr.dev/wiki/
+  maintainer: sdbx-official
+  tags:
+    - arr-stack
+    - quality
+    - automation
+
+spec:
+  image:
+    repository: ghcr.io/recyclarr/recyclarr
+    tag: latest
+    registry: ghcr.io
+
+  container:
+    name_template: "sdbx-{{ .Name }}"
+    restart: unless-stopped
+
+  environment:
+    static:
+      - name: TZ
+        value: "{{ .Config.Timezone }}"
+
+  volumes:
+    - name: config
+      hostPath: "./configs/recyclarr"
+      containerPath: /config
+
+  networking:
+    networks:
+      - name: proxy
+
+routing:
+  enabled: false
+
+integrations:
+  watchtower:
+    enabled: true
+  cloudflared:
+    enabled: false
+  homepage:
+    enabled: false
+
+conditions:
+  always: true

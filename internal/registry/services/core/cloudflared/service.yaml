@@ -1,0 +1,64 @@
+apiVersion: sdbx.io/v1
+kind: Service
+metadata:
+  name: cloudflared
+  version: 1.0.0
+  category: networking
+  description: "Cloudflare Tunnel client for zero-trust access"
+  homepage: https://www.cloudflare.com/products/tunnel/
+  documentation: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/
+  maintainer: sdbx-official
+  tags:
+    - cloudflare
+    - tunnel
+    - networking
+    - security
+
+spec:
+  image:
+    repository: cloudflare/cloudflared
+    tag: latest
+    registry: docker.io
+
+  container:
+    name_template: "sdbx-{{ .Name }}"
+    restart: unless-stopped
+
+  environment:
+    static:
+      - name: TZ
+        value: "{{ .Config.Timezone }}"
+      - name: TUNNEL_TOKEN_FILE
+        value: /run/secrets/cloudflared_tunnel_token
+
+  volumes:
+    - name: config
+      hostPath: "./configs/cloudflared"
+      containerPath: /etc/cloudflared
+
+  networking:
+    networks:
+      - name: proxy
+
+  dependencies:
+    required:
+      - traefik
+
+secrets:
+  - name: cloudflared_tunnel_token
+    type: manual
+    description: "Cloudflare Tunnel token from dashboard"
+
+routing:
+  enabled: false
+
+integrations:
+  watchtower:
+    enabled: true
+  cloudflared:
+    enabled: false
+  homepage:
+    enabled: false
+
+conditions:
+  requireConfig: cloudflared

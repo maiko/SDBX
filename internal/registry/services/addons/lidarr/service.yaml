@@ -1,0 +1,82 @@
+apiVersion: sdbx.io/v1
+kind: Service
+metadata:
+  name: lidarr
+  version: 1.0.0
+  category: media
+  description: "Music collection automation"
+  homepage: https://lidarr.audio
+  documentation: https://wiki.servarr.com/lidarr
+  maintainer: sdbx-official
+  tags:
+    - arr-stack
+    - linuxserver
+    - music
+    - media
+
+spec:
+  image:
+    repository: linuxserver/lidarr
+    tag: latest
+    registry: docker.io
+
+  container:
+    name_template: "sdbx-{{ .Name }}"
+    restart: unless-stopped
+
+  environment:
+    static:
+      - name: TZ
+        value: "{{ .Config.Timezone }}"
+      - name: PUID
+        value: "{{ .Config.PUID }}"
+      - name: PGID
+        value: "{{ .Config.PGID }}"
+    conditional:
+      - name: LIDARR__APP__URLBASE
+        value: /lidarr
+        when: '{{ eq .Config.Routing.Strategy "path" }}'
+
+  volumes:
+    - name: config
+      hostPath: "./configs/lidarr"
+      containerPath: /config
+    - name: music
+      hostPath: "{{ .Config.MediaPath }}/music"
+      containerPath: /music
+    - name: downloads
+      hostPath: "{{ .Config.DownloadsPath }}"
+      containerPath: /downloads
+
+  networking:
+    networks:
+      - name: proxy
+
+  dependencies:
+    optional:
+      - prowlarr
+
+routing:
+  enabled: true
+  port: 8686
+  subdomain: lidarr
+  path: /lidarr
+  pathRouting:
+    strategy: stripPrefix
+    urlBaseEnvVar: LIDARR__APP__URLBASE
+  auth:
+    required: true
+
+integrations:
+  watchtower:
+    enabled: true
+  cloudflared:
+    enabled: true
+  homepage:
+    enabled: true
+    group: Media
+    icon: lidarr.svg
+    description: "Music"
+
+conditions:
+  requireAddon: true

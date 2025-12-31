@@ -1,0 +1,71 @@
+apiVersion: sdbx.io/v1
+kind: Service
+metadata:
+  name: homepage
+  version: 1.0.0
+  category: management
+  description: "Modern, fully static, fast, secure application dashboard"
+  homepage: https://gethomepage.dev
+  documentation: https://gethomepage.dev/latest/
+  maintainer: sdbx-official
+  tags:
+    - dashboard
+    - management
+
+spec:
+  image:
+    repository: ghcr.io/gethomepage/homepage
+    tag: latest
+    registry: ghcr.io
+
+  container:
+    name_template: "sdbx-{{ .Name }}"
+    restart: unless-stopped
+
+  environment:
+    static:
+      - name: TZ
+        value: "{{ .Config.Timezone }}"
+    conditional:
+      - name: HOMEPAGE_ALLOWED_HOSTS
+        value: "{{ .Config.Routing.BaseDomain }}.{{ .Config.Domain }}"
+        when: '{{ eq .Config.Routing.Strategy "path" }}'
+      - name: HOMEPAGE_ALLOWED_HOSTS
+        value: "home.{{ .Config.Domain }}"
+        when: '{{ eq .Config.Routing.Strategy "subdomain" }}'
+
+  volumes:
+    - name: config
+      hostPath: "./configs/homepage"
+      containerPath: /app/config
+    - name: docker-socket
+      hostPath: /var/run/docker.sock
+      containerPath: /var/run/docker.sock
+      readOnly: true
+
+  networking:
+    networks:
+      - name: proxy
+
+routing:
+  enabled: true
+  port: 3000
+  subdomain: home
+  path: /
+  pathRouting:
+    strategy: none
+  auth:
+    required: true
+  traefik:
+    priority: 1
+
+integrations:
+  watchtower:
+    enabled: true
+  cloudflared:
+    enabled: true
+  homepage:
+    enabled: false
+
+conditions:
+  always: true

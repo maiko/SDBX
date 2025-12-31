@@ -1,0 +1,72 @@
+apiVersion: sdbx.io/v1
+kind: Service
+metadata:
+  name: unpackerr
+  version: 1.0.0
+  category: utility
+  description: "Archive extraction for *arr applications"
+  homepage: https://unpackerr.zip
+  documentation: https://unpackerr.zip/docs/
+  maintainer: sdbx-official
+  tags:
+    - arr-stack
+    - automation
+    - extraction
+
+spec:
+  image:
+    repository: golift/unpackerr
+    tag: latest
+    registry: docker.io
+
+  container:
+    name_template: "sdbx-{{ .Name }}"
+    restart: unless-stopped
+
+  environment:
+    static:
+      - name: TZ
+        value: "{{ .Config.Timezone }}"
+      - name: UN_LOG_LEVEL
+        value: info
+      - name: UN_SONARR_0_URL
+        value: http://sdbx-sonarr:8989
+      - name: UN_SONARR_0_API_KEY
+        valueFrom:
+          secretRef: sonarr_api_key
+      - name: UN_RADARR_0_URL
+        value: http://sdbx-radarr:7878
+      - name: UN_RADARR_0_API_KEY
+        valueFrom:
+          secretRef: radarr_api_key
+
+  volumes:
+    - name: downloads
+      hostPath: "{{ .Config.DownloadsPath }}"
+      containerPath: /downloads
+    - name: config
+      hostPath: "./configs/unpackerr"
+      containerPath: /config
+
+  networking:
+    networks:
+      - name: proxy
+
+  dependencies:
+    optional:
+      - sonarr
+      - radarr
+
+routing:
+  enabled: false
+
+integrations:
+  watchtower:
+    enabled: true
+  cloudflared:
+    enabled: false
+  homepage:
+    enabled: false
+
+conditions:
+  always: true

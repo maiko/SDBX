@@ -1,0 +1,71 @@
+apiVersion: sdbx.io/v1
+kind: Service
+metadata:
+  name: tautulli
+  version: 1.0.0
+  category: management
+  description: "Plex media server analytics and monitoring"
+  homepage: https://tautulli.com
+  documentation: https://github.com/Tautulli/Tautulli/wiki
+  maintainer: sdbx-official
+  tags:
+    - linuxserver
+    - plex
+    - analytics
+
+spec:
+  image:
+    repository: linuxserver/tautulli
+    tag: latest
+    registry: docker.io
+
+  container:
+    name_template: "sdbx-{{ .Name }}"
+    restart: unless-stopped
+
+  environment:
+    static:
+      - name: TZ
+        value: "{{ .Config.Timezone }}"
+      - name: PUID
+        value: "{{ .Config.PUID }}"
+      - name: PGID
+        value: "{{ .Config.PGID }}"
+    conditional:
+      - name: TAUTULLI_URLBASE
+        value: /tautulli
+        when: '{{ eq .Config.Routing.Strategy "path" }}'
+
+  volumes:
+    - name: config
+      hostPath: "./configs/tautulli"
+      containerPath: /config
+
+  networking:
+    networks:
+      - name: proxy
+
+routing:
+  enabled: true
+  port: 8181
+  subdomain: tautulli
+  path: /tautulli
+  pathRouting:
+    strategy: stripPrefix
+    urlBaseEnvVar: TAUTULLI_URLBASE
+  auth:
+    required: true
+
+integrations:
+  watchtower:
+    enabled: true
+  cloudflared:
+    enabled: true
+  homepage:
+    enabled: true
+    group: Management
+    icon: tautulli.svg
+    description: "Plex Stats"
+
+conditions:
+  requireAddon: true

@@ -1,0 +1,33 @@
+# SDBX Generated .gitignore
+
+# Secrets - NEVER commit these
+secrets/
+*.secret
+*.key
+*.pem
+
+# Environment with secrets
+.env
+
+# Runtime data
+data/
+config/
+*.log
+
+# Traefik ACME
+configs/traefik/acme.json
+
+# Docker
+.docker/
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Backups
+*.bak
+*.backup
+backups/

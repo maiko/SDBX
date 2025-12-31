@@ -1,0 +1,90 @@
+apiVersion: sdbx.io/v1
+kind: Service
+metadata:
+  name: qbittorrent
+  version: 1.0.0
+  category: downloads
+  description: "Free and open-source BitTorrent client"
+  homepage: https://www.qbittorrent.org
+  documentation: https://github.com/qbittorrent/qBittorrent/wiki
+  maintainer: sdbx-official
+  tags:
+    - linuxserver
+    - downloads
+    - torrent
+
+spec:
+  image:
+    repository: linuxserver/qbittorrent
+    tag: latest
+    registry: docker.io
+
+  container:
+    name_template: "sdbx-{{ .Name }}"
+    restart: unless-stopped
+
+  environment:
+    static:
+      - name: TZ
+        value: "{{ .Config.Timezone }}"
+      - name: PUID
+        value: "{{ .Config.PUID }}"
+      - name: PGID
+        value: "{{ .Config.PGID }}"
+      - name: UMASK
+        value: "{{ .Config.Umask }}"
+      - name: WEBUI_PORT
+        value: "8080"
+
+  volumes:
+    - name: config
+      hostPath: "./configs/qbittorrent"
+      containerPath: /config
+    - name: downloads
+      hostPath: "{{ .Config.DownloadsPath }}"
+      containerPath: /downloads
+
+  ports:
+    conditional:
+      - port: "8080:8080"
+        when: "{{ not .Config.VPNEnabled }}"
+      - port: "6881:6881"
+        when: "{{ not .Config.VPNEnabled }}"
+      - port: "6881:6881/udp"
+        when: "{{ not .Config.VPNEnabled }}"
+
+  networking:
+    networks:
+      - name: proxy
+        when: "{{ not .Config.VPNEnabled }}"
+    modeTemplate: '{{ if .Config.VPNEnabled }}service:gluetun{{ else }}bridge{{ end }}'
+
+  dependencies:
+    conditional:
+      - name: gluetun
+        condition: service_healthy
+        when: "{{ .Config.VPNEnabled }}"
+
+routing:
+  enabled: true
+  port: 8080
+  subdomain: qbt
+  path: /qbt
+  pathRouting:
+    strategy: stripPrefix
+  auth:
+    required: true
+
+integrations:
+  watchtower:
+    enabled: true
+  cloudflared:
+    enabled: true
+  homepage:
+    enabled: true
+    group: Downloads
+    icon: qbittorrent.svg
+    description: "Torrents"
+
+conditions:
+  always: true

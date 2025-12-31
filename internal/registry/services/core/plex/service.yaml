@@ -1,0 +1,75 @@
+apiVersion: sdbx.io/v1
+kind: Service
+metadata:
+  name: plex
+  version: 1.0.0
+  category: media
+  description: "Media server for streaming movies, TV, and music"
+  homepage: https://www.plex.tv
+  documentation: https://support.plex.tv
+  maintainer: sdbx-official
+  tags:
+    - linuxserver
+    - media
+    - streaming
+
+spec:
+  image:
+    repository: linuxserver/plex
+    tag: latest
+    registry: docker.io
+
+  container:
+    name_template: "sdbx-{{ .Name }}"
+    restart: unless-stopped
+
+  environment:
+    static:
+      - name: TZ
+        value: "{{ .Config.Timezone }}"
+      - name: PUID
+        value: "{{ .Config.PUID }}"
+      - name: PGID
+        value: "{{ .Config.PGID }}"
+      - name: VERSION
+        value: docker
+
+  volumes:
+    - name: config
+      hostPath: "./configs/plex"
+      containerPath: /config
+    - name: media
+      hostPath: "{{ .Config.MediaPath }}"
+      containerPath: /media
+
+  ports:
+    static:
+      - "32400:32400"
+
+  networking:
+    networks:
+      - name: proxy
+
+routing:
+  enabled: true
+  port: 32400
+  subdomain: plex
+  path: /plex
+  forceSubdomain: true
+  auth:
+    required: false
+    bypass: true
+
+integrations:
+  watchtower:
+    enabled: true
+  cloudflared:
+    enabled: true
+  homepage:
+    enabled: true
+    group: Media
+    icon: plex.svg
+    description: "Media Server"
+
+conditions:
+  always: true

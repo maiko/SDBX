@@ -1,0 +1,54 @@
+# =========================
+# SDBX Project .gitignore
+# =========================
+
+# Secrets (NEVER commit)
+/secrets/
+*.secret
+*.key
+*.pem
+
+# Environment with secrets
+.env
+!.env.example
+
+# Generated configs with secrets
+configs/authelia/users_database.yml
+configs/cloudflared/config.yml
+
+# Runtime data
+data/
+/config/
+*.log
+
+# Docker
+.docker/
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.idea/
+.vscode/
+*.sublime-*
+
+# Go build artifacts (for CLI development)
+/sdbx
+/bin/
+/dist/
+*.exe
+
+# Test artifacts
+coverage.out
+*.test
+
+# Backup files
+*.bak
+*.backup
+*.orig
+.test/
+.test/

@@ -1,0 +1,89 @@
+apiVersion: sdbx.io/v1
+kind: Service
+metadata:
+  name: authelia
+  version: 1.0.0
+  category: auth
+  description: "Single Sign-On Multi-Factor portal"
+  homepage: https://www.authelia.com
+  documentation: https://www.authelia.com/docs/
+  maintainer: sdbx-official
+  tags:
+    - authentication
+    - sso
+    - security
+    - core
+
+spec:
+  image:
+    repository: authelia/authelia
+    tag: latest
+    registry: docker.io
+
+  container:
+    name_template: "sdbx-{{ .Name }}"
+    restart: unless-stopped
+
+  environment:
+    static:
+      - name: TZ
+        value: "{{ .Config.Timezone }}"
+      - name: AUTHELIA_JWT_SECRET_FILE
+        value: /run/secrets/authelia_jwt_secret
+      - name: AUTHELIA_SESSION_SECRET_FILE
+        value: /run/secrets/authelia_session_secret
+      - name: AUTHELIA_STORAGE_ENCRYPTION_KEY_FILE
+        value: /run/secrets/authelia_storage_encryption_key
+    conditional:
+      - name: AUTHELIA_SERVER_PATH
+        value: /auth
+        when: '{{ eq .Config.Routing.Strategy "path" }}'
+
+  volumes:
+    - name: config
+      hostPath: "./configs/authelia"
+      containerPath: /config
+    - name: data
+      hostPath: "./data/authelia"
+      containerPath: /data
+
+  networking:
+    networks:
+      - name: proxy
+
+routing:
+  enabled: true
+  port: 9091
+  subdomain: auth
+  path: /auth
+  pathRouting:
+    strategy: urlBase
+    urlBaseEnvVar: AUTHELIA_SERVER_PATH
+  auth:
+    required: false
+    bypass: true
+
+secrets:
+  - name: authelia_jwt_secret
+    type: auto
+    length: 64
+    description: "JWT token signing secret"
+  - name: authelia_session_secret
+    type: auto
+    length: 64
+    description: "Session encryption secret"
+  - name: authelia_storage_encryption_key
+    type: auto
+    length: 64
+    description: "Database encryption key"
+
+integrations:
+  watchtower:
+    enabled: true
+  cloudflared:
+    enabled: true
+  homepage:
+    enabled: false
+
+conditions:
+  always: true

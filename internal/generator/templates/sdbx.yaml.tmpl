@@ -1,0 +1,65 @@
+# SDBX Project Configuration
+# This file is used by the sdbx CLI
+
+domain: {{.Config.Domain}}
+timezone: {{.Config.Timezone}}
+
+# Exposure configuration
+expose:
+  mode: {{.Config.Expose.Mode}}
+{{- if .Config.Expose.TLS.Provider}}
+  tls:
+    provider: {{.Config.Expose.TLS.Provider}}
+{{- if .Config.Expose.TLS.Email}}
+    email: {{.Config.Expose.TLS.Email}}
+{{- end}}
+{{- end}}
+
+# Routing configuration
+routing:
+  strategy: {{.Config.Routing.Strategy}}
+{{- if .Config.Routing.BaseDomain}}
+  base_domain: {{.Config.Routing.BaseDomain}}
+{{- end}}
+
+# Storage paths
+config_path: {{.Config.ConfigPath}}
+data_path: {{.Config.DataPath}}
+downloads_path: {{.Config.DownloadsPath}}
+media_path: {{.Config.MediaPath}}
+
+# Permissions
+puid: {{.Config.PUID}}
+pgid: {{.Config.PGID}}
+umask: {{.Config.Umask}}
+
+# VPN
+vpn_enabled: {{.Config.VPNEnabled}}
+{{- if .Config.VPNProvider}}
+vpn_provider: {{.Config.VPNProvider}}
+vpn_country: {{.Config.VPNCountry}}
+{{- end}}
+
+# Addons
+addons:
+{{- range .Config.Addons}}
+  - {{.}}
+{{- end}}
+
+# Per-service routing overrides
+{{- if .Config.Services}}
+services:
+{{- range $name, $override := .Config.Services}}
+  {{$name}}:
+{{- if $override.Routing}}
+    routing: {{$override.Routing}}
+{{- end}}
+{{- if $override.Subdomain}}
+    subdomain: {{$override.Subdomain}}
+{{- end}}
+{{- if $override.Path}}
+    path: {{$override.Path}}
+{{- end}}
+{{- end}}
+{{- end}}
+

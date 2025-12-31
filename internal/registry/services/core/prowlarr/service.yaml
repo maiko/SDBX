@@ -1,0 +1,71 @@
+apiVersion: sdbx.io/v1
+kind: Service
+metadata:
+  name: prowlarr
+  version: 1.0.0
+  category: media
+  description: "Indexer manager for *arr applications"
+  homepage: https://prowlarr.com
+  documentation: https://wiki.servarr.com/prowlarr
+  maintainer: sdbx-official
+  tags:
+    - arr-stack
+    - linuxserver
+    - indexers
+
+spec:
+  image:
+    repository: linuxserver/prowlarr
+    tag: latest
+    registry: docker.io
+
+  container:
+    name_template: "sdbx-{{ .Name }}"
+    restart: unless-stopped
+
+  environment:
+    static:
+      - name: TZ
+        value: "{{ .Config.Timezone }}"
+      - name: PUID
+        value: "{{ .Config.PUID }}"
+      - name: PGID
+        value: "{{ .Config.PGID }}"
+    conditional:
+      - name: PROWLARR__APP__URLBASE
+        value: /prowlarr
+        when: '{{ eq .Config.Routing.Strategy "path" }}'
+
+  volumes:
+    - name: config
+      hostPath: "./configs/prowlarr"
+      containerPath: /config
+
+  networking:
+    networks:
+      - name: proxy
+
+routing:
+  enabled: true
+  port: 9696
+  subdomain: prowlarr
+  path: /prowlarr
+  pathRouting:
+    strategy: stripPrefix
+    urlBaseEnvVar: PROWLARR__APP__URLBASE
+  auth:
+    required: true
+
+integrations:
+  watchtower:
+    enabled: true
+  cloudflared:
+    enabled: true
+  homepage:
+    enabled: true
+    group: Downloads
+    icon: prowlarr.svg
+    description: "Indexers"
+
+conditions:
+  always: true

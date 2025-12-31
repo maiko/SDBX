@@ -1,0 +1,98 @@
+apiVersion: sdbx.io/v1
+kind: Service
+metadata:
+  name: sonarr
+  version: 1.0.0
+  category: media
+  description: "TV Shows automation and management"
+  homepage: https://sonarr.tv
+  documentation: https://wiki.servarr.com/sonarr
+  maintainer: sdbx-official
+  tags:
+    - arr-stack
+    - linuxserver
+    - tv
+    - media
+
+spec:
+  image:
+    repository: linuxserver/sonarr
+    tag: latest
+    registry: docker.io
+
+  container:
+    name_template: "sdbx-{{ .Name }}"
+    restart: unless-stopped
+
+  environment:
+    static:
+      - name: TZ
+        value: "{{ .Config.Timezone }}"
+      - name: PUID
+        value: "{{ .Config.PUID }}"
+      - name: PGID
+        value: "{{ .Config.PGID }}"
+      - name: SONARR__AUTH__METHOD
+        value: External
+      - name: SONARR__AUTH__APIKEY
+        valueFrom:
+          secretRef: sonarr_api_key
+    conditional:
+      - name: SONARR__APP__URLBASE
+        value: /sonarr
+        when: '{{ eq .Config.Routing.Strategy "path" }}'
+
+  volumes:
+    - name: config
+      hostPath: "./configs/sonarr"
+      containerPath: /config
+    - name: tv
+      hostPath: "{{ .Config.MediaPath }}/tv"
+      containerPath: /tv
+    - name: downloads
+      hostPath: "{{ .Config.DownloadsPath }}"
+      containerPath: /downloads
+
+  networking:
+    networks:
+      - name: proxy
+
+  dependencies:
+    optional:
+      - prowlarr
+
+routing:
+  enabled: true
+  port: 8989
+  subdomain: sonarr
+  path: /sonarr
+  pathRouting:
+    strategy: stripPrefix
+    urlBaseEnvVar: SONARR__APP__URLBASE
+  auth:
+    required: true
+
+secrets:
+  - name: sonarr_api_key
+    type: auto
+    length: 32
+    description: "Sonarr API key for external integrations"
+
+integrations:
+  watchtower:
+    enabled: true
+  cloudflared:
+    enabled: true
+  homepage:
+    enabled: true
+    group: Media
+    icon: sonarr.svg
+    description: "TV Shows"
+  unpackerr:
+    enabled: true
+    urlEnvVar: UN_SONARR_0_URL
+    apiKeyEnvVar: UN_SONARR_0_API_KEY
+    internalUrl: "http://sdbx-sonarr:8989"
+
+conditions:
+  always: true
