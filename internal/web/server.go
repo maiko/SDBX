@@ -238,12 +238,14 @@ func (s *Server) setupRoutes(mux *http.ServeMux) {
 		servicesHandler := handlers.NewServicesHandler(s.compose, s.registry, s.templates)
 		logsHandler := handlers.NewLogsHandler(s.compose, s.registry, s.templates)
 		addonsHandler := handlers.NewAddonsHandler(s.registry, s.config.ProjectDir, s.templates)
+		configHandler := handlers.NewConfigHandler(s.config.ProjectDir, s.templates)
 
 		// Pages
 		mux.HandleFunc("/", dashboardHandler.HandleDashboard)
 		mux.HandleFunc("/services", servicesHandler.HandleServicesPage)
 		mux.HandleFunc("/logs/{service}", logsHandler.HandleLogsPage)
 		mux.HandleFunc("/addons", addonsHandler.HandleAddonsPage)
+		mux.HandleFunc("/config", configHandler.HandleConfigPage)
 
 		// API endpoints
 		mux.HandleFunc("/api/services", servicesHandler.HandleGetServices)
@@ -259,6 +261,11 @@ func (s *Server) setupRoutes(mux *http.ServeMux) {
 		mux.HandleFunc("/api/addons/search", addonsHandler.HandleSearchAddons)
 		mux.HandleFunc("/api/addons/{addon}/enable", addonsHandler.HandleEnableAddon)
 		mux.HandleFunc("/api/addons/{addon}/disable", addonsHandler.HandleDisableAddon)
+
+		// Config endpoints
+		mux.HandleFunc("/api/config", configHandler.HandleGetConfig)
+		mux.HandleFunc("/api/config/validate", configHandler.HandleValidateConfig)
+		mux.HandleFunc("/api/config/save", configHandler.HandleSaveConfig)
 	}
 }
 
