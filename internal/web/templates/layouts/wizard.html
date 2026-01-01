@@ -1,0 +1,214 @@
+{{define "wizard"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SDBX Setup Wizard</title>
+    <link rel="stylesheet" href="/static/css/colors.css">
+    <link rel="stylesheet" href="/static/css/main.css">
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .wizard-container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 3rem;
+        }
+
+        .wizard-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .wizard-logo {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--color-primary), var(--color-info));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .wizard-subtitle {
+            color: var(--color-muted);
+            font-size: 0.95rem;
+        }
+
+        .wizard-content {
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+
+        .form-group .description {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--color-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .form-group input[type="text"],
+        .form-group input[type="password"],
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+        }
+
+        .btn {
+            padding: 0.75rem 2rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 1rem;
+        }
+
+        .btn-primary {
+            background: var(--color-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #64748b;
+        }
+
+        .btn-secondary:hover {
+            background: #cbd5e1;
+        }
+
+        .wizard-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+        }
+
+        .error-message {
+            background: #fef2f2;
+            color: var(--color-error);
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .addon-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .addon-card {
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .addon-card:hover {
+            border-color: var(--color-primary);
+        }
+
+        .addon-card.selected {
+            border-color: var(--color-primary);
+            background: rgba(124, 58, 237, 0.05);
+        }
+
+        .addon-card input[type="checkbox"] {
+            margin-right: 0.5rem;
+        }
+
+        .addon-name {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .addon-description {
+            font-size: 0.85rem;
+            color: var(--color-muted);
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .summary-label {
+            font-weight: 600;
+            color: var(--color-muted);
+        }
+
+        .summary-value {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="wizard-container">
+        <div class="wizard-header">
+            <div class="wizard-logo">SDBX</div>
+            <div class="wizard-subtitle">Seedbox in a Box — Setup Wizard</div>
+        </div>
+        <div class="wizard-content">
+            {{template "content" .}}
+        </div>
+    </div>
+</body>
+</html>
+{{end}}

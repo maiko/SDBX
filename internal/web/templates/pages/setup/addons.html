@@ -1,0 +1,34 @@
+{{define "content"}}
+<h2>Optional Addons</h2>
+<p>Select additional services to enable (you can change this later).</p>
+
+<form hx-post="/setup/addons" hx-target="body" hx-swap="outerHTML">
+    <div class="addon-grid">
+        {{range .Addons}}
+        <label class="addon-card">
+            <input type="checkbox" name="addons" value="{{.Name}}"
+                   {{range $.Config.Addons}}{{if eq . $.Name}}checked{{end}}{{end}}>
+            <div class="addon-name">{{.Name}}</div>
+            <div class="addon-description">{{.Description}}</div>
+            <div style="font-size: 0.75rem; color: var(--color-primary); margin-top: 0.5rem;">
+                {{.Category}}
+            </div>
+        </label>
+        {{end}}
+    </div>
+
+    <div class="wizard-actions" style="margin-top: 2rem;">
+        <a href="/setup/vpn" class="btn btn-secondary">← Back</a>
+        <button type="submit" class="btn btn-primary">Next →</button>
+    </div>
+</form>
+
+<style>
+    .addon-card:has(input:checked) {
+        border-color: var(--color-primary);
+        background: rgba(124, 58, 237, 0.05);
+    }
+</style>
+{{end}}
+
+{{template "wizard" .}}

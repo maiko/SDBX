@@ -1,0 +1,49 @@
+{{define "content"}}
+<h2>VPN Configuration</h2>
+<p>Optionally route torrent traffic through a VPN for privacy.</p>
+
+<form hx-post="/setup/vpn" hx-target="body" hx-swap="outerHTML">
+    <div class="checkbox-group">
+        <input type="checkbox" id="vpn_enabled" name="vpn_enabled" value="true"
+               {{if .Config.VPNEnabled}}checked{{end}}
+               onchange="toggleVPNFields(this.checked)">
+        <label for="vpn_enabled">Enable VPN for downloads (recommended)</label>
+    </div>
+    <p style="color: var(--color-muted); font-size: 0.9rem; margin-left: 28px;">
+        Routes qBittorrent traffic through VPN with kill-switch protection
+    </p>
+
+    <div id="vpn-fields" style="display: none;">
+        <div class="form-group">
+            <label for="vpn_provider">VPN Provider *</label>
+            <span class="description">Gluetun supports 30+ providers. Credentials configured after init.</span>
+            <select id="vpn_provider" name="vpn_provider">
+                {{range .VPNProviders}}
+                <option value="{{.}}" {{if eq $.Config.VPNProvider .}}selected{{end}}>{{.}}</option>
+                {{end}}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="vpn_country">VPN Server Country *</label>
+            <span class="description">Preferred VPN exit location</span>
+            <input type="text" id="vpn_country" name="vpn_country" value="{{.Config.VPNCountry}}" placeholder="France">
+        </div>
+    </div>
+
+    <div class="wizard-actions">
+        <a href="/setup/storage" class="btn btn-secondary">← Back</a>
+        <button type="submit" class="btn btn-primary">Next →</button>
+    </div>
+</form>
+
+<script>
+    function toggleVPNFields(enabled) {
+        document.getElementById('vpn-fields').style.display = enabled ? 'block' : 'none';
+    }
+    // Initialize on load
+    toggleVPNFields(document.getElementById('vpn_enabled').checked);
+</script>
+{{end}}
+
+{{template "wizard" .}}

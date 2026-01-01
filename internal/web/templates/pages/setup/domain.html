@@ -1,0 +1,63 @@
+{{define "content"}}
+<h2>Domain Configuration</h2>
+<p>Configure how your services will be accessed.</p>
+
+<form hx-post="/setup/domain" hx-target="body" hx-swap="outerHTML">
+    <div class="form-group">
+        <label for="domain">Base Domain *</label>
+        <span class="description">Your root domain for all services (e.g., box.sdbx.one)</span>
+        <input type="text" id="domain" name="domain" value="{{.Config.Domain}}" placeholder="box.sdbx.one" required>
+    </div>
+
+    <div class="form-group">
+        <label for="expose_mode">Exposure Mode *</label>
+        <span class="description">How should services be accessible?</span>
+        <select id="expose_mode" name="expose_mode" required>
+            <option value="cloudflared" {{if eq .Config.Expose.Mode "cloudflared"}}selected{{end}}>
+                Cloudflare Tunnel (recommended, zero open ports)
+            </option>
+            <option value="direct" {{if eq .Config.Expose.Mode "direct"}}selected{{end}}>
+                Direct HTTPS (Let's Encrypt, ports 80/443)
+            </option>
+            <option value="lan" {{if eq .Config.Expose.Mode "lan"}}selected{{end}}>
+                LAN Only (HTTP, no TLS, for home lab)
+            </option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="routing_strategy">Routing Strategy *</label>
+        <span class="description">How should services be accessed?</span>
+        <select id="routing_strategy" name="routing_strategy" required onchange="toggleBaseDomain(this.value)">
+            <option value="subdomain" {{if eq .Config.Routing.Strategy "subdomain"}}selected{{end}}>
+                Subdomain (radarr.domain.tld, sonarr.domain.tld)
+            </option>
+            <option value="path" {{if eq .Config.Routing.Strategy "path"}}selected{{end}}>
+                Path (domain.tld/radarr, domain.tld/sonarr)
+            </option>
+        </select>
+    </div>
+
+    <div class="form-group" id="base-domain-group" style="display: none;">
+        <label for="base_domain">Base Subdomain</label>
+        <span class="description">Subdomain for path-based access (e.g., 'sdbx' → sdbx.domain.tld/...)</span>
+        <input type="text" id="base_domain" name="base_domain" value="{{.Config.Routing.BaseDomain}}" placeholder="sdbx">
+    </div>
+
+    <div class="wizard-actions">
+        <a href="/" class="btn btn-secondary">← Back</a>
+        <button type="submit" class="btn btn-primary">Next →</button>
+    </div>
+</form>
+
+<script>
+    function toggleBaseDomain(strategy) {
+        const baseDomainGroup = document.getElementById('base-domain-group');
+        baseDomainGroup.style.display = strategy === 'path' ? 'block' : 'none';
+    }
+    // Initialize on load
+    toggleBaseDomain(document.getElementById('routing_strategy').value);
+</script>
+{{end}}
+
+{{template "wizard" .}}

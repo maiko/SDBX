@@ -1,0 +1,27 @@
+{{define "content"}}
+<h2>Welcome to SDBX</h2>
+<p>This wizard will help you configure your media automation stack in just a few steps.</p>
+
+{{if .HasExisting}}
+<div class="error-message">
+    ⚠️ Existing project detected. Continuing will overwrite your configuration files.
+</div>
+{{end}}
+
+<div style="margin-top: 2rem;">
+    <h3>What we'll configure:</h3>
+    <ul style="color: var(--color-muted); line-height: 1.8;">
+        <li>Domain and exposure settings</li>
+        <li>Admin credentials for SSO authentication</li>
+        <li>Storage paths for media and downloads</li>
+        <li>VPN configuration (optional)</li>
+        <li>Additional services (Sonarr, Radarr, etc.)</li>
+    </ul>
+</div>
+
+<div class="wizard-actions" style="margin-top: 2rem;">
+    <a href="/setup/domain" class="btn btn-primary">Get Started →</a>
+</div>
+{{end}}
+
+{{template "wizard" .}}
