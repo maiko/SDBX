@@ -1,0 +1,77 @@
+apiVersion: sdbx.io/v1
+kind: Service
+metadata:
+  name: sdbx-webui
+  version: 1.0.0
+  category: management
+  description: "Web-based management interface for SDBX"
+  homepage: https://github.com/maiko/sdbx
+  documentation: https://github.com/maiko/sdbx#readme
+  maintainer: sdbx-official
+  tags:
+    - management
+    - web-ui
+    - dashboard
+    - core
+
+spec:
+  image:
+    repository: ghcr.io/maiko/sdbx
+    tag: latest
+    registry: ghcr.io
+
+  container:
+    name_template: "sdbx-{{ .Name }}"
+    restart: unless-stopped
+    command:
+      - serve
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "3000"
+
+  environment:
+    static:
+      - name: TZ
+        value: "{{ .Config.Timezone }}"
+      - name: SDBX_MODE
+        value: "server"
+      - name: SDBX_PROJECT_DIR
+        value: "/project"
+    conditional:
+      - name: SDBX_SERVER_PATH
+        value: /sdbx
+        when: '{{ eq .Config.Routing.Strategy "path" }}'
+
+  volumes:
+    - name: project
+      hostPath: "."
+      containerPath: /project
+    - name: docker-socket
+      hostPath: /var/run/docker.sock
+      containerPath: /var/run/docker.sock
+
+  networking:
+    networks:
+      - name: proxy
+
+routing:
+  enabled: true
+  port: 3000
+  subdomain: sdbx
+  path: /sdbx
+  pathRouting:
+    strategy: urlBase
+  auth:
+    required: true
+
+integrations:
+  watchtower:
+    enabled: true
+  cloudflared:
+    enabled: true
+  homepage:
+    enabled: false
+
+conditions:
+  always: true
