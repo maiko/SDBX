@@ -61,7 +61,7 @@ func init() {
 	initCmd.Flags().StringVar(&initDownloadsPath, "downloads", "", "Downloads storage path")
 	initCmd.Flags().StringVar(&initConfigPath, "config", "", "Config storage path")
 	initCmd.Flags().BoolVar(&initVPNEnabled, "vpn", false, "Enable VPN for downloads (requires --vpn-provider)")
-	initCmd.Flags().StringVar(&initVPNProvider, "vpn-provider", "", "VPN provider (nordvpn, mullvad, pia, surfshark, protonvpn, custom)")
+	initCmd.Flags().StringVar(&initVPNProvider, "vpn-provider", "", "VPN provider (nordvpn, mullvad, pia, surfshark, protonvpn, expressvpn, windscribe, ipvanish, cyberghost, ivpn, torguard, vyprvpn, purevpn, hidemyass, perfectprivacy, airvpn, custom)")
 	initCmd.Flags().StringVar(&initVPNCountry, "vpn-country", "France", "VPN server country")
 	initCmd.Flags().BoolVar(&initSkipWizard, "skip-wizard", false, "Skip interactive wizard")
 	initCmd.Flags().StringVar(&initAdminUser, "admin-user", "admin", "Admin username for Authelia")
@@ -348,13 +348,24 @@ func runWizard(cfg *config.Config, reg *registry.Registry) error {
 			huh.NewGroup(
 				huh.NewSelect[string]().
 					Title("VPN Provider").
-					Description("Select your VPN service. Credentials configured after init.").
+					Description("Select your VPN service (Gluetun supports 30+ providers). Credentials configured after init.").
 					Options(
 						huh.NewOption("NordVPN", "nordvpn"),
 						huh.NewOption("Mullvad", "mullvad"),
-						huh.NewOption("Private Internet Access", "pia"),
+						huh.NewOption("Private Internet Access (PIA)", "pia"),
 						huh.NewOption("Surfshark", "surfshark"),
 						huh.NewOption("ProtonVPN", "protonvpn"),
+						huh.NewOption("ExpressVPN", "expressvpn"),
+						huh.NewOption("Windscribe", "windscribe"),
+						huh.NewOption("IPVanish", "ipvanish"),
+						huh.NewOption("CyberGhost", "cyberghost"),
+						huh.NewOption("IVPN", "ivpn"),
+						huh.NewOption("TorGuard", "torguard"),
+						huh.NewOption("VyprVPN", "vyprvpn"),
+						huh.NewOption("PureVPN", "purevpn"),
+						huh.NewOption("HideMyAss (HMA)", "hidemyass"),
+						huh.NewOption("Perfect Privacy", "perfectprivacy"),
+						huh.NewOption("AirVPN", "airvpn"),
 						huh.NewOption("Custom/OpenVPN", "custom"),
 					).
 					Value(&cfg.VPNProvider),
