@@ -63,6 +63,7 @@
                 hx-swap="outerHTML">
             Restart
         </button>
+        <a href="/logs/{{.Name}}" class="btn-sm btn-secondary-sm">📜 Logs</a>
         {{else}}
         <button class="btn-sm btn-primary-sm"
                 hx-post="/api/services/{{.Name}}/start"
@@ -70,9 +71,6 @@
                 hx-swap="outerHTML">
             Start
         </button>
-        {{end}}
-        {{if .HasWebUI}}
-        <a href="/services/{{.Name}}/logs" class="btn-sm btn-secondary-sm">Logs</a>
         {{end}}
     </div>
 </div>

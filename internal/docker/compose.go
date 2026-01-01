@@ -125,6 +125,20 @@ func (c *Compose) Logs(ctx context.Context, service string, lines int, follow bo
 	return c.run(ctx, args...)
 }
 
+// LogsStream returns a streaming reader for service logs
+func (c *Compose) LogsStream(ctx context.Context, service string, lines int) (*exec.Cmd, error) {
+	cmdArgs := []string{"compose", "-f", c.ComposeFile, "-p", c.ProjectName, "logs"}
+	if lines > 0 {
+		cmdArgs = append(cmdArgs, "--tail", fmt.Sprintf("%d", lines))
+	}
+	cmdArgs = append(cmdArgs, "-f", service)
+
+	cmd := exec.CommandContext(ctx, "docker", cmdArgs...)
+	cmd.Dir = c.ProjectDir
+
+	return cmd, nil
+}
+
 // PS returns the status of all services
 func (c *Compose) PS(ctx context.Context) ([]Service, error) {
 	output, err := c.run(ctx, "ps", "--format", "json")

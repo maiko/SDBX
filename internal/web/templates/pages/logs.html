@@ -1,0 +1,289 @@
+{{define "title"}}SDBX - Logs - {{.ServiceName}}{{end}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>Logs: {{.Service.Name}}</h1>
+    <p>Real-time log streaming for {{.Service.Description}}</p>
+</div>
+
+<div class="log-controls">
+    <button id="pause-btn" class="btn-sm btn-secondary-sm">⏸ Pause</button>
+    <button id="clear-btn" class="btn-sm btn-secondary-sm">🗑 Clear</button>
+    <button id="download-btn" class="btn-sm btn-primary-sm">⬇ Download</button>
+    <label class="control-label">
+        <input type="checkbox" id="autoscroll-check" checked> Auto-scroll
+    </label>
+    <a href="/services" class="btn-sm btn-secondary-sm">← Back to Services</a>
+</div>
+
+<div id="log-viewer" class="log-viewer">
+    <div id="log-lines"></div>
+</div>
+
+<div id="connection-status" class="connection-status">
+    <span class="status-dot" id="status-dot"></span>
+    <span id="status-text">Connecting...</span>
+</div>
+
+<style>
+    .log-controls {
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding: 1rem;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .control-label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #64748b;
+        font-size: 0.875rem;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .control-label input[type="checkbox"] {
+        cursor: pointer;
+    }
+
+    .log-viewer {
+        background: #1e293b;
+        border-radius: 8px;
+        padding: 1rem;
+        height: 600px;
+        overflow-y: auto;
+        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+        font-size: 0.875rem;
+        line-height: 1.6;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    #log-lines {
+        color: #e2e8f0;
+    }
+
+    .log-line {
+        padding: 0.25rem 0;
+        border-bottom: 1px solid rgba(100, 116, 139, 0.1);
+    }
+
+    .log-line:hover {
+        background: rgba(100, 116, 139, 0.1);
+    }
+
+    .log-timestamp {
+        color: #94a3b8;
+        margin-right: 0.75rem;
+    }
+
+    .log-content {
+        color: #e2e8f0;
+        word-break: break-all;
+    }
+
+    /* Syntax highlighting for common patterns */
+    .log-content:has([class*="error"]), .log-content:has([class*="ERROR"]) {
+        color: #fca5a5;
+    }
+
+    .log-content:has([class*="warn"]), .log-content:has([class*="WARN"]) {
+        color: #fcd34d;
+    }
+
+    .log-content:has([class*="info"]), .log-content:has([class*="INFO"]) {
+        color: #93c5fd;
+    }
+
+    .connection-status {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        background: white;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.875rem;
+        z-index: 1000;
+    }
+
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #94a3b8;
+    }
+
+    .status-dot.connected {
+        background: var(--color-success);
+        animation: pulse 2s infinite;
+    }
+
+    .status-dot.disconnected {
+        background: var(--color-error);
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+</style>
+
+<script>
+    const serviceName = "{{.ServiceName}}";
+    const logLines = document.getElementById('log-lines');
+    const pauseBtn = document.getElementById('pause-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const downloadBtn = document.getElementById('download-btn');
+    const autoscrollCheck = document.getElementById('autoscroll-check');
+    const statusDot = document.getElementById('status-dot');
+    const statusText = document.getElementById('status-text');
+    const logViewer = document.getElementById('log-viewer');
+
+    let ws = null;
+    let isPaused = false;
+    let logBuffer = [];
+
+    // Determine WebSocket protocol
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${wsProtocol}//${window.location.host}/api/logs/${serviceName}/stream`;
+
+    function connect() {
+        statusText.textContent = 'Connecting...';
+        statusDot.className = 'status-dot';
+
+        ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+            statusText.textContent = 'Connected';
+            statusDot.className = 'status-dot connected';
+            console.log('WebSocket connected');
+        };
+
+        ws.onmessage = (event) => {
+            if (isPaused) return;
+
+            try {
+                const data = JSON.parse(event.data);
+
+                if (data.error) {
+                    appendLog('ERROR', data.error, true);
+                    return;
+                }
+
+                appendLog(data.timestamp, data.line);
+            } catch (e) {
+                console.error('Failed to parse message:', e);
+            }
+        };
+
+        ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+            statusText.textContent = 'Error';
+            statusDot.className = 'status-dot disconnected';
+        };
+
+        ws.onclose = () => {
+            statusText.textContent = 'Disconnected';
+            statusDot.className = 'status-dot disconnected';
+            console.log('WebSocket closed');
+
+            // Attempt to reconnect after 5 seconds
+            setTimeout(() => {
+                if (!isPaused) {
+                    connect();
+                }
+            }, 5000);
+        };
+    }
+
+    function appendLog(timestamp, content, isError = false) {
+        const line = document.createElement('div');
+        line.className = 'log-line';
+
+        const ts = document.createElement('span');
+        ts.className = 'log-timestamp';
+        ts.textContent = timestamp;
+
+        const cont = document.createElement('span');
+        cont.className = 'log-content';
+        cont.textContent = content;
+
+        if (isError) {
+            cont.style.color = '#fca5a5';
+        }
+
+        line.appendChild(ts);
+        line.appendChild(cont);
+        logLines.appendChild(line);
+
+        // Store in buffer for download
+        logBuffer.push(`[${timestamp}] ${content}`);
+
+        // Auto-scroll if enabled
+        if (autoscrollCheck.checked) {
+            logViewer.scrollTop = logViewer.scrollHeight;
+        }
+
+        // Limit to last 1000 lines
+        if (logLines.children.length > 1000) {
+            logLines.removeChild(logLines.firstChild);
+            logBuffer.shift();
+        }
+    }
+
+    // Pause/Resume functionality
+    pauseBtn.addEventListener('click', () => {
+        isPaused = !isPaused;
+        if (isPaused) {
+            pauseBtn.textContent = '▶ Resume';
+            pauseBtn.classList.remove('btn-secondary-sm');
+            pauseBtn.classList.add('btn-primary-sm');
+        } else {
+            pauseBtn.textContent = '⏸ Pause';
+            pauseBtn.classList.remove('btn-primary-sm');
+            pauseBtn.classList.add('btn-secondary-sm');
+        }
+    });
+
+    // Clear logs
+    clearBtn.addEventListener('click', () => {
+        logLines.innerHTML = '';
+        logBuffer = [];
+    });
+
+    // Download logs
+    downloadBtn.addEventListener('click', () => {
+        const content = logBuffer.join('\n');
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${serviceName}-logs-${new Date().toISOString()}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    });
+
+    // Connect on page load
+    connect();
+
+    // Close WebSocket on page unload
+    window.addEventListener('beforeunload', () => {
+        if (ws) {
+            ws.close();
+        }
+    });
+</script>
+
+{{end}}
+
+{{template "base" .}}
