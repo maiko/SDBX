@@ -237,11 +237,13 @@ func (s *Server) setupRoutes(mux *http.ServeMux) {
 		dashboardHandler := handlers.NewDashboardHandler(s.compose, s.registry, s.templates)
 		servicesHandler := handlers.NewServicesHandler(s.compose, s.registry, s.templates)
 		logsHandler := handlers.NewLogsHandler(s.compose, s.registry, s.templates)
+		addonsHandler := handlers.NewAddonsHandler(s.registry, s.config.ProjectDir, s.templates)
 
 		// Pages
 		mux.HandleFunc("/", dashboardHandler.HandleDashboard)
 		mux.HandleFunc("/services", servicesHandler.HandleServicesPage)
 		mux.HandleFunc("/logs/{service}", logsHandler.HandleLogsPage)
+		mux.HandleFunc("/addons", addonsHandler.HandleAddonsPage)
 
 		// API endpoints
 		mux.HandleFunc("/api/services", servicesHandler.HandleGetServices)
@@ -252,6 +254,11 @@ func (s *Server) setupRoutes(mux *http.ServeMux) {
 		// Log endpoints
 		mux.HandleFunc("/api/logs/{service}", logsHandler.HandleGetLogs)
 		mux.HandleFunc("/api/logs/{service}/stream", logsHandler.HandleLogStream)
+
+		// Addon endpoints
+		mux.HandleFunc("/api/addons/search", addonsHandler.HandleSearchAddons)
+		mux.HandleFunc("/api/addons/{addon}/enable", addonsHandler.HandleEnableAddon)
+		mux.HandleFunc("/api/addons/{addon}/disable", addonsHandler.HandleDisableAddon)
 	}
 }
 

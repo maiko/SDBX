@@ -118,18 +118,6 @@ func countRunningServices(services map[string]ServiceInfo) int {
 	return count
 }
 
-// formatServiceName formats a service name for display
-func formatServiceName(name string) string {
-	// Convert service name to title case
-	parts := strings.Split(name, "-")
-	for i, part := range parts {
-		if len(part) > 0 {
-			parts[i] = strings.ToUpper(part[:1]) + part[1:]
-		}
-	}
-	return strings.Join(parts, " ")
-}
-
 // renderTemplate renders a template with data
 func (h *DashboardHandler) renderTemplate(w http.ResponseWriter, name string, data interface{}) {
 	if err := h.templates.ExecuteTemplate(w, name, data); err != nil {

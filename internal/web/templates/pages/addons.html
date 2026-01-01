@@ -1,0 +1,288 @@
+{{define "title"}}SDBX - Addons{{end}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>Addon Management</h1>
+    <p>Enable or disable optional services to extend SDBX functionality</p>
+</div>
+
+<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+    <div class="stat-card">
+        <div class="stat-label">Total Addons</div>
+        <div class="stat-value">{{.TotalAddons}}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Enabled</div>
+        <div class="stat-value" style="color: var(--color-success);">{{.EnabledAddons}}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Available</div>
+        <div class="stat-value" style="color: var(--color-info);">{{sub .TotalAddons .EnabledAddons}}</div>
+    </div>
+</div>
+
+<div class="addon-controls">
+    <input type="text" id="search-input" class="search-input" placeholder="🔍 Search addons...">
+    <select id="category-filter" class="category-select">
+        <option value="">All Categories</option>
+        <option value="media">Media</option>
+        <option value="downloads">Downloads</option>
+        <option value="utility">Utility</option>
+        <option value="management">Management</option>
+    </select>
+</div>
+
+<!-- Toast notifications -->
+<div id="toast-container" class="toast-container"></div>
+
+<div id="addons-container">
+    {{range $category, $addons := .AddonsByCategory}}
+    <div class="category-section">
+        <div class="category-header">
+            <span>{{$category}}</span>
+            <span class="category-badge category-{{$category}}">{{len $addons}}</span>
+        </div>
+        <div class="services-grid">
+            {{range $addons}}
+            {{template "addon-card" .}}
+            {{end}}
+        </div>
+    </div>
+    {{end}}
+</div>
+
+<style>
+    .addon-controls {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .search-input {
+        flex: 1;
+        padding: 0.75rem 1rem;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.2s;
+    }
+
+    .search-input:focus {
+        outline: none;
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+    }
+
+    .category-select {
+        padding: 0.75rem 1rem;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 1rem;
+        cursor: pointer;
+        background: white;
+        min-width: 200px;
+    }
+
+    .category-select:focus {
+        outline: none;
+        border-color: var(--color-primary);
+    }
+
+    .addon-card-enabled {
+        border: 2px solid var(--color-success);
+        background: rgba(16, 185, 129, 0.05);
+    }
+
+    .enabled-badge {
+        background: var(--color-success);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .toast-container {
+        position: fixed;
+        top: 2rem;
+        right: 2rem;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .toast {
+        background: white;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        min-width: 300px;
+        animation: slideIn 0.3s ease;
+    }
+
+    .toast.success {
+        border-left: 4px solid var(--color-success);
+    }
+
+    .toast.error {
+        border-left: 4px solid var(--color-error);
+    }
+
+    .toast-icon {
+        font-size: 1.25rem;
+    }
+
+    .toast-message {
+        flex: 1;
+        font-size: 0.875rem;
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+</style>
+
+<script>
+    function showToast(message, type = 'success') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+
+        const icon = type === 'success' ? '✓' : '✗';
+        toast.innerHTML = `
+            <span class="toast-icon">${icon}</span>
+            <span class="toast-message">${message}</span>
+        `;
+
+        container.appendChild(toast);
+
+        setTimeout(() => {
+            toast.style.animation = 'slideIn 0.3s ease reverse';
+            setTimeout(() => toast.remove(), 300);
+        }, 4000);
+    }
+
+    function toggleAddon(addonName, enable) {
+        const action = enable ? 'enable' : 'disable';
+        const card = document.getElementById(`addon-${addonName}`);
+        const btn = card.querySelector('.addon-toggle-btn');
+
+        // Disable button during request
+        btn.disabled = true;
+        btn.textContent = enable ? 'Enabling...' : 'Disabling...';
+
+        fetch(`/api/addons/${addonName}/${action}`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message, 'success');
+
+                // Update UI
+                if (enable) {
+                    card.classList.add('addon-card-enabled');
+                    card.querySelector('.addon-header').insertAdjacentHTML('beforeend',
+                        '<span class="enabled-badge">ENABLED</span>');
+                    btn.textContent = 'Disable';
+                    btn.classList.remove('btn-primary-sm');
+                    btn.classList.add('btn-secondary-sm');
+                    btn.onclick = () => toggleAddon(addonName, false);
+                } else {
+                    card.classList.remove('addon-card-enabled');
+                    const badge = card.querySelector('.enabled-badge');
+                    if (badge) badge.remove();
+                    btn.textContent = 'Enable';
+                    btn.classList.remove('btn-secondary-sm');
+                    btn.classList.add('btn-primary-sm');
+                    btn.onclick = () => toggleAddon(addonName, true);
+                }
+            } else {
+                showToast(data.message, 'error');
+            }
+            btn.disabled = false;
+        })
+        .catch(error => {
+            showToast('Failed to ' + action + ' addon: ' + error, 'error');
+            btn.disabled = false;
+            btn.textContent = enable ? 'Enable' : 'Disable';
+        });
+    }
+
+    // Search functionality
+    const searchInput = document.getElementById('search-input');
+    const categoryFilter = document.getElementById('category-filter');
+
+    function filterAddons() {
+        const query = searchInput.value.toLowerCase();
+        const category = categoryFilter.value.toLowerCase();
+
+        document.querySelectorAll('.category-section').forEach(section => {
+            const sectionCategory = section.querySelector('.category-header span').textContent.toLowerCase();
+            let hasVisibleCards = false;
+
+            section.querySelectorAll('.service-card').forEach(card => {
+                const name = card.querySelector('.service-name').textContent.toLowerCase();
+                const desc = card.querySelector('.service-description').textContent.toLowerCase();
+
+                const matchesQuery = !query || name.includes(query) || desc.includes(query);
+                const matchesCategory = !category || sectionCategory === category;
+
+                if (matchesQuery && matchesCategory) {
+                    card.style.display = '';
+                    hasVisibleCards = true;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            section.style.display = hasVisibleCards ? '' : 'none';
+        });
+    }
+
+    searchInput.addEventListener('input', filterAddons);
+    categoryFilter.addEventListener('change', filterAddons);
+</script>
+
+{{end}}
+
+{{define "addon-card"}}
+<div class="service-card {{if .Enabled}}addon-card-enabled{{end}}" id="addon-{{.Name}}">
+    <div class="service-header">
+        <div class="service-name">{{.DisplayName}}</div>
+        {{if .Enabled}}
+        <span class="enabled-badge">ENABLED</span>
+        {{end}}
+    </div>
+    <div class="service-description">{{.Description}}</div>
+    <div style="display: flex; gap: 0.5rem; align-items: center; margin: 0.75rem 0; font-size: 0.875rem;">
+        <span class="category-badge category-{{.Category}}">{{.Category}}</span>
+        <span style="color: #94a3b8;">v{{.Version}}</span>
+        <span style="color: #94a3b8;">· {{.Source}}</span>
+    </div>
+    <div class="service-actions">
+        {{if .Enabled}}
+        <button class="btn-sm btn-secondary-sm addon-toggle-btn" onclick="toggleAddon('{{.Name}}', false)">
+            Disable
+        </button>
+        {{else}}
+        <button class="btn-sm btn-primary-sm addon-toggle-btn" onclick="toggleAddon('{{.Name}}', true)">
+            Enable
+        </button>
+        {{end}}
+    </div>
+</div>
+{{end}}
+
+{{template "base" .}}
