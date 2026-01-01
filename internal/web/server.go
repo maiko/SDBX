@@ -239,6 +239,7 @@ func (s *Server) setupRoutes(mux *http.ServeMux) {
 		logsHandler := handlers.NewLogsHandler(s.compose, s.registry, s.templates)
 		addonsHandler := handlers.NewAddonsHandler(s.registry, s.config.ProjectDir, s.templates)
 		configHandler := handlers.NewConfigHandler(s.config.ProjectDir, s.templates)
+		integrationHandler := handlers.NewIntegrationHandler(s.config.ProjectDir, s.templates)
 
 		// Pages
 		mux.HandleFunc("/", dashboardHandler.HandleDashboard)
@@ -246,6 +247,8 @@ func (s *Server) setupRoutes(mux *http.ServeMux) {
 		mux.HandleFunc("/logs/{service}", logsHandler.HandleLogsPage)
 		mux.HandleFunc("/addons", addonsHandler.HandleAddonsPage)
 		mux.HandleFunc("/config", configHandler.HandleConfigPage)
+		mux.HandleFunc("/integration", integrationHandler.HandleIntegrationPage)
+		mux.HandleFunc("/backup", integrationHandler.HandleBackupPage)
 
 		// API endpoints
 		mux.HandleFunc("/api/services", servicesHandler.HandleGetServices)
@@ -266,6 +269,15 @@ func (s *Server) setupRoutes(mux *http.ServeMux) {
 		mux.HandleFunc("/api/config", configHandler.HandleGetConfig)
 		mux.HandleFunc("/api/config/validate", configHandler.HandleValidateConfig)
 		mux.HandleFunc("/api/config/save", configHandler.HandleSaveConfig)
+
+		// Integration endpoints
+		mux.HandleFunc("/api/integration/run", integrationHandler.HandleRunIntegration)
+
+		// Backup endpoints
+		mux.HandleFunc("/api/backup/list", integrationHandler.HandleListBackups)
+		mux.HandleFunc("/api/backup/create", integrationHandler.HandleCreateBackup)
+		mux.HandleFunc("/api/backup/restore/{name}", integrationHandler.HandleRestoreBackup)
+		mux.HandleFunc("/api/backup/delete/{name}", integrationHandler.HandleDeleteBackup)
 	}
 }
 
