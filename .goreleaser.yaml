@@ -36,6 +36,66 @@ archives:
       - CONTRIBUTING.md
       - CHANGELOG.md
 
+dockers:
+  - id: sdbx-amd64
+    ids:
+      - sdbx
+    goos: linux
+    goarch: amd64
+    image_templates:
+      - "ghcr.io/maiko/sdbx:{{ .Version }}-amd64"
+      - "ghcr.io/maiko/sdbx:latest-amd64"
+    dockerfile: Dockerfile
+    use: buildx
+    build_flag_templates:
+      - "--platform=linux/amd64"
+      - "--build-arg=VERSION={{ .Version }}"
+      - "--build-arg=COMMIT={{ .FullCommit }}"
+      - "--build-arg=DATE={{ .Date }}"
+      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.description=Seedbox in a Box - Web UI"
+      - "--label=org.opencontainers.image.url=https://github.com/maiko/SDBX"
+      - "--label=org.opencontainers.image.source=https://github.com/maiko/SDBX"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.created={{ .Date }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - "--label=org.opencontainers.image.licenses=MIT"
+
+  - id: sdbx-arm64
+    ids:
+      - sdbx
+    goos: linux
+    goarch: arm64
+    image_templates:
+      - "ghcr.io/maiko/sdbx:{{ .Version }}-arm64"
+      - "ghcr.io/maiko/sdbx:latest-arm64"
+    dockerfile: Dockerfile
+    use: buildx
+    build_flag_templates:
+      - "--platform=linux/arm64"
+      - "--build-arg=VERSION={{ .Version }}"
+      - "--build-arg=COMMIT={{ .FullCommit }}"
+      - "--build-arg=DATE={{ .Date }}"
+      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.description=Seedbox in a Box - Web UI"
+      - "--label=org.opencontainers.image.url=https://github.com/maiko/SDBX"
+      - "--label=org.opencontainers.image.source=https://github.com/maiko/SDBX"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.created={{ .Date }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - "--label=org.opencontainers.image.licenses=MIT"
+
+docker_manifests:
+  - name_template: "ghcr.io/maiko/sdbx:{{ .Version }}"
+    image_templates:
+      - "ghcr.io/maiko/sdbx:{{ .Version }}-amd64"
+      - "ghcr.io/maiko/sdbx:{{ .Version }}-arm64"
+
+  - name_template: "ghcr.io/maiko/sdbx:latest"
+    image_templates:
+      - "ghcr.io/maiko/sdbx:latest-amd64"
+      - "ghcr.io/maiko/sdbx:latest-arm64"
+
 checksum:
   name_template: "checksums.txt"
 

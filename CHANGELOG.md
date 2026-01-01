@@ -9,6 +9,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Web UI with Two-Phase Deployment
+Complete web-based management interface inspired by Charm.land design philosophy:
+
+**New Command:**
+- `sdbx serve` - Start web UI server
+- `sdbx serve --host 0.0.0.0 --port 3000` - Configure bind address and port
+
+**Two-Phase Deployment Model:**
+
+**Pre-Init Phase (Setup Wizard):**
+- Embedded HTTP server runs before Docker stack exists
+- Binds to 0.0.0.0:3000 for remote/headless setup
+- One-time 256-bit crypto/rand token displayed in CLI
+- 7-step setup wizard replaces `sdbx init`:
+  1. Welcome + system checks
+  2. Domain + exposure mode + routing strategy
+  3. Admin credentials (Argon2id hashed)
+  4. Storage paths configuration
+  5. VPN provider selection
+  6. Addon selection
+  7. Summary + project generation
+- Creates `.sdbx.yaml`, generates `compose.yaml`, initializes Authelia users
+
+**Post-Init Phase (Docker Service):**
+- Runs as Docker container (sdbx-webui) behind Traefik + Authelia
+- Subdomain routing (sdbx.domain.tld) with SSO authentication
+- Replaces homepage addon as primary dashboard
+
+**Features:**
+- **Dashboard**: Real-time service status, health indicators, quick links
+- **Service Management**: Start/stop/restart services via API
+- **Live Log Viewer**: WebSocket streaming with auto-scroll, pause, clear
+- **Addon Catalog**: Search, filter by category, enable/disable addons
+- **Config Editor**: YAML editor with validation, syntax checking, automatic backups
+- **Integration Center**: One-click service integration runner
+- **Backup Management**: Create, restore, delete backups with metadata
+
+**Technology Stack:**
+- htmx for dynamic UI without heavy JavaScript
+- Go html/template for server-side rendering
+- WebSocket for real-time log streaming (gorilla/websocket)
+- TUI color palette ported to CSS variables
+- go:embed for bundled static assets
+
+**Docker Image:**
+- Multi-platform support: linux/amd64, linux/arm64
+- Published to GitHub Container Registry: `ghcr.io/maiko/sdbx:latest`
+- Alpine-based with docker-cli for container management
+- Health checks via `/health` endpoint
+
+**Security:**
+- Pre-init: Token-based auth (query param + HttpOnly cookie)
+- Post-init: Authelia Remote-User header trust
+- Middleware chain: Recovery → Logging → Auth
+- Input validation and YAML sanitization
+
+**Implementation:**
+- ~5,000 lines Go + ~2,000 lines templates/CSS/JS
+- 8 handlers (setup, dashboard, services, logs, addons, config, integration, backup)
+- 3 middleware (auth, logging, recovery)
+- 10+ page templates with reusable components
+- Minimal JavaScript footprint (htmx + WebSocket client)
+
 #### Service Auto-Configuration
 Automatic service integration system that configures connections between services:
 

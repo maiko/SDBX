@@ -91,6 +91,30 @@ internal/
     arr.go             # *arr apps API client (add download clients)
     qbittorrent.go     # qBittorrent API client (create categories, config)
   tui/                 # Terminal UI styles and helpers
+  web/                 # Web UI server (htmx + Go templates + WebSockets)
+    server.go          # HTTP server with two-phase detection (pre-init vs post-init)
+    embed.go           # go:embed directives for static assets and templates
+    handlers/          # HTTP request handlers
+      setup.go         # 7-step setup wizard (replaces `sdbx init`)
+      dashboard.go     # Dashboard with service status
+      services.go      # Service management (start/stop/restart)
+      logs.go          # WebSocket log streaming
+      addons.go        # Addon catalog and management
+      config.go        # YAML configuration editor
+      integration.go   # Integration center and backup management
+      common.go        # Shared utility functions
+    middleware/        # HTTP middleware
+      auth.go          # Two-phase auth (token for pre-init, Authelia for post-init)
+      logging.go       # Request logging
+      recovery.go      # Panic recovery
+    templates/         # Go html/template files
+      layouts/         # Base layouts (base.html, wizard.html)
+      pages/           # Page templates (dashboard, services, logs, etc.)
+      components/      # Reusable components (placeholders)
+    static/            # Static assets (go:embed)
+      css/             # Stylesheets (colors.css from TUI palette, main.css)
+      js/              # JavaScript (htmx.min.js, websocket.js)
+      icons/           # SVG icons (placeholders)
 ```
 
 ### Key Architectural Patterns
@@ -179,6 +203,22 @@ conditions:
 - Retry logic with exponential backoff for transient failures
 - Dry-run mode available (`--dry-run`) to preview changes
 
+**9. Web UI Architecture (Two-Phase Deployment)**
+- **Pre-init phase**: `sdbx serve` runs embedded HTTP server for setup wizard
+  - Binds to 0.0.0.0:3000 for remote/headless setup
+  - Generates one-time 256-bit crypto/rand token, displayed in CLI
+  - Token-based authentication (query param + HttpOnly cookie)
+  - Setup wizard replaces `sdbx init` CLI command
+  - Creates `.sdbx.yaml`, generates compose.yaml, initializes Authelia users
+- **Post-init phase**: Web UI runs as Docker service (sdbx-webui)
+  - Deployed behind Traefik + Authelia (subdomain: sdbx.domain.tld)
+  - Trusts Authelia Remote-User header for authentication
+  - Replaces homepage addon as primary dashboard
+- **Technology stack**: htmx (no heavy JS), Go html/template, WebSockets (logs only)
+- **Features**: Dashboard, service control, live logs, addon management, config editor, integration center, backup/restore
+- **Design**: Minimal aesthetic inspired by Charm.land, TUI color palette ported to CSS
+- **go:embed**: All templates, CSS, and JS bundled in binary
+
 ### Important Implementation Details
 
 **VPN Enforcement**
@@ -196,6 +236,24 @@ conditions:
 - Admin credentials configured during `init` wizard
 
 ## CLI Commands Reference
+
+### Web UI
+```bash
+sdbx serve                          # Start web UI server
+sdbx serve --host 0.0.0.0           # Bind to all interfaces (default)
+sdbx serve --port 3000              # Custom port (default: 3000)
+```
+
+**Pre-init mode** (no .sdbx.yaml exists):
+- Displays setup token URL in CLI: `http://192.168.1.100:3000?token=abc123`
+- Token required for access (256-bit crypto/rand)
+- Serves 7-step setup wizard
+- Creates project configuration on completion
+
+**Post-init mode** (.sdbx.yaml exists):
+- Serves dashboard and management UI
+- Development mode: Direct access (shows warning)
+- Production mode: Deploy as Docker service behind Traefik + Authelia
 
 ### Source Management
 ```bash
