@@ -18,10 +18,15 @@ func TestEmbeddedSourceLoad(t *testing.T) {
 		t.Fatal("no services loaded from embedded source")
 	}
 
+	// Embedded source should only have 6 core services
+	if len(services) != 6 {
+		t.Errorf("expected 6 core services in embedded, got %d", len(services))
+	}
+
 	t.Logf("Loaded %d services from embedded source", len(services))
 
-	// Verify expected core services (essential infrastructure only)
-	expectedCore := []string{"traefik", "authelia", "qbittorrent", "plex"}
+	// Verify all 6 expected core services are present
+	expectedCore := []string{"traefik", "authelia", "qbittorrent", "plex", "gluetun", "cloudflared"}
 	for _, name := range expectedCore {
 		def, err := src.LoadService(ctx, name)
 		if err != nil {
@@ -33,19 +38,12 @@ func TestEmbeddedSourceLoad(t *testing.T) {
 		}
 	}
 
-	// Verify expected addon services (including former core services now optional)
-	expectedAddons := []string{
-		"sonarr", "radarr", "prowlarr", "homepage", "watchtower", "recyclarr", "unpackerr",
-		"overseerr", "wizarr", "tautulli", "lidarr", "readarr", "bazarr", "flaresolverr",
-	}
-	for _, name := range expectedAddons {
-		def, err := src.LoadService(ctx, name)
-		if err != nil {
-			t.Errorf("failed to load addon service %s: %v", name, err)
-			continue
-		}
-		if !def.Conditions.RequireAddon {
-			t.Errorf("addon service %s should require addon", name)
+	// Verify that addons are NOT in embedded source (they're in Git source only)
+	addonExamples := []string{"sonarr", "radarr", "prowlarr", "homepage"}
+	for _, name := range addonExamples {
+		_, err := src.LoadService(ctx, name)
+		if err == nil {
+			t.Errorf("addon service %s should NOT be in embedded source", name)
 		}
 	}
 }
@@ -80,11 +78,14 @@ func TestEmbeddedSourceCoreAddons(t *testing.T) {
 
 	t.Logf("Core services: %d, Addon services: %d", len(core), len(addons))
 
-	if len(core) == 0 {
-		t.Error("expected some core services")
+	// Embedded source should have exactly 6 core services
+	if len(core) != 6 {
+		t.Errorf("expected 6 core services in embedded, got %d", len(core))
 	}
-	if len(addons) == 0 {
-		t.Error("expected some addon services")
+
+	// Embedded source should have NO addons (they're in Git source only)
+	if len(addons) != 0 {
+		t.Errorf("expected 0 addon services in embedded, got %d", len(addons))
 	}
 }
 
@@ -110,46 +111,38 @@ func TestServiceDefinitionValidation(t *testing.T) {
 	}
 }
 
-func TestSonarrServiceDefinition(t *testing.T) {
+func TestTraefikServiceDefinition(t *testing.T) {
 	src := NewEmbeddedSource()
 	ctx := context.Background()
 
-	def, err := src.LoadService(ctx, "sonarr")
+	def, err := src.LoadService(ctx, "traefik")
 	if err != nil {
-		t.Fatalf("failed to load sonarr: %v", err)
+		t.Fatalf("failed to load traefik: %v", err)
 	}
 
 	// Verify metadata
-	if def.Metadata.Name != "sonarr" {
-		t.Errorf("expected name sonarr, got %s", def.Metadata.Name)
+	if def.Metadata.Name != "traefik" {
+		t.Errorf("expected name traefik, got %s", def.Metadata.Name)
 	}
-	if def.Metadata.Category != CategoryMedia {
-		t.Errorf("expected category media, got %s", def.Metadata.Category)
-	}
-
-	// Verify sonarr is now an addon (not core)
-	if !def.Conditions.RequireAddon {
-		t.Error("expected sonarr to require addon (it's now an optional service)")
+	if def.Metadata.Category != CategoryNetworking {
+		t.Errorf("expected category networking, got %s", def.Metadata.Category)
 	}
 
-	// Verify routing
-	if !def.Routing.Enabled {
-		t.Error("expected routing to be enabled")
+	// Verify traefik is core (not addon)
+	if def.Conditions.RequireAddon {
+		t.Error("expected traefik to be core (always enabled)")
 	}
-	if def.Routing.Port != 8989 {
-		t.Errorf("expected port 8989, got %d", def.Routing.Port)
-	}
-	if !def.Routing.Auth.Required {
-		t.Error("expected auth to be required")
+	if !def.Conditions.Always {
+		t.Error("expected traefik to have always condition set")
 	}
 
-	// Verify secrets
-	if len(def.Secrets) == 0 {
-		t.Error("expected sonarr to have secrets defined")
+	// Verify routing (traefik itself doesn't need routing - it IS the reverse proxy)
+	if def.Routing.Enabled {
+		t.Error("expected traefik routing to be disabled (it's the reverse proxy)")
 	}
 
-	// Verify integrations
-	if def.Integrations.Homepage == nil || !def.Integrations.Homepage.Enabled {
-		t.Error("expected homepage integration to be enabled")
+	// Verify watchtower integration
+	if def.Integrations.Watchtower == nil || !def.Integrations.Watchtower.Enabled {
+		t.Error("expected watchtower integration to be enabled")
 	}
 }

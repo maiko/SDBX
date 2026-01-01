@@ -80,8 +80,8 @@ internal/
     cache.go           # Source caching
     lock.go            # Lock file management
     services/          # Embedded service definitions (YAML)
-      core/            # Core services (6): traefik, authelia, plex, qbittorrent, gluetun, cloudflared
-      addons/          # Addon services (14): sonarr, radarr, prowlarr, overseerr, homepage, etc.
+      core/            # Core services ONLY (6): traefik, authelia, plex, qbittorrent, gluetun, cloudflared
+                       # NOTE: All addons (27) are in Git source only, not embedded
   tui/                 # Terminal UI styles and helpers
 ```
 
@@ -90,11 +90,12 @@ internal/
 **1. Registry-Based Service Definitions**
 - Services are defined in YAML files with a schema similar to Kubernetes/Helm
 - Each service definition includes: metadata, container spec, routing, integrations, conditions
-- Embedded source bundles 20 services (6 core + 14 addons) into the binary
+- **Embedded source** bundles only 6 core services into the binary (essential infrastructure for offline init)
+- **Git source** (https://github.com/maiko/SDBX-Services) contains all 27 addons
 - Multiple Git sources can be added like Homebrew taps
 - Lock files (`.sdbx.lock`) pin versions for reproducibility
 
-Example service definition (`internal/registry/services/addons/sonarr/service.yaml`):
+Example service definition (from Git source, e.g., `addons/sonarr/service.yaml`):
 ```yaml
 apiVersion: sdbx.io/v1
 kind: Service
@@ -124,11 +125,12 @@ conditions:
 
 **2. Source Management**
 - Sources are Git repositories or local directories containing service definitions
-- Embedded source (priority -1) is always available as fallback
-- Local source (~/.config/sdbx/services) has highest priority (100)
+- **Embedded source** (priority -1) contains ONLY 6 core services, available offline as fallback
+- **Official Git source** (priority 0) contains all 27 addons - auto-added on first run
+- **Local source** (~/.config/sdbx/services, priority 100) can override anything
 - Git sources can be added with `sdbx source add <name> <url>`
 - Source config stored in `~/.config/sdbx/sources.yaml`
-- **Official services repository**: https://github.com/maiko/SDBX-Services
+- **Official services repository**: https://github.com/maiko/SDBX-Services (6 core + 27 addons)
 
 **3. Generator Pipeline**
 - `init` command collects user preferences via TUI wizard
