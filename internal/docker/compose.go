@@ -74,6 +74,26 @@ func (c *Compose) Down(ctx context.Context) error {
 	return err
 }
 
+// Start starts a specific service or all services
+func (c *Compose) Start(ctx context.Context, service string) error {
+	if service == "" {
+		_, err := c.run(ctx, "start")
+		return err
+	}
+	_, err := c.run(ctx, "start", service)
+	return err
+}
+
+// Stop stops a specific service or all services
+func (c *Compose) Stop(ctx context.Context, service string) error {
+	if service == "" {
+		_, err := c.run(ctx, "stop")
+		return err
+	}
+	_, err := c.run(ctx, "stop", service)
+	return err
+}
+
 // Restart restarts a specific service or all services
 func (c *Compose) Restart(ctx context.Context, service string) error {
 	if service == "" {

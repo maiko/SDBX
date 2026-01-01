@@ -1,0 +1,17 @@
+{{define "title"}}SDBX - Services{{end}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>Service Management</h1>
+    <p>Control individual services</p>
+</div>
+
+<div class="services-grid">
+    {{range .Services}}
+    {{template "service-card" .}}
+    {{end}}
+</div>
+
+{{end}}
+
+{{template "base" .}}

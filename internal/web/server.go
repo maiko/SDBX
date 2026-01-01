@@ -180,7 +180,14 @@ func (s *Server) formatServerMessage() string {
 
 // loadTemplates loads and parses all HTML templates
 func (s *Server) loadTemplates() error {
-	tmpl, err := template.ParseFS(templatesFS, "templates/**/*.html")
+	// Create template with custom functions
+	funcMap := template.FuncMap{
+		"sub": func(a, b int) int {
+			return a - b
+		},
+	}
+
+	tmpl, err := template.New("").Funcs(funcMap).ParseFS(templatesFS, "templates/**/*.html")
 	if err != nil {
 		return fmt.Errorf("failed to parse templates: %w", err)
 	}

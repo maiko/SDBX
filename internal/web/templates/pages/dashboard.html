@@ -1,0 +1,81 @@
+{{define "title"}}SDBX - Dashboard{{end}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>Dashboard</h1>
+    <p>Monitor and manage your media automation stack</p>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-label">Total Services</div>
+        <div class="stat-value">{{.TotalServices}}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Running</div>
+        <div class="stat-value" style="color: var(--color-success);">{{.RunningServices}}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Stopped</div>
+        <div class="stat-value" style="color: var(--color-error);">{{sub .TotalServices .RunningServices}}</div>
+    </div>
+</div>
+
+<div id="services-container" hx-get="/api/services-grid" hx-trigger="every 5s" hx-swap="innerHTML">
+    {{range $category, $services := .ServicesByCategory}}
+    <div class="category-section">
+        <div class="category-header">
+            <span>{{$category}}</span>
+            <span class="category-badge category-{{$category}}">{{len $services}}</span>
+        </div>
+        <div class="services-grid">
+            {{range $services}}
+            {{template "service-card" .}}
+            {{end}}
+        </div>
+    </div>
+    {{end}}
+</div>
+
+{{end}}
+
+{{define "service-card"}}
+<div class="service-card" id="service-{{.Name}}">
+    <div class="service-header">
+        <div class="service-name">{{.DisplayName}}</div>
+        <span class="status-badge status-{{if .Running}}running{{else}}stopped{{end}}">
+            {{if .Running}}●{{else}}○{{end}} {{if .Running}}Running{{else}}Stopped{{end}}
+        </span>
+    </div>
+    <div class="service-description">{{.Description}}</div>
+    <div class="service-actions">
+        {{if .Running}}
+        <button class="btn-sm btn-secondary-sm"
+                hx-post="/api/services/{{.Name}}/stop"
+                hx-target="#service-{{.Name}}"
+                hx-swap="outerHTML"
+                hx-confirm="Stop {{.DisplayName}}?">
+            Stop
+        </button>
+        <button class="btn-sm btn-secondary-sm"
+                hx-post="/api/services/{{.Name}}/restart"
+                hx-target="#service-{{.Name}}"
+                hx-swap="outerHTML">
+            Restart
+        </button>
+        {{else}}
+        <button class="btn-sm btn-primary-sm"
+                hx-post="/api/services/{{.Name}}/start"
+                hx-target="#service-{{.Name}}"
+                hx-swap="outerHTML">
+            Start
+        </button>
+        {{end}}
+        {{if .HasWebUI}}
+        <a href="/services/{{.Name}}/logs" class="btn-sm btn-secondary-sm">Logs</a>
+        {{end}}
+    </div>
+</div>
+{{end}}
+
+{{template "base" .}}

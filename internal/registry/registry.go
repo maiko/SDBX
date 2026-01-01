@@ -303,6 +303,7 @@ func (r *Registry) ListServices(ctx context.Context) ([]ServiceInfo, error) {
 				Version:     def.Metadata.Version,
 				Source:      src.Name(),
 				IsAddon:     def.Conditions.RequireAddon,
+				HasWebUI:    def.Routing.Enabled,
 			})
 		}
 	}
@@ -349,6 +350,7 @@ type ServiceInfo struct {
 	Version     string
 	Source      string
 	IsAddon     bool
+	HasWebUI    bool
 }
 
 // matchesQuery checks if a service matches a search query
