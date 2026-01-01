@@ -131,10 +131,11 @@ Initial release with 20 services (13 core + 7 addons)
 
 ## Roadmap
 
-### v0.3.0 (Planned)
-- Additional VPN providers
-- Jellyfin support as Plex alternative
-- Backup/restore improvements
+### v0.4.0 (Planned)
+- Backup/restore commands
+- Auto-configure service integrations (Sonarr ↔ Prowlarr ↔ qBittorrent)
+- Preset installation bundles (Media Library, Usenet Stack, etc.)
+- Enhanced VPN provider wizard
 
 ### v1.0.0 (Stable)
 - Production-ready release
