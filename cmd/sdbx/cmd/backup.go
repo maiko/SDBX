@@ -2,219 +2,326 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
-	"path/filepath"
+	"text/tabwriter"
 	"time"
 
+	"github.com/maiko/sdbx/internal/backup"
 	"github.com/maiko/sdbx/internal/config"
 	"github.com/maiko/sdbx/internal/tui"
 	"github.com/spf13/cobra"
 )
 
-var (
-	backupName string
-)
-
 var backupCmd = &cobra.Command{
 	Use:   "backup",
-	Short: "Backup and restore SDBX data",
-	Long: `Create and restore backups of SDBX configuration and data.
+	Short: "Backup and restore SDBX configuration",
+	Long: `Backup and restore your SDBX configuration, secrets, and service configs.
 
 Backups include:
-  • Configuration files (configs/, .env, .sdbx.yaml)
-  • Secrets (secrets/)
-  • Service data (config/)
+  - Configuration (.sdbx.yaml, .sdbx.lock)
+  - Docker Compose file
+  - Secrets
+  - Service configurations
 
-Media files are NOT included in backups.`,
-}
+Backups DO NOT include:
+  - Media files
+  - Downloads
+  - Docker volumes/data
 
-var backupRunCmd = &cobra.Command{
-	Use:   "run",
-	Short: "Create a backup",
-	Long: `Create a backup of SDBX configuration and data.
-
-The backup is stored as a timestamped tarball in the backups/ directory.`,
-	RunE: runBackupRun,
+Examples:
+  sdbx backup                  # Create backup
+  sdbx backup list             # List all backups
+  sdbx backup restore <name>   # Restore from backup
+  sdbx backup delete <name>    # Delete backup`,
+	RunE: runBackupCreate,
 }
 
 var backupListCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List available backups",
+	Short: "List all backups",
 	RunE:  runBackupList,
 }
 
 var backupRestoreCmd = &cobra.Command{
-	Use:   "restore <backup-file>",
-	Short: "Restore from a backup",
-	Long: `Restore SDBX configuration and data from a backup.
-
-Warning: This will overwrite existing configuration!`,
-	Args: cobra.ExactArgs(1),
-	RunE: runBackupRestore,
+	Use:   "restore <backup-name>",
+	Short: "Restore from backup",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runBackupRestore,
 }
+
+var backupDeleteCmd = &cobra.Command{
+	Use:   "delete <backup-name>",
+	Short: "Delete a backup",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runBackupDelete,
+}
+
+// Flags
+var (
+	backupOutput string
+)
 
 func init() {
 	rootCmd.AddCommand(backupCmd)
-	backupCmd.AddCommand(backupRunCmd)
 	backupCmd.AddCommand(backupListCmd)
 	backupCmd.AddCommand(backupRestoreCmd)
+	backupCmd.AddCommand(backupDeleteCmd)
 
-	backupRunCmd.Flags().StringVar(&backupName, "name", "", "Custom backup name (default: timestamp)")
+	// Flags
+	backupCmd.Flags().StringVarP(&backupOutput, "output", "o", "", "Custom backup output directory")
 }
 
-func runBackupRun(_ *cobra.Command, args []string) error {
+func runBackupCreate(_ *cobra.Command, _ []string) error {
+	// Get project directory
 	projectDir, err := config.ProjectDir()
 	if err != nil {
-		return err
+		return fmt.Errorf("not in an SDBX project directory")
 	}
 
-	// Create backups directory
-	backupsDir := filepath.Join(projectDir, "backups")
-	if err := os.MkdirAll(backupsDir, 0o755); err != nil {
-		return fmt.Errorf("failed to create backups directory: %w", err)
+	// Change to project directory
+	if err := os.Chdir(projectDir); err != nil {
+		return fmt.Errorf("failed to change directory: %w", err)
 	}
 
-	// Generate backup filename
-	if backupName == "" {
-		backupName = time.Now().Format("20060102-150405")
-	}
-	backupFile := filepath.Join(backupsDir, fmt.Sprintf("sdbx-backup-%s.tar.gz", backupName))
+	// Create backup manager
+	manager := backup.NewManager(projectDir)
 
-	fmt.Println(tui.InfoStyle.Render("Creating backup..."))
-	fmt.Println()
+	ctx := context.Background()
 
-	// Directories to backup
-	dirsToBackup := []string{
-		"configs",
-		"secrets",
-		"config",
-		".env",
-		".sdbx.yaml",
-		"compose.yaml",
+	if !IsJSONOutput() {
+		fmt.Println(tui.TitleStyle.Render("Creating Backup"))
+		fmt.Println()
 	}
 
-	// Filter existing directories
-	var existingPaths []string
-	for _, dir := range dirsToBackup {
-		path := filepath.Join(projectDir, dir)
-		if _, err := os.Stat(path); err == nil {
-			existingPaths = append(existingPaths, dir)
-		}
-	}
-
-	if len(existingPaths) == 0 {
-		return fmt.Errorf("no files to backup")
-	}
-
-	// Create tar command
-	tarArgs := append([]string{"-czf", backupFile}, existingPaths...)
-	tarCmd := exec.CommandContext(context.Background(), "tar", tarArgs...)
-	tarCmd.Dir = projectDir
-
-	if output, err := tarCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("backup failed: %w\n%s", err, output)
+	// Create backup
+	b, err := manager.Create(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to create backup: %w", err)
 	}
 
 	// Get backup size
-	info, err := os.Stat(backupFile)
-	size := 0.0
-	if err == nil {
-		size = float64(info.Size()) / 1024 / 1024 // MB
+	size, _ := b.GetSize()
+
+	// JSON output
+	if IsJSONOutput() {
+		result := map[string]interface{}{
+			"name":      b.Name,
+			"path":      b.Path,
+			"size":      size,
+			"timestamp": b.Metadata.Timestamp,
+		}
+		data, _ := json.MarshalIndent(result, "", "  ")
+		fmt.Println(string(data))
+		return nil
 	}
 
-	fmt.Printf("  %s configs/\n", tui.SuccessStyle.Render(tui.IconSuccess))
-	fmt.Printf("  %s secrets/\n", tui.SuccessStyle.Render(tui.IconSuccess))
-	fmt.Printf("  %s config/\n", tui.SuccessStyle.Render(tui.IconSuccess))
+	// Human-readable output
+	fmt.Println(tui.SuccessStyle.Render("✓ Backup created successfully"))
 	fmt.Println()
-	fmt.Println(tui.SuccessStyle.Render(fmt.Sprintf("✓ Backup created: %s (%.2f MB)", filepath.Base(backupFile), size)))
+	fmt.Printf("%s  %s\n", tui.MutedStyle.Render("Name:"), b.Name)
+	fmt.Printf("%s  %s\n", tui.MutedStyle.Render("Path:"), b.Path)
+	fmt.Printf("%s  %s\n", tui.MutedStyle.Render("Size:"), formatBytes(size))
+	fmt.Printf("%s  %s\n", tui.MutedStyle.Render("Time:"), b.Metadata.Timestamp.Format("2006-01-02 15:04:05"))
+	fmt.Println()
 
 	return nil
 }
 
-func runBackupList(_ *cobra.Command, args []string) error {
+func runBackupList(_ *cobra.Command, _ []string) error {
+	// Get project directory
 	projectDir, err := config.ProjectDir()
 	if err != nil {
-		projectDir = "."
+		return fmt.Errorf("not in an SDBX project directory")
 	}
 
-	backupsDir := filepath.Join(projectDir, "backups")
-	entries, err := os.ReadDir(backupsDir)
+	// Create backup manager
+	manager := backup.NewManager(projectDir)
+
+	ctx := context.Background()
+
+	// List backups
+	backups, err := manager.List(ctx)
 	if err != nil {
-		if os.IsNotExist(err) {
-			fmt.Println(tui.MutedStyle.Render("No backups found. Run 'sdbx backup run' to create one."))
-			return nil
-		}
-		return err
+		return fmt.Errorf("failed to list backups: %w", err)
 	}
 
-	fmt.Println(tui.TitleStyle.Render("SDBX Backups"))
+	// JSON output
+	if IsJSONOutput() {
+		result := make([]map[string]interface{}, 0, len(backups))
+		for _, b := range backups {
+			size, _ := b.GetSize()
+			result = append(result, map[string]interface{}{
+				"name":      b.Name,
+				"path":      b.Path,
+				"size":      size,
+				"timestamp": b.Metadata.Timestamp,
+				"hostname":  b.Metadata.Hostname,
+			})
+		}
+		data, _ := json.MarshalIndent(result, "", "  ")
+		fmt.Println(string(data))
+		return nil
+	}
+
+	// Human-readable output
+	if len(backups) == 0 {
+		fmt.Println(tui.MutedStyle.Render("No backups found"))
+		return nil
+	}
+
+	fmt.Println(tui.TitleStyle.Render("Available Backups"))
 	fmt.Println()
 
-	count := 0
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		if filepath.Ext(entry.Name()) != ".gz" {
-			continue
-		}
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
+	fmt.Fprintln(w, tui.TableHeaderStyle.Render("NAME")+"\t"+tui.TableHeaderStyle.Render("DATE")+"\t"+tui.TableHeaderStyle.Render("SIZE")+"\t"+tui.TableHeaderStyle.Render("HOSTNAME"))
 
-		info, err := entry.Info()
-		if err != nil {
-			continue // Skip entries where we can't get info
-		}
-		size := float64(info.Size()) / 1024 / 1024
-		modTime := info.ModTime().Format("2006-01-02 15:04")
+	for _, b := range backups {
+		size, _ := b.GetSize()
+		age := formatAge(b.Metadata.Timestamp)
 
-		fmt.Printf("  %s  %s  %.2f MB\n", modTime, entry.Name(), size)
-		count++
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+			b.Name,
+			age,
+			formatBytes(size),
+			b.Metadata.Hostname,
+		)
 	}
-
-	if count == 0 {
-		fmt.Println(tui.MutedStyle.Render("No backups found."))
-	} else {
-		fmt.Println()
-		fmt.Printf("%d backup(s) found\n", count)
-	}
+	w.Flush()
 
 	return nil
 }
 
 func runBackupRestore(_ *cobra.Command, args []string) error {
-	backupFile := args[0]
+	backupName := args[0]
 
+	// Get project directory
 	projectDir, err := config.ProjectDir()
 	if err != nil {
-		projectDir = "."
+		return fmt.Errorf("not in an SDBX project directory")
 	}
 
-	// Check if backup file exists
-	if _, err := os.Stat(backupFile); os.IsNotExist(err) {
-		// Try in backups directory
-		backupFile = filepath.Join(projectDir, "backups", backupFile)
-		if _, err := os.Stat(backupFile); os.IsNotExist(err) {
-			return fmt.Errorf("backup file not found: %s", args[0])
+	// Change to project directory
+	if err := os.Chdir(projectDir); err != nil {
+		return fmt.Errorf("failed to change directory: %w", err)
+	}
+
+	// Create backup manager
+	manager := backup.NewManager(projectDir)
+
+	ctx := context.Background()
+
+	if !IsJSONOutput() {
+		fmt.Println(tui.TitleStyle.Render("Restoring Backup"))
+		fmt.Println()
+		fmt.Printf("%s  %s\n", tui.MutedStyle.Render("Backup:"), backupName)
+		fmt.Println()
+	}
+
+	// Restore backup
+	if err := manager.Restore(ctx, backupName); err != nil {
+		return fmt.Errorf("failed to restore backup: %w", err)
+	}
+
+	// JSON output
+	if IsJSONOutput() {
+		result := map[string]interface{}{
+			"success": true,
+			"backup":  backupName,
 		}
+		data, _ := json.MarshalIndent(result, "", "  ")
+		fmt.Println(string(data))
+		return nil
 	}
 
-	fmt.Println(tui.WarningStyle.Render("⚠ This will overwrite existing configuration!"))
-	fmt.Println()
-	fmt.Println(tui.InfoStyle.Render("Restoring backup..."))
-
-	// Extract backup
-	tarCmd := exec.CommandContext(context.Background(), "tar", "-xzf", backupFile)
-	tarCmd.Dir = projectDir
-
-	if output, err := tarCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("restore failed: %w\n%s", err, output)
-	}
-
-	fmt.Println()
+	// Human-readable output
 	fmt.Println(tui.SuccessStyle.Render("✓ Backup restored successfully"))
 	fmt.Println()
-	fmt.Println(tui.MutedStyle.Render("Run 'sdbx up' to start services with restored configuration"))
+	fmt.Println(tui.MutedStyle.Render("Run 'sdbx up' to apply the restored configuration"))
 
 	return nil
+}
+
+func runBackupDelete(_ *cobra.Command, args []string) error {
+	backupName := args[0]
+
+	// Get project directory
+	projectDir, err := config.ProjectDir()
+	if err != nil {
+		return fmt.Errorf("not in an SDBX project directory")
+	}
+
+	// Create backup manager
+	manager := backup.NewManager(projectDir)
+
+	ctx := context.Background()
+
+	// Delete backup
+	if err := manager.Delete(ctx, backupName); err != nil {
+		return fmt.Errorf("failed to delete backup: %w", err)
+	}
+
+	// JSON output
+	if IsJSONOutput() {
+		result := map[string]interface{}{
+			"success": true,
+			"deleted": backupName,
+		}
+		data, _ := json.MarshalIndent(result, "", "  ")
+		fmt.Println(string(data))
+		return nil
+	}
+
+	// Human-readable output
+	fmt.Println(tui.SuccessStyle.Render("✓ Backup deleted successfully"))
+
+	return nil
+}
+
+// formatBytes formats bytes to human-readable format
+func formatBytes(bytes int64) string {
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%d B", bytes)
+	}
+	div, exp := int64(unit), 0
+	for n := bytes / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
+}
+
+// formatAge formats a timestamp as a relative time
+func formatAge(t time.Time) string {
+	duration := time.Since(t)
+
+	if duration < time.Minute {
+		return "just now"
+	}
+	if duration < time.Hour {
+		mins := int(duration.Minutes())
+		if mins == 1 {
+			return "1 minute ago"
+		}
+		return fmt.Sprintf("%d minutes ago", mins)
+	}
+	if duration < 24*time.Hour {
+		hours := int(duration.Hours())
+		if hours == 1 {
+			return "1 hour ago"
+		}
+		return fmt.Sprintf("%d hours ago", hours)
+	}
+	days := int(duration.Hours() / 24)
+	if days == 1 {
+		return "1 day ago"
+	}
+	if days < 30 {
+		return fmt.Sprintf("%d days ago", days)
+	}
+
+	// For older backups, show full date
+	return t.Format("2006-01-02 15:04")
 }
