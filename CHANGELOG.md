@@ -7,6 +7,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0-alpha] - 2026-01-01
+
+### Added
+
+#### 13 New Addons
+Expanded the addon ecosystem with 13 new services across multiple categories:
+
+**Media Servers:**
+- Jellyfin - Open-source media server (Plex alternative)
+
+**Downloads:**
+- pyLoad - HTTP(S) download manager for file hosters
+- Cobalt - Social media downloader (YouTube, TikTok, Twitter, Instagram, Reddit)
+- SABnzbd - Usenet binary downloader
+- NZBHydra2 - Usenet indexer meta-search aggregator
+- Cross-seed - Automated cross-seeding for torrent trackers
+
+**Media Management & Processing:**
+- Tdarr - Distributed transcoding and media library optimizer
+- Kometa - Plex metadata and collection manager (formerly Plex Meta Manager)
+- Tube Archivist - YouTube channel archival and management
+- Audiobookshelf - Self-hosted audiobook and podcast server
+- Navidrome - Modern music streaming server (Subsonic-compatible)
+- Calibre-Web - Web-based ebook library manager and reader
+
+**Utilities:**
+- Notifiarr - Unified notification system for *arr apps
+
+### Changed
+
+#### Core-Only Embedded Architecture
+Implemented a new architecture where only essential core services are embedded in the binary:
+
+- **Embedded source** now contains ONLY 6 core services (was 20 services)
+  - Core: traefik, authelia, qbittorrent, plex, gluetun, cloudflared
+- **All 27 addons** are now served exclusively from Git source (SDBX-Services repo)
+- Addon updates no longer require a CLI release - use `sdbx source update`
+
+**Benefits:**
+- Smaller binary size
+- Faster addon updates without CLI releases
+- Offline initialization with core services
+- Scalable addon ecosystem
+
+**Total Services:** 33 (6 core + 27 addons)
+
+### Fixed
+- Updated documentation to reflect new architecture
+- Updated embedded tests to expect core services only
+
+---
+
 ## [0.2.0-alpha] - 2026-01-01
 
 ### Changed
