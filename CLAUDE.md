@@ -81,7 +81,7 @@ internal/
     cache.go           # Source caching
     lock.go            # Lock file management
     services/          # Embedded service definitions (YAML)
-      core/            # Core services ONLY (6): traefik, authelia, plex, qbittorrent, gluetun, cloudflared
+      core/            # Core services (7): traefik, authelia, plex, qbittorrent, gluetun, cloudflared, sdbx-webui
                        # NOTE: All addons (27) are in Git source only, not embedded
   integrate/           # Service integration and auto-configuration
     types.go           # ServiceConfig, IntegrationResult, API request/response types
@@ -122,7 +122,7 @@ internal/
 **1. Registry-Based Service Definitions**
 - Services are defined in YAML files with a schema similar to Kubernetes/Helm
 - Each service definition includes: metadata, container spec, routing, integrations, conditions
-- **Embedded source** bundles only 6 core services into the binary (essential infrastructure for offline init)
+- **Embedded source** bundles 7 core services into the binary (essential infrastructure + web UI)
 - **Git source** (https://github.com/maiko/SDBX-Services) contains all 27 addons
 - Multiple Git sources can be added like Homebrew taps
 - Lock files (`.sdbx.lock`) pin versions for reproducibility
@@ -157,12 +157,12 @@ conditions:
 
 **2. Source Management**
 - Sources are Git repositories or local directories containing service definitions
-- **Embedded source** (priority -1) contains ONLY 6 core services, available offline as fallback
+- **Embedded source** (priority -1) contains 7 core services, available offline as fallback
 - **Official Git source** (priority 0) contains all 27 addons - auto-added on first run
 - **Local source** (~/.config/sdbx/services, priority 100) can override anything
 - Git sources can be added with `sdbx source add <name> <url>`
 - Source config stored in `~/.config/sdbx/sources.yaml`
-- **Official services repository**: https://github.com/maiko/SDBX-Services (6 core + 27 addons)
+- **Official services repository**: https://github.com/maiko/SDBX-Services (7 core + 27 addons)
 
 **3. Generator Pipeline**
 - `init` command collects user preferences via TUI wizard

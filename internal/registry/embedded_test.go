@@ -18,15 +18,15 @@ func TestEmbeddedSourceLoad(t *testing.T) {
 		t.Fatal("no services loaded from embedded source")
 	}
 
-	// Embedded source should only have 6 core services
-	if len(services) != 6 {
-		t.Errorf("expected 6 core services in embedded, got %d", len(services))
+	// Embedded source should only have 7 core services (including sdbx-webui)
+	if len(services) != 7 {
+		t.Errorf("expected 7 core services in embedded, got %d", len(services))
 	}
 
 	t.Logf("Loaded %d services from embedded source", len(services))
 
-	// Verify all 6 expected core services are present
-	expectedCore := []string{"traefik", "authelia", "qbittorrent", "plex", "gluetun", "cloudflared"}
+	// Verify all 7 expected core services are present
+	expectedCore := []string{"traefik", "authelia", "qbittorrent", "plex", "gluetun", "cloudflared", "sdbx-webui"}
 	for _, name := range expectedCore {
 		def, err := src.LoadService(ctx, name)
 		if err != nil {
@@ -78,9 +78,9 @@ func TestEmbeddedSourceCoreAddons(t *testing.T) {
 
 	t.Logf("Core services: %d, Addon services: %d", len(core), len(addons))
 
-	// Embedded source should have exactly 6 core services
-	if len(core) != 6 {
-		t.Errorf("expected 6 core services in embedded, got %d", len(core))
+	// Embedded source should have exactly 7 core services (including sdbx-webui)
+	if len(core) != 7 {
+		t.Errorf("expected 7 core services in embedded, got %d", len(core))
 	}
 
 	// Embedded source should have NO addons (they're in Git source only)
