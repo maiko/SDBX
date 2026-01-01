@@ -55,6 +55,7 @@ cmd/sdbx/
     addon.go           # Addon management (search, enable, disable)
     source.go          # Source management (add, remove, list, update)
     lock.go            # Lock file management (lock, verify, diff)
+    integrate.go       # Service integration (auto-configure connections)
     secrets.go         # Secret generation/rotation
     config.go          # Configuration get/set
 
@@ -82,6 +83,13 @@ internal/
     services/          # Embedded service definitions (YAML)
       core/            # Core services ONLY (6): traefik, authelia, plex, qbittorrent, gluetun, cloudflared
                        # NOTE: All addons (27) are in Git source only, not embedded
+  integrate/           # Service integration and auto-configuration
+    types.go           # ServiceConfig, IntegrationResult, API request/response types
+    client.go          # HTTP client with retry logic
+    integrate.go       # Main integrator orchestrating all integrations
+    prowlarr.go        # Prowlarr API client (add *arr apps, sync indexers)
+    arr.go             # *arr apps API client (add download clients)
+    qbittorrent.go     # qBittorrent API client (create categories, config)
   tui/                 # Terminal UI styles and helpers
 ```
 
@@ -161,6 +169,16 @@ conditions:
 - Rotation creates timestamped backups before overwriting
 - Never committed to git (`.gitignore` includes `secrets/`)
 
+**8. Service Integration**
+- `sdbx integrate` auto-configures service connections after deployment
+- Prowlarr → *arr apps: registers Sonarr/Radarr/Lidarr/Readarr, syncs indexers
+- qBittorrent → *arr apps: adds as download client, creates categories
+- Uses internal Docker URLs (e.g., `http://sdbx-sonarr:8989`)
+- Reads API keys from service configs (`configs/<service>/config.xml`)
+- Idempotent: checks for existing configs, skips if already present
+- Retry logic with exponential backoff for transient failures
+- Dry-run mode available (`--dry-run`) to preview changes
+
 ### Important Implementation Details
 
 **VPN Enforcement**
@@ -204,6 +222,19 @@ sdbx lock verify                    # Verify lock file integrity
 sdbx lock diff                      # Show differences from lock
 sdbx lock update [service...]       # Update services in lock
 ```
+
+### Service Integration
+```bash
+sdbx integrate                      # Auto-configure all service integrations
+sdbx integrate --dry-run            # Preview changes without applying
+sdbx integrate --verbose            # Show detailed progress
+```
+
+Integrations configured:
+- **Prowlarr → *arr apps**: Registers Sonarr/Radarr/Lidarr/Readarr, enables indexer sync
+- **qBittorrent → *arr apps**: Adds qBittorrent as download client, creates categories
+
+Services must be running before integration. Run `sdbx up` first if needed.
 
 ## Testing Notes
 

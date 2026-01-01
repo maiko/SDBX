@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+#### Service Auto-Configuration
+Automatic service integration system that configures connections between services:
+
+**New Command:**
+- `sdbx integrate` - Auto-configure service integrations
+- `sdbx integrate --dry-run` - Preview changes without applying
+- `sdbx integrate --verbose` - Show detailed progress
+
+**Features:**
+- **Prowlarr Integration**: Automatically registers *arr apps (Sonarr, Radarr, Lidarr, Readarr) in Prowlarr and enables full indexer sync
+- **Download Client Integration**: Automatically adds qBittorrent as download client in all *arr apps
+- **Category Management**: Creates qBittorrent categories for each *arr app
+- **Smart Detection**: Reads API keys from service configs, uses Docker internal URLs
+- **Idempotent**: Checks for existing configurations, skips if already present
+- **Retry Logic**: Handles transient failures with exponential backoff
+- **Health Checks**: Waits for services to be ready before configuring
+
+**Benefits:**
+- No manual API key copying or URL configuration
+- Automatic indexer sync across all *arr apps via Prowlarr
+- Proper download organization with categories
+- Saves 10-15 minutes of manual configuration per service
+
+**Implementation:**
+- Pure Go API clients for Prowlarr, *arr apps (Sonarr/Radarr/Lidarr/Readarr), qBittorrent
+- HTTP client with retry logic and timeout handling
+- Modular integrator architecture for extensibility
+
 ## [0.4.0-alpha] - 2026-01-01
 
 ### Added
