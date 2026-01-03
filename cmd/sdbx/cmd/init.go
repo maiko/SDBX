@@ -166,7 +166,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 		cfg.AdminUser = initAdminUser
 		password := initAdminPassword
 		if password == "" {
-			password = "admin" // Default fallback
+			return fmt.Errorf("admin password is required: use --admin-password flag or run in interactive mode")
 		}
 
 		hash, err := generateArgon2Hash(password)
