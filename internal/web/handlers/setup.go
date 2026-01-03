@@ -412,7 +412,7 @@ func (h *SetupHandler) HandleComplete(w http.ResponseWriter, r *http.Request) {
 // renderTemplate renders a template with data
 func (h *SetupHandler) renderTemplate(w http.ResponseWriter, name string, data interface{}) {
 	if err := h.templates.ExecuteTemplate(w, name, data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httpError(w, "setup template render", err, http.StatusInternalServerError)
 	}
 }
 

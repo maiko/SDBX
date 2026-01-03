@@ -262,6 +262,6 @@ func (h *ServicesHandler) respondJSON(w http.ResponseWriter, statusCode int, dat
 // renderTemplate renders a template with data
 func (h *ServicesHandler) renderTemplate(w http.ResponseWriter, name string, data interface{}) {
 	if err := h.templates.ExecuteTemplate(w, name, data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httpError(w, "services template render", err, http.StatusInternalServerError)
 	}
 }

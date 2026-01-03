@@ -247,6 +247,6 @@ func (h *LogsHandler) HandleGetLogs(w http.ResponseWriter, r *http.Request) {
 // renderTemplate renders a template with data
 func (h *LogsHandler) renderTemplate(w http.ResponseWriter, name string, data interface{}) {
 	if err := h.templates.ExecuteTemplate(w, name, data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httpError(w, "logs template render", err, http.StatusInternalServerError)
 	}
 }
