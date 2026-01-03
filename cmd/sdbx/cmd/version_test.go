@@ -42,7 +42,9 @@ func TestVersionCommandOutput(t *testing.T) {
 	defer SetVersionInfo("dev", "none", "unknown")
 
 	// Execute version command
-	versionCmd.Run(versionCmd, []string{})
+	if err := versionCmd.RunE(versionCmd, []string{}); err != nil {
+		t.Fatalf("version command failed: %v", err)
+	}
 
 	// Close writer and read output
 	w.Close()
@@ -83,7 +85,9 @@ func TestVersionCommandJSON(t *testing.T) {
 	defer SetVersionInfo("dev", "none", "unknown")
 
 	// Execute version command
-	versionCmd.Run(versionCmd, []string{})
+	if err := versionCmd.RunE(versionCmd, []string{}); err != nil {
+		t.Fatalf("version command failed: %v", err)
+	}
 
 	// Close writer and read output
 	w.Close()
