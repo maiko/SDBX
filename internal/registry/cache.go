@@ -2,6 +2,7 @@ package registry
 
 import (
 	"encoding/json"
+	"log"
 	"os"
 	"path/filepath"
 	"sync"
@@ -189,11 +190,16 @@ func (c *Cache) GetSize() (int64, error) {
 func (c *Cache) loadMetadata() {
 	data, err := os.ReadFile(c.metaPath)
 	if err != nil {
+		// File not existing is normal on first run
+		if !os.IsNotExist(err) {
+			log.Printf("Warning: failed to read cache metadata: %v", err)
+		}
 		return
 	}
 
 	var metadata map[string]CacheMetadata
 	if err := json.Unmarshal(data, &metadata); err != nil {
+		log.Printf("Warning: failed to parse cache metadata: %v", err)
 		return
 	}
 
@@ -204,10 +210,13 @@ func (c *Cache) loadMetadata() {
 func (c *Cache) saveMetadata() {
 	data, err := json.MarshalIndent(c.metadata, "", "  ")
 	if err != nil {
+		log.Printf("Warning: failed to marshal cache metadata: %v", err)
 		return
 	}
 
-	os.WriteFile(c.metaPath, data, 0o644)
+	if err := os.WriteFile(c.metaPath, data, 0o644); err != nil {
+		log.Printf("Warning: failed to save cache metadata: %v", err)
+	}
 }
 
 // Exists checks if a source is cached

@@ -5,6 +5,7 @@ import (
 	"context"
 	"embed"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"text/template"
@@ -29,7 +30,8 @@ func NewGenerator(cfg *config.Config, outputDir string) *Generator {
 	// Always create a default registry for service resolution
 	reg, err := registry.NewWithDefaults()
 	if err != nil {
-		// Log error but continue - embedded source will be available
+		// Log error but continue - will retry in generateFromRegistry
+		log.Printf("Warning: failed to create registry: %v (will retry during generation)", err)
 		reg = nil
 	}
 	return &Generator{
