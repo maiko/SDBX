@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"text/tabwriter"
@@ -66,13 +65,10 @@ func runIntegrate(_ *cobra.Command, _ []string) error {
 
 	if len(services) == 0 {
 		if IsJSONOutput() {
-			result := map[string]interface{}{
+			return OutputJSON(map[string]interface{}{
 				"success": false,
 				"message": "No services found to integrate",
-			}
-			data, _ := json.MarshalIndent(result, "", "  ")
-			fmt.Println(string(data))
-			return nil
+			})
 		}
 
 		fmt.Println(tui.WarningStyle.Render("⚠ No services found to integrate"))
@@ -119,12 +115,12 @@ func runIntegrate(_ *cobra.Command, _ []string) error {
 	results, err := integrator.Run(ctx)
 	if err != nil {
 		if IsJSONOutput() {
-			result := map[string]interface{}{
+			if jsonErr := OutputJSON(map[string]interface{}{
 				"success": false,
 				"error":   err.Error(),
+			}); jsonErr != nil {
+				return jsonErr
 			}
-			data, _ := json.MarshalIndent(result, "", "  ")
-			fmt.Println(string(data))
 			return err
 		}
 
@@ -150,16 +146,13 @@ func runIntegrate(_ *cobra.Command, _ []string) error {
 			output = append(output, entry)
 		}
 
-		result := map[string]interface{}{
+		return OutputJSON(map[string]interface{}{
 			"success":      successCount == len(results),
 			"total":        len(results),
 			"successful":   successCount,
 			"failed":       len(results) - successCount,
 			"integrations": output,
-		}
-		data, _ := json.MarshalIndent(result, "", "  ")
-		fmt.Println(string(data))
-		return nil
+		})
 	}
 
 	// Human-readable output

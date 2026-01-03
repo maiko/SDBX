@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -60,9 +59,7 @@ func runDoctor(_ *cobra.Command, args []string) error {
 
 	// JSON output
 	if IsJSONOutput() {
-		data, _ := json.MarshalIndent(checks, "", "  ")
-		fmt.Println(string(data))
-		return nil
+		return OutputJSON(checks)
 	}
 
 	// Display results

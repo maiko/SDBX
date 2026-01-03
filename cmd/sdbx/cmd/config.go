@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -60,13 +59,9 @@ func runConfigGet(_ *cobra.Command, args []string) error {
 	if IsJSONOutput() {
 		if len(args) == 1 {
 			value := viper.Get(args[0])
-			data, _ := json.MarshalIndent(map[string]interface{}{args[0]: value}, "", "  ")
-			fmt.Println(string(data))
-		} else {
-			data, _ := json.MarshalIndent(allSettings, "", "  ")
-			fmt.Println(string(data))
+			return OutputJSON(map[string]interface{}{args[0]: value})
 		}
-		return nil
+		return OutputJSON(allSettings)
 	}
 
 	// Single key

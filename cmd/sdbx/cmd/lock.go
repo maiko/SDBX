@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 
@@ -94,9 +93,7 @@ func runLockGenerate(_ *cobra.Command, _ []string) error {
 
 	// JSON output
 	if IsJSONOutput() {
-		data, _ := json.MarshalIndent(lockFile, "", "  ")
-		fmt.Println(string(data))
-		return nil
+		return OutputJSON(lockFile)
 	}
 
 	fmt.Println(tui.SuccessStyle.Render("✓ Generated .sdbx.lock"))
@@ -150,10 +147,11 @@ func runLockVerify(_ *cobra.Command, _ []string) error {
 			"valid":       len(diffs) == 0,
 			"differences": diffs,
 		}
-		data, _ := json.MarshalIndent(result, "", "  ")
-		fmt.Println(string(data))
+		if err := OutputJSON(result); err != nil {
+			return err
+		}
 		if len(diffs) > 0 {
-			os.Exit(1)
+			return fmt.Errorf("lock file verification failed: %d difference(s) found", len(diffs))
 		}
 		return nil
 	}
@@ -171,8 +169,7 @@ func runLockVerify(_ *cobra.Command, _ []string) error {
 	fmt.Println()
 	fmt.Printf("Run '%s' to update the lock file\n", tui.CommandStyle.Render("sdbx lock"))
 
-	os.Exit(1)
-	return nil
+	return fmt.Errorf("lock file has %d difference(s)", len(diffs))
 }
 
 func runLockDiff(_ *cobra.Command, _ []string) error {
@@ -224,9 +221,7 @@ func runLockDiff(_ *cobra.Command, _ []string) error {
 
 	// JSON output
 	if IsJSONOutput() {
-		data, _ := json.MarshalIndent(diffs, "", "  ")
-		fmt.Println(string(data))
-		return nil
+		return OutputJSON(diffs)
 	}
 
 	if len(diffs) == 0 {
@@ -297,9 +292,7 @@ func runLockUpdate(_ *cobra.Command, args []string) error {
 
 	// JSON output
 	if IsJSONOutput() {
-		data, _ := json.MarshalIndent(updated, "", "  ")
-		fmt.Println(string(data))
-		return nil
+		return OutputJSON(updated)
 	}
 
 	if len(servicesToUpdate) > 0 {

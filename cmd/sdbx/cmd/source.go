@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -102,9 +101,7 @@ func runSourceList(_ *cobra.Command, _ []string) error {
 
 	// JSON output
 	if IsJSONOutput() {
-		data, _ := json.MarshalIndent(cfg.Sources, "", "  ")
-		fmt.Println(string(data))
-		return nil
+		return OutputJSON(cfg.Sources)
 	}
 
 	fmt.Println(tui.TitleStyle.Render("Service Sources"))

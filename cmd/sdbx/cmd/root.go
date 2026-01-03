@@ -2,6 +2,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -92,4 +93,21 @@ func IsTUIEnabled() bool {
 // IsJSONOutput returns true if JSON output is requested
 func IsJSONOutput() bool {
 	return jsonOut
+}
+
+// OutputJSON marshals data to JSON and prints it to stdout.
+// Returns an error if marshaling fails.
+func OutputJSON(data interface{}) error {
+	output, err := MarshalJSON(data)
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(output))
+	return nil
+}
+
+// MarshalJSON marshals data to indented JSON.
+// Returns the JSON bytes or an error.
+func MarshalJSON(data interface{}) ([]byte, error) {
+	return json.MarshalIndent(data, "", "  ")
 }

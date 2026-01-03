@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -54,12 +53,10 @@ func runStatus(_ *cobra.Command, args []string) error {
 
 	// JSON output mode
 	if IsJSONOutput() {
-		data, _ := json.MarshalIndent(map[string]interface{}{
+		return OutputJSON(map[string]interface{}{
 			"domain":   cfg.Domain,
 			"services": services,
-		}, "", "  ")
-		fmt.Println(string(data))
-		return nil
+		})
 	}
 
 	// Header

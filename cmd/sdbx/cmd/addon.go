@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"text/tabwriter"
@@ -136,9 +135,7 @@ func runAddonList(_ *cobra.Command, _ []string) error {
 				"enabled":     cfg.IsAddonEnabled(addon.Name),
 			})
 		}
-		data, _ := json.MarshalIndent(result, "", "  ")
-		fmt.Println(string(data))
-		return nil
+		return OutputJSON(result)
 	}
 
 	if addonListAll {
@@ -227,9 +224,7 @@ func runAddonSearch(_ *cobra.Command, args []string) error {
 
 	// JSON output
 	if IsJSONOutput() {
-		data, _ := json.MarshalIndent(addons, "", "  ")
-		fmt.Println(string(data))
-		return nil
+		return OutputJSON(addons)
 	}
 
 	if len(addons) == 0 {
@@ -296,7 +291,7 @@ func runAddonInfo(_ *cobra.Command, args []string) error {
 
 	// JSON output
 	if IsJSONOutput() {
-		result := map[string]interface{}{
+		return OutputJSON(map[string]interface{}{
 			"name":        def.Metadata.Name,
 			"version":     def.Metadata.Version,
 			"description": def.Metadata.Description,
@@ -306,10 +301,7 @@ func runAddonInfo(_ *cobra.Command, args []string) error {
 			"image":       def.Spec.Image.Repository + ":" + def.Spec.Image.Tag,
 			"port":        def.Routing.Port,
 			"enabled":     isEnabled,
-		}
-		data, _ := json.MarshalIndent(result, "", "  ")
-		fmt.Println(string(data))
-		return nil
+		})
 	}
 
 	fmt.Println(tui.TitleStyle.Render(tui.IconPackage + " " + def.Metadata.Name))

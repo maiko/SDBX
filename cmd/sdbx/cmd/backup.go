@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"text/tabwriter"
@@ -106,15 +105,12 @@ func runBackupCreate(_ *cobra.Command, _ []string) error {
 
 	// JSON output
 	if IsJSONOutput() {
-		result := map[string]interface{}{
+		return OutputJSON(map[string]interface{}{
 			"name":      b.Name,
 			"path":      b.Path,
 			"size":      size,
 			"timestamp": b.Metadata.Timestamp,
-		}
-		data, _ := json.MarshalIndent(result, "", "  ")
-		fmt.Println(string(data))
-		return nil
+		})
 	}
 
 	// Human-readable output
@@ -160,9 +156,7 @@ func runBackupList(_ *cobra.Command, _ []string) error {
 				"hostname":  b.Metadata.Hostname,
 			})
 		}
-		data, _ := json.MarshalIndent(result, "", "  ")
-		fmt.Println(string(data))
-		return nil
+		return OutputJSON(result)
 	}
 
 	// Human-readable output
@@ -226,13 +220,10 @@ func runBackupRestore(_ *cobra.Command, args []string) error {
 
 	// JSON output
 	if IsJSONOutput() {
-		result := map[string]interface{}{
+		return OutputJSON(map[string]interface{}{
 			"success": true,
 			"backup":  backupName,
-		}
-		data, _ := json.MarshalIndent(result, "", "  ")
-		fmt.Println(string(data))
-		return nil
+		})
 	}
 
 	// Human-readable output
@@ -264,13 +255,10 @@ func runBackupDelete(_ *cobra.Command, args []string) error {
 
 	// JSON output
 	if IsJSONOutput() {
-		result := map[string]interface{}{
+		return OutputJSON(map[string]interface{}{
 			"success": true,
 			"deleted": backupName,
-		}
-		data, _ := json.MarshalIndent(result, "", "  ")
-		fmt.Println(string(data))
-		return nil
+		})
 	}
 
 	// Human-readable output

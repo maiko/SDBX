@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"path/filepath"
 
@@ -134,9 +133,7 @@ func runSecretsList(_ *cobra.Command, args []string) error {
 
 	// JSON output
 	if IsJSONOutput() {
-		data, _ := json.MarshalIndent(status, "", "  ")
-		fmt.Println(string(data))
-		return nil
+		return OutputJSON(status)
 	}
 
 	fmt.Println(tui.TitleStyle.Render("SDBX Secrets"))

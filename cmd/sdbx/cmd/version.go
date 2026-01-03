@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"runtime"
 
@@ -34,7 +33,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print version information",
 	Long:  `Display the version, commit hash, build date, and platform information.`,
-	Run: func(_ *cobra.Command, _ []string) {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		info := VersionInfo{
 			Version:   Version,
 			Commit:    Commit,
@@ -44,9 +43,7 @@ var versionCmd = &cobra.Command{
 		}
 
 		if IsJSONOutput() {
-			data, _ := json.MarshalIndent(info, "", "  ")
-			fmt.Println(string(data))
-			return
+			return OutputJSON(info)
 		}
 
 		fmt.Printf("sdbx %s\n", info.Version)
@@ -54,6 +51,7 @@ var versionCmd = &cobra.Command{
 		fmt.Printf("  Built:      %s\n", info.BuildDate)
 		fmt.Printf("  Go version: %s\n", info.GoVersion)
 		fmt.Printf("  Platform:   %s\n", info.Platform)
+		return nil
 	},
 }
 
