@@ -6,6 +6,7 @@ import "time"
 type ServiceConfig struct {
 	Name    string
 	URL     string // Internal Docker URL
+	Port    int    // Service port (0 = use default from URL)
 	APIKey  string
 	Enabled bool
 }

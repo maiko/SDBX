@@ -2,6 +2,7 @@ package integrate
 
 import (
 	"context"
+	"encoding/xml"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,6 +11,12 @@ import (
 
 	"github.com/maiko/sdbx/internal/config"
 )
+
+// arrConfig represents the structure of *arr config.xml files
+type arrConfig struct {
+	XMLName xml.Name `xml:"Config"`
+	ApiKey  string   `xml:"ApiKey"`
+}
 
 // Integrator orchestrates service integrations
 type Integrator struct {
@@ -101,9 +108,13 @@ func (i *Integrator) checkServiceHealth(ctx context.Context, name string, svc *S
 		client := NewArrClient(i.httpClient, svc)
 		return client.CheckHealth(ctx)
 	case "qbittorrent":
+		port := svc.Port
+		if port == 0 {
+			port = 8080 // Default qBittorrent WebUI port
+		}
 		qbitCfg := &QBittorrentConfig{
 			Host:     svc.URL,
-			Port:     8080,
+			Port:     port,
 			Username: "admin",
 			Password: svc.APIKey,
 		}
@@ -223,9 +234,13 @@ func (i *Integrator) integrateQBittorrent(ctx context.Context) []*IntegrationRes
 	results := make([]*IntegrationResult, 0)
 
 	qbitSvc := i.services["qbittorrent"]
+	port := qbitSvc.Port
+	if port == 0 {
+		port = 8080 // Default qBittorrent WebUI port
+	}
 	qbitCfg := &QBittorrentConfig{
 		Host:     qbitSvc.URL,
-		Port:     8080,
+		Port:     port,
 		Username: "admin",
 		Password: qbitSvc.APIKey,
 	}
@@ -364,19 +379,17 @@ func LoadServicesFromConfig(projectDir string) (map[string]*ServiceConfig, error
 			return "", err
 		}
 
-		// Simple XML parsing - find <ApiKey>...</ApiKey>
-		content := string(data)
-		start := strings.Index(content, "<ApiKey>")
-		if start == -1 {
-			return "", fmt.Errorf("api key not found in config")
-		}
-		start += len("<ApiKey>")
-		end := strings.Index(content[start:], "</ApiKey>")
-		if end == -1 {
-			return "", fmt.Errorf("api key end tag not found")
+		// Parse XML properly
+		var cfg arrConfig
+		if err := xml.Unmarshal(data, &cfg); err != nil {
+			return "", fmt.Errorf("failed to parse config.xml: %w", err)
 		}
 
-		return content[start : start+end], nil
+		if cfg.ApiKey == "" {
+			return "", fmt.Errorf("api key not found in config")
+		}
+
+		return cfg.ApiKey, nil
 	}
 
 	// Prowlarr
@@ -450,6 +463,7 @@ func LoadServicesFromConfig(projectDir string) (map[string]*ServiceConfig, error
 		services["qbittorrent"] = &ServiceConfig{
 			Name:    "qbittorrent",
 			URL:     "http://sdbx-qbittorrent",
+			Port:    8080, // Default qBittorrent WebUI port
 			APIKey:  strings.TrimSpace(string(password)),
 			Enabled: true,
 		}
