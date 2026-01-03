@@ -1,0 +1,37 @@
+{{define "content"}}
+<h2>Storage Configuration</h2>
+<p>Configure where your media, downloads, and configs will be stored.</p>
+
+<form hx-post="/setup/storage" hx-target="body" hx-swap="outerHTML">
+    <div class="form-group">
+        <label for="media_path">Media Path *</label>
+        <span class="description">Where to store movies, TV shows, music</span>
+        <input type="text" id="media_path" name="media_path" value="{{.Config.MediaPath}}" placeholder="./data/media" required>
+    </div>
+
+    <div class="form-group">
+        <label for="downloads_path">Downloads Path *</label>
+        <span class="description">Where torrent client stores downloads</span>
+        <input type="text" id="downloads_path" name="downloads_path" value="{{.Config.DownloadsPath}}" placeholder="./data/downloads" required>
+    </div>
+
+    <div class="form-group">
+        <label for="config_path">Config Path *</label>
+        <span class="description">Where service configs are stored</span>
+        <input type="text" id="config_path" name="config_path" value="{{.Config.ConfigPath}}" placeholder="./config" required>
+    </div>
+
+    <div class="form-group">
+        <label for="timezone">Timezone *</label>
+        <span class="description">System timezone for all services</span>
+        <input type="text" id="timezone" name="timezone" value="{{.Config.Timezone}}" placeholder="Europe/Paris" required>
+    </div>
+
+    <div class="wizard-actions">
+        <a href="/setup/admin" class="btn btn-secondary">← Back</a>
+        <button type="submit" class="btn btn-primary">Next →</button>
+    </div>
+</form>
+{{end}}
+
+{{template "wizard" .}}

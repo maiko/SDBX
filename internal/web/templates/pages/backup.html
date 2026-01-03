@@ -1,0 +1,461 @@
+{{define "title"}}SDBX - Backup & Restore{{end}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>Backup & Restore</h1>
+    <p>Create and manage configuration backups</p>
+</div>
+
+<!-- Toast notifications -->
+<div id="toast-container" class="toast-container"></div>
+
+<div class="backup-container">
+    <div class="backup-header">
+        <div class="header-info">
+            <h2>Configuration Backups</h2>
+            <p>Create, restore, and manage backups of your SDBX configuration</p>
+        </div>
+        <button id="create-backup-btn" class="btn-primary" onclick="createBackup()">
+            💾 Create Backup
+        </button>
+    </div>
+
+    <div id="backup-progress" class="backup-progress" style="display: none;">
+        <div class="progress-bar">
+            <div class="progress-fill"></div>
+        </div>
+        <p class="progress-text">Creating backup...</p>
+    </div>
+
+    <div id="backup-list" class="backup-list">
+        <p class="loading-text">Loading backups...</p>
+    </div>
+</div>
+
+<div class="backup-help">
+    <h3>⚠️ Important Notes</h3>
+    <ul>
+        <li>Backups include <code>.sdbx.yaml</code>, <code>compose.yaml</code>, and all configuration files</li>
+        <li>Backups do <strong>not</strong> include media files or downloads</li>
+        <li>After restoring, run <code>sdbx down && sdbx up</code> to apply changes</li>
+        <li>Backups are stored in <code>backups/</code> directory</li>
+    </ul>
+</div>
+
+<style>
+    .toast-container {
+        position: fixed;
+        top: 2rem;
+        right: 2rem;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .toast {
+        background: white;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        min-width: 300px;
+        animation: slideIn 0.3s ease;
+    }
+
+    .toast.success {
+        border-left: 4px solid var(--color-success);
+    }
+
+    .toast.error {
+        border-left: 4px solid var(--color-error);
+    }
+
+    .toast-icon {
+        font-size: 1.25rem;
+    }
+
+    .toast-message {
+        flex: 1;
+        font-size: 0.875rem;
+        word-break: break-word;
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    .backup-container {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        margin-bottom: 2rem;
+    }
+
+    .backup-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .header-info h2 {
+        margin: 0 0 0.5rem 0;
+        color: #1e293b;
+        font-size: 1.5rem;
+    }
+
+    .header-info p {
+        margin: 0;
+        color: #64748b;
+        font-size: 0.875rem;
+    }
+
+    .btn-primary {
+        background: var(--color-primary);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 0.875rem;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+        background: #6d28d9;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+    }
+
+    .btn-primary:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .backup-progress {
+        margin-bottom: 2rem;
+    }
+
+    .progress-bar {
+        width: 100%;
+        height: 8px;
+        background: #e2e8f0;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-bottom: 1rem;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--color-primary), var(--color-info));
+        animation: progress 2s ease-in-out infinite;
+    }
+
+    @keyframes progress {
+        0% { width: 0%; }
+        50% { width: 70%; }
+        100% { width: 100%; }
+    }
+
+    .progress-text {
+        text-align: center;
+        color: #64748b;
+        font-size: 0.875rem;
+        margin: 0;
+    }
+
+    .backup-list {
+        min-height: 200px;
+    }
+
+    .loading-text {
+        text-align: center;
+        color: #64748b;
+        padding: 3rem 0;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem 0;
+    }
+
+    .empty-state-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+    }
+
+    .empty-state-text {
+        color: #64748b;
+        font-size: 1rem;
+    }
+
+    .backup-card {
+        background: #f8fafc;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        transition: all 0.2s;
+    }
+
+    .backup-card:hover {
+        background: #f1f5f9;
+        transform: translateX(4px);
+    }
+
+    .backup-info {
+        flex: 1;
+    }
+
+    .backup-name {
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 0.5rem;
+        font-size: 1rem;
+    }
+
+    .backup-meta {
+        display: flex;
+        gap: 1.5rem;
+        font-size: 0.875rem;
+        color: #64748b;
+    }
+
+    .backup-meta-item {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .backup-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .btn-sm {
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+        border-radius: 6px;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-success {
+        background: var(--color-success);
+        color: white;
+    }
+
+    .btn-success:hover {
+        background: #059669;
+    }
+
+    .btn-danger {
+        background: var(--color-error);
+        color: white;
+    }
+
+    .btn-danger:hover {
+        background: #dc2626;
+    }
+
+    .backup-help {
+        background: #fef3c7;
+        border: 1px solid #fbbf24;
+        border-radius: 8px;
+        padding: 1.5rem;
+    }
+
+    .backup-help h3 {
+        margin: 0 0 1rem 0;
+        color: #92400e;
+    }
+
+    .backup-help ul {
+        margin: 0;
+        padding-left: 1.5rem;
+        color: #78350f;
+    }
+
+    .backup-help li {
+        margin-bottom: 0.5rem;
+    }
+
+    .backup-help code {
+        background: #fcd34d;
+        padding: 0.125rem 0.375rem;
+        border-radius: 4px;
+        font-size: 0.875rem;
+    }
+</style>
+
+<script>
+    function showToast(message, type = 'success') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+
+        const icon = type === 'success' ? '✓' : '✗';
+        toast.innerHTML = `
+            <span class="toast-icon">${icon}</span>
+            <span class="toast-message">${message}</span>
+        `;
+
+        container.appendChild(toast);
+
+        setTimeout(() => {
+            toast.style.animation = 'slideIn 0.3s ease reverse';
+            setTimeout(() => toast.remove(), 300);
+        }, 5000);
+    }
+
+    function loadBackups() {
+        const listDiv = document.getElementById('backup-list');
+
+        fetch('/api/backup/list')
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    listDiv.innerHTML = `<p class="loading-text">Failed to load backups: ${data.message}</p>`;
+                    return;
+                }
+
+                if (!data.backups || data.backups.length === 0) {
+                    listDiv.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📦</div>
+                            <p class="empty-state-text">No backups found. Create your first backup!</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                listDiv.innerHTML = '';
+                data.backups.forEach(backup => {
+                    const card = document.createElement('div');
+                    card.className = 'backup-card';
+                    card.innerHTML = `
+                        <div class="backup-info">
+                            <div class="backup-name">${backup.name}</div>
+                            <div class="backup-meta">
+                                <span class="backup-meta-item">📅 ${backup.age}</span>
+                                <span class="backup-meta-item">💾 ${backup.sizeHuman}</span>
+                                <span class="backup-meta-item">🖥️ ${backup.hostname}</span>
+                            </div>
+                        </div>
+                        <div class="backup-actions">
+                            <button class="btn-sm btn-success" onclick="restoreBackup('${backup.name}')">
+                                ↻ Restore
+                            </button>
+                            <button class="btn-sm btn-danger" onclick="deleteBackup('${backup.name}')">
+                                ✗ Delete
+                            </button>
+                        </div>
+                    `;
+                    listDiv.appendChild(card);
+                });
+            })
+            .catch(error => {
+                listDiv.innerHTML = `<p class="loading-text">Error loading backups: ${error}</p>`;
+            });
+    }
+
+    function createBackup() {
+        const btn = document.getElementById('create-backup-btn');
+        const progress = document.getElementById('backup-progress');
+
+        btn.disabled = true;
+        btn.textContent = 'Creating...';
+        progress.style.display = 'block';
+
+        fetch('/api/backup/create', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            progress.style.display = 'none';
+            btn.disabled = false;
+            btn.textContent = '💾 Create Backup';
+
+            if (data.success) {
+                showToast(data.message, 'success');
+                loadBackups();
+            } else {
+                showToast(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            progress.style.display = 'none';
+            btn.disabled = false;
+            btn.textContent = '💾 Create Backup';
+            showToast('Failed to create backup: ' + error, 'error');
+        });
+    }
+
+    function restoreBackup(name) {
+        if (!confirm(`Are you sure you want to restore from "${name}"?\n\nThis will replace your current configuration. Make sure you have created a backup of your current state first.`)) {
+            return;
+        }
+
+        fetch(`/api/backup/restore/${name}`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message, 'success');
+            } else {
+                showToast(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            showToast('Failed to restore backup: ' + error, 'error');
+        });
+    }
+
+    function deleteBackup(name) {
+        if (!confirm(`Are you sure you want to delete backup "${name}"?\n\nThis action cannot be undone.`)) {
+            return;
+        }
+
+        fetch(`/api/backup/delete/${name}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message, 'success');
+                loadBackups();
+            } else {
+                showToast(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            showToast('Failed to delete backup: ' + error, 'error');
+        });
+    }
+
+    // Load backups on page load
+    document.addEventListener('DOMContentLoaded', loadBackups);
+</script>
+
+{{end}}
+
+{{template "base" .}}

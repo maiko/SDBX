@@ -1,0 +1,80 @@
+{{define "content"}}
+<h2>Configuration Summary</h2>
+<p>Review your configuration before generating the project.</p>
+
+<div style="margin-top: 2rem;">
+    <div class="summary-row">
+        <span class="summary-label">Domain</span>
+        <span class="summary-value">{{.Config.Domain}}</span>
+    </div>
+
+    <div class="summary-row">
+        <span class="summary-label">Admin User</span>
+        <span class="summary-value">{{.Config.AdminUser}}</span>
+    </div>
+
+    <div class="summary-row">
+        <span class="summary-label">Expose Mode</span>
+        <span class="summary-value">{{.Config.Expose.Mode}}</span>
+    </div>
+
+    <div class="summary-row">
+        <span class="summary-label">Routing</span>
+        <span class="summary-value">{{.Config.Routing.Strategy}}</span>
+    </div>
+
+    {{if eq .Config.Routing.Strategy "path"}}
+    <div class="summary-row">
+        <span class="summary-label">Base Domain</span>
+        <span class="summary-value">{{.Config.Routing.BaseDomain}}.{{.Config.Domain}}</span>
+    </div>
+    {{end}}
+
+    <div class="summary-row">
+        <span class="summary-label">Media Path</span>
+        <span class="summary-value">{{.Config.MediaPath}}</span>
+    </div>
+
+    <div class="summary-row">
+        <span class="summary-label">Downloads Path</span>
+        <span class="summary-value">{{.Config.DownloadsPath}}</span>
+    </div>
+
+    <div class="summary-row">
+        <span class="summary-label">Config Path</span>
+        <span class="summary-value">{{.Config.ConfigPath}}</span>
+    </div>
+
+    <div class="summary-row">
+        <span class="summary-label">Timezone</span>
+        <span class="summary-value">{{.Config.Timezone}}</span>
+    </div>
+
+    <div class="summary-row">
+        <span class="summary-label">VPN</span>
+        <span class="summary-value">
+            {{if .Config.VPNEnabled}}
+                {{.Config.VPNProvider}} ({{.Config.VPNCountry}})
+            {{else}}
+                Disabled
+            {{end}}
+        </span>
+    </div>
+
+    {{if .Config.Addons}}
+    <div class="summary-row">
+        <span class="summary-label">Addons</span>
+        <span class="summary-value">{{len .Config.Addons}} selected</span>
+    </div>
+    {{end}}
+</div>
+
+<form hx-post="/setup/summary" hx-target="body" hx-swap="outerHTML">
+    <div class="wizard-actions" style="margin-top: 2rem;">
+        <a href="/setup/addons" class="btn btn-secondary">← Back</a>
+        <button type="submit" class="btn btn-primary">Generate Project →</button>
+    </div>
+</form>
+{{end}}
+
+{{template "wizard" .}}

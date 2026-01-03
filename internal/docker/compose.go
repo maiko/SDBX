@@ -74,6 +74,26 @@ func (c *Compose) Down(ctx context.Context) error {
 	return err
 }
 
+// Start starts a specific service or all services
+func (c *Compose) Start(ctx context.Context, service string) error {
+	if service == "" {
+		_, err := c.run(ctx, "start")
+		return err
+	}
+	_, err := c.run(ctx, "start", service)
+	return err
+}
+
+// Stop stops a specific service or all services
+func (c *Compose) Stop(ctx context.Context, service string) error {
+	if service == "" {
+		_, err := c.run(ctx, "stop")
+		return err
+	}
+	_, err := c.run(ctx, "stop", service)
+	return err
+}
+
 // Restart restarts a specific service or all services
 func (c *Compose) Restart(ctx context.Context, service string) error {
 	if service == "" {
@@ -103,6 +123,20 @@ func (c *Compose) Logs(ctx context.Context, service string, lines int, follow bo
 		args = append(args, service)
 	}
 	return c.run(ctx, args...)
+}
+
+// LogsStream returns a streaming reader for service logs
+func (c *Compose) LogsStream(ctx context.Context, service string, lines int) (*exec.Cmd, error) {
+	cmdArgs := []string{"compose", "-f", c.ComposeFile, "-p", c.ProjectName, "logs"}
+	if lines > 0 {
+		cmdArgs = append(cmdArgs, "--tail", fmt.Sprintf("%d", lines))
+	}
+	cmdArgs = append(cmdArgs, "-f", service)
+
+	cmd := exec.CommandContext(ctx, "docker", cmdArgs...)
+	cmd.Dir = c.ProjectDir
+
+	return cmd, nil
 }
 
 // PS returns the status of all services

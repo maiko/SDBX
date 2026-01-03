@@ -55,6 +55,7 @@ cmd/sdbx/
     addon.go           # Addon management (search, enable, disable)
     source.go          # Source management (add, remove, list, update)
     lock.go            # Lock file management (lock, verify, diff)
+    integrate.go       # Service integration (auto-configure connections)
     secrets.go         # Secret generation/rotation
     config.go          # Configuration get/set
 
@@ -80,9 +81,40 @@ internal/
     cache.go           # Source caching
     lock.go            # Lock file management
     services/          # Embedded service definitions (YAML)
-      core/            # Core services ONLY (6): traefik, authelia, plex, qbittorrent, gluetun, cloudflared
+      core/            # Core services (7): traefik, authelia, plex, qbittorrent, gluetun, cloudflared, sdbx-webui
                        # NOTE: All addons (27) are in Git source only, not embedded
+  integrate/           # Service integration and auto-configuration
+    types.go           # ServiceConfig, IntegrationResult, API request/response types
+    client.go          # HTTP client with retry logic
+    integrate.go       # Main integrator orchestrating all integrations
+    prowlarr.go        # Prowlarr API client (add *arr apps, sync indexers)
+    arr.go             # *arr apps API client (add download clients)
+    qbittorrent.go     # qBittorrent API client (create categories, config)
   tui/                 # Terminal UI styles and helpers
+  web/                 # Web UI server (htmx + Go templates + WebSockets)
+    server.go          # HTTP server with two-phase detection (pre-init vs post-init)
+    embed.go           # go:embed directives for static assets and templates
+    handlers/          # HTTP request handlers
+      setup.go         # 7-step setup wizard (replaces `sdbx init`)
+      dashboard.go     # Dashboard with service status
+      services.go      # Service management (start/stop/restart)
+      logs.go          # WebSocket log streaming
+      addons.go        # Addon catalog and management
+      config.go        # YAML configuration editor
+      integration.go   # Integration center and backup management
+      common.go        # Shared utility functions
+    middleware/        # HTTP middleware
+      auth.go          # Two-phase auth (token for pre-init, Authelia for post-init)
+      logging.go       # Request logging
+      recovery.go      # Panic recovery
+    templates/         # Go html/template files
+      layouts/         # Base layouts (base.html, wizard.html)
+      pages/           # Page templates (dashboard, services, logs, etc.)
+      components/      # Reusable components (placeholders)
+    static/            # Static assets (go:embed)
+      css/             # Stylesheets (colors.css from TUI palette, main.css)
+      js/              # JavaScript (htmx.min.js, websocket.js)
+      icons/           # SVG icons (placeholders)
 ```
 
 ### Key Architectural Patterns
@@ -90,7 +122,7 @@ internal/
 **1. Registry-Based Service Definitions**
 - Services are defined in YAML files with a schema similar to Kubernetes/Helm
 - Each service definition includes: metadata, container spec, routing, integrations, conditions
-- **Embedded source** bundles only 6 core services into the binary (essential infrastructure for offline init)
+- **Embedded source** bundles 7 core services into the binary (essential infrastructure + web UI)
 - **Git source** (https://github.com/maiko/SDBX-Services) contains all 27 addons
 - Multiple Git sources can be added like Homebrew taps
 - Lock files (`.sdbx.lock`) pin versions for reproducibility
@@ -125,12 +157,12 @@ conditions:
 
 **2. Source Management**
 - Sources are Git repositories or local directories containing service definitions
-- **Embedded source** (priority -1) contains ONLY 6 core services, available offline as fallback
+- **Embedded source** (priority -1) contains 7 core services, available offline as fallback
 - **Official Git source** (priority 0) contains all 27 addons - auto-added on first run
 - **Local source** (~/.config/sdbx/services, priority 100) can override anything
 - Git sources can be added with `sdbx source add <name> <url>`
 - Source config stored in `~/.config/sdbx/sources.yaml`
-- **Official services repository**: https://github.com/maiko/SDBX-Services (6 core + 27 addons)
+- **Official services repository**: https://github.com/maiko/SDBX-Services (7 core + 27 addons)
 
 **3. Generator Pipeline**
 - `init` command collects user preferences via TUI wizard
@@ -161,6 +193,32 @@ conditions:
 - Rotation creates timestamped backups before overwriting
 - Never committed to git (`.gitignore` includes `secrets/`)
 
+**8. Service Integration**
+- `sdbx integrate` auto-configures service connections after deployment
+- Prowlarr → *arr apps: registers Sonarr/Radarr/Lidarr/Readarr, syncs indexers
+- qBittorrent → *arr apps: adds as download client, creates categories
+- Uses internal Docker URLs (e.g., `http://sdbx-sonarr:8989`)
+- Reads API keys from service configs (`configs/<service>/config.xml`)
+- Idempotent: checks for existing configs, skips if already present
+- Retry logic with exponential backoff for transient failures
+- Dry-run mode available (`--dry-run`) to preview changes
+
+**9. Web UI Architecture (Two-Phase Deployment)**
+- **Pre-init phase**: `sdbx serve` runs embedded HTTP server for setup wizard
+  - Binds to 0.0.0.0:3000 for remote/headless setup
+  - Generates one-time 256-bit crypto/rand token, displayed in CLI
+  - Token-based authentication (query param + HttpOnly cookie)
+  - Setup wizard replaces `sdbx init` CLI command
+  - Creates `.sdbx.yaml`, generates compose.yaml, initializes Authelia users
+- **Post-init phase**: Web UI runs as Docker service (sdbx-webui)
+  - Deployed behind Traefik + Authelia (subdomain: sdbx.domain.tld)
+  - Trusts Authelia Remote-User header for authentication
+  - Replaces homepage addon as primary dashboard
+- **Technology stack**: htmx (no heavy JS), Go html/template, WebSockets (logs only)
+- **Features**: Dashboard, service control, live logs, addon management, config editor, integration center, backup/restore
+- **Design**: Minimal aesthetic inspired by Charm.land, TUI color palette ported to CSS
+- **go:embed**: All templates, CSS, and JS bundled in binary
+
 ### Important Implementation Details
 
 **VPN Enforcement**
@@ -178,6 +236,24 @@ conditions:
 - Admin credentials configured during `init` wizard
 
 ## CLI Commands Reference
+
+### Web UI
+```bash
+sdbx serve                          # Start web UI server
+sdbx serve --host 0.0.0.0           # Bind to all interfaces (default)
+sdbx serve --port 3000              # Custom port (default: 3000)
+```
+
+**Pre-init mode** (no .sdbx.yaml exists):
+- Displays setup token URL in CLI: `http://192.168.1.100:3000?token=abc123`
+- Token required for access (256-bit crypto/rand)
+- Serves 7-step setup wizard
+- Creates project configuration on completion
+
+**Post-init mode** (.sdbx.yaml exists):
+- Serves dashboard and management UI
+- Development mode: Direct access (shows warning)
+- Production mode: Deploy as Docker service behind Traefik + Authelia
 
 ### Source Management
 ```bash
@@ -204,6 +280,19 @@ sdbx lock verify                    # Verify lock file integrity
 sdbx lock diff                      # Show differences from lock
 sdbx lock update [service...]       # Update services in lock
 ```
+
+### Service Integration
+```bash
+sdbx integrate                      # Auto-configure all service integrations
+sdbx integrate --dry-run            # Preview changes without applying
+sdbx integrate --verbose            # Show detailed progress
+```
+
+Integrations configured:
+- **Prowlarr → *arr apps**: Registers Sonarr/Radarr/Lidarr/Readarr, enables indexer sync
+- **qBittorrent → *arr apps**: Adds qBittorrent as download client, creates categories
+
+Services must be running before integration. Run `sdbx up` first if needed.
 
 ## Testing Notes
 

@@ -1,0 +1,60 @@
+/* SDBX Color Palette - Ported from internal/tui/styles.go */
+
+:root {
+    /* Base colors */
+    --color-primary: #7C3AED;     /* Violet - Primary actions and highlights */
+    --color-success: #10B981;     /* Emerald - Positive states, confirmations */
+    --color-warning: #F59E0B;     /* Amber - Warnings, caution states */
+    --color-error: #EF4444;       /* Red - Errors, destructive actions */
+    --color-info: #3B82F6;        /* Blue - Information messages */
+    --color-muted: #6B7280;       /* Gray - Secondary text, disabled states */
+    --color-white: #FFFFFF;       /* White - Primary text, backgrounds */
+    --color-black: #000000;       /* Black - Backgrounds, contrast */
+
+    /* Category-specific colors (for service organization) */
+    --color-media: #E879F9;       /* Fuchsia - Media services */
+    --color-downloads: #38BDF8;   /* Sky - Download services */
+    --color-management: #A3E635;  /* Lime - Management services */
+    --color-utility: #FBBF24;     /* Amber - Utility services */
+    --color-networking: #2DD4BF;  /* Teal - Network services */
+    --color-auth: #F87171;        /* Red - Authentication services */
+
+    /* Background variants */
+    --bg-dark: #0F172A;           /* Dark background */
+    --bg-darker: #020617;         /* Darker background */
+    --bg-light: #F8FAFC;          /* Light background */
+    --bg-lighter: #FFFFFF;        /* Lighter background */
+
+    /* Border colors */
+    --border-default: #E2E8F0;
+    --border-muted: #CBD5E1;
+    --border-primary: var(--color-primary);
+
+    /* Text colors */
+    --text-primary: #1E293B;
+    --text-secondary: #64748B;
+    --text-muted: var(--color-muted);
+    --text-inverse: var(--color-white);
+
+    /* Status colors */
+    --status-running: var(--color-success);
+    --status-stopped: var(--color-muted);
+    --status-starting: var(--color-info);
+    --status-healthy: var(--color-success);
+    --status-unhealthy: var(--color-error);
+    --status-degraded: var(--color-warning);
+}
+
+/* Dark mode support (if needed) */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg-dark: #0F172A;
+        --bg-darker: #020617;
+        --bg-light: #1E293B;
+        --bg-lighter: #334155;
+        --text-primary: #F1F5F9;
+        --text-secondary: #CBD5E1;
+        --border-default: #334155;
+        --border-muted: #475569;
+    }
+}
