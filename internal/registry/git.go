@@ -230,12 +230,40 @@ func (s *GitSource) gitCommand(ctx context.Context, dir string, args ...string) 
 			sshKey = filepath.Join(home, sshKey[1:])
 		}
 
+		// Validate SSH key path to prevent command injection
+		// Only allow alphanumeric, dash, underscore, dot, and path separators
+		if !isValidSSHKeyPath(sshKey) {
+			// Log warning and skip SSH key configuration
+			return cmd
+		}
+
 		env := os.Environ()
-		env = append(env, fmt.Sprintf("GIT_SSH_COMMAND=ssh -i %s -o StrictHostKeyChecking=no", sshKey))
+		// Use StrictHostKeyChecking=accept-new to accept new keys but reject changed ones
+		// This provides protection against MITM attacks while still working for new hosts
+		// Quote the path to handle spaces safely
+		env = append(env, fmt.Sprintf("GIT_SSH_COMMAND=ssh -i '%s' -o StrictHostKeyChecking=accept-new", sshKey))
 		cmd.Env = env
 	}
 
 	return cmd
+}
+
+// isValidSSHKeyPath validates that the SSH key path doesn't contain shell metacharacters
+func isValidSSHKeyPath(path string) bool {
+	// Reject paths with characters that could be used for shell injection
+	for _, r := range path {
+		switch {
+		case r >= 'a' && r <= 'z':
+		case r >= 'A' && r <= 'Z':
+		case r >= '0' && r <= '9':
+		case r == '-', r == '_', r == '.', r == '/', r == ' ':
+			// Allow spaces but we'll quote the path
+		default:
+			// Reject any other character (including single quotes, backticks, $, etc.)
+			return false
+		}
+	}
+	return len(path) > 0
 }
 
 // getServicesPath returns the path to the services directory
