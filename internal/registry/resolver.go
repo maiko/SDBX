@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -233,8 +234,10 @@ func (r *Resolver) evaluateConditionString(condition string, cfg *config.Config)
 	case "{{ eq .Config.Routing.Strategy \"path\" }}":
 		return cfg.Routing.Strategy == config.RoutingStrategyPath
 	default:
-		// Default to true for unknown conditions
-		return true
+		// Log warning for unknown conditions and default to false
+		// This prevents unrecognized conditions from silently enabling features
+		log.Printf("Warning: unknown condition '%s', defaulting to false", condition)
+		return false
 	}
 }
 

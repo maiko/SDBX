@@ -401,7 +401,7 @@ func HasErrors(errors []ValidationError) bool {
 	return false
 }
 
-// FilterByServerity filters validation errors by severity
+// FilterBySeverity filters validation errors by severity
 func FilterBySeverity(errors []ValidationError, severity string) []ValidationError {
 	var filtered []ValidationError
 	for _, e := range errors {
