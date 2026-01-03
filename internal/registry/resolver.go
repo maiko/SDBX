@@ -4,6 +4,10 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
 
 	"github.com/maiko/sdbx/internal/config"
 	"gopkg.in/yaml.v3"
@@ -238,11 +242,51 @@ func (r *Resolver) evaluateConditionString(condition string, cfg *config.Config)
 func (r *Resolver) loadOverrides(ctx context.Context, serviceName string) ([]*ServiceOverride, error) {
 	var overrides []*ServiceOverride
 
-	// Check each source for overrides
-	// Overrides are loaded in reverse priority order (lowest first)
-	// so that higher priority overrides win
+	// Get all sources and sort by priority (lowest first, so high priority wins when applied)
+	sources := r.registry.Sources()
+	sort.Slice(sources, func(i, j int) bool {
+		return sources[i].Priority() < sources[j].Priority()
+	})
 
-	// TODO: Implement override loading from sources
+	// Check each source for overrides
+	for _, source := range sources {
+		if !source.IsEnabled() {
+			continue
+		}
+
+		// Get service path and derive override path
+		servicePath := source.GetServicePath(serviceName)
+		if servicePath == "" {
+			continue
+		}
+
+		// Skip embedded sources (they start with "embedded://")
+		if strings.HasPrefix(servicePath, "embedded://") {
+			continue
+		}
+
+		// Derive override path from service path
+		overridePath := filepath.Join(filepath.Dir(servicePath), "override.yaml")
+
+		// Check if override file exists
+		if _, err := os.Stat(overridePath); err != nil {
+			continue // No override in this source
+		}
+
+		// Load the override
+		override, err := r.loader.LoadServiceOverride(overridePath)
+		if err != nil {
+			// Log but don't fail - overrides are optional
+			continue
+		}
+
+		// Verify override is for the correct service
+		if override.Metadata.Name != serviceName {
+			continue
+		}
+
+		overrides = append(overrides, override)
+	}
 
 	return overrides, nil
 }
