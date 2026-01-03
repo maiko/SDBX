@@ -344,41 +344,73 @@ func runWizard(cfg *config.Config, reg *registry.Registry) error {
 
 	// Only ask VPN details if enabled
 	if wantVPN {
+		// Build provider options from config
+		var providerOpts []huh.Option[string]
+		for _, id := range config.GetVPNProviderIDs() {
+			provider, _ := config.GetVPNProvider(id)
+			providerOpts = append(providerOpts, huh.NewOption(provider.Name, id))
+		}
+
 		form3 := huh.NewForm(
 			huh.NewGroup(
 				huh.NewSelect[string]().
 					Title("VPN Provider").
-					Description("Select your VPN service (Gluetun supports 30+ providers). Credentials configured after init.").
-					Options(
-						huh.NewOption("NordVPN", "nordvpn"),
-						huh.NewOption("Mullvad", "mullvad"),
-						huh.NewOption("Private Internet Access (PIA)", "pia"),
-						huh.NewOption("Surfshark", "surfshark"),
-						huh.NewOption("ProtonVPN", "protonvpn"),
-						huh.NewOption("ExpressVPN", "expressvpn"),
-						huh.NewOption("Windscribe", "windscribe"),
-						huh.NewOption("IPVanish", "ipvanish"),
-						huh.NewOption("CyberGhost", "cyberghost"),
-						huh.NewOption("IVPN", "ivpn"),
-						huh.NewOption("TorGuard", "torguard"),
-						huh.NewOption("VyprVPN", "vyprvpn"),
-						huh.NewOption("PureVPN", "purevpn"),
-						huh.NewOption("HideMyAss (HMA)", "hidemyass"),
-						huh.NewOption("Perfect Privacy", "perfectprivacy"),
-						huh.NewOption("AirVPN", "airvpn"),
-						huh.NewOption("Custom/OpenVPN", "custom"),
-					).
+					Description("Select your VPN service").
+					Options(providerOpts...).
 					Value(&cfg.VPNProvider),
 
 				huh.NewInput().
 					Title("VPN Server Country").
-					Description("Preferred VPN exit location").
-					Placeholder("France").
+					Description("Preferred VPN exit location (e.g., Netherlands, United States)").
+					Placeholder("Netherlands").
 					Value(&cfg.VPNCountry),
-			).Title("VPN Details"),
+			).Title("VPN Provider"),
 		)
 
 		if err := form3.Run(); err != nil {
+			return err
+		}
+
+		// Get provider info for credential form
+		provider, ok := config.GetVPNProvider(cfg.VPNProvider)
+		if !ok {
+			return fmt.Errorf("unknown VPN provider: %s", cfg.VPNProvider)
+		}
+
+		// Build VPN type options based on provider support
+		var vpnTypeOpts []huh.Option[string]
+		if provider.SupportsWG {
+			vpnTypeOpts = append(vpnTypeOpts, huh.NewOption("Wireguard (Recommended)", "wireguard"))
+		}
+		if provider.SupportsOpenVPN {
+			vpnTypeOpts = append(vpnTypeOpts, huh.NewOption("OpenVPN", "openvpn"))
+		}
+
+		// VPN Type selection
+		formType := huh.NewForm(
+			huh.NewGroup(
+				huh.NewSelect[string]().
+					Title("VPN Protocol").
+					Description("Wireguard is faster and more reliable, OpenVPN has wider compatibility").
+					Options(vpnTypeOpts...).
+					Value(&cfg.VPNType),
+			).Title("VPN Protocol"),
+		)
+
+		if err := formType.Run(); err != nil {
+			return err
+		}
+
+		// Show credentials link
+		if provider.CredDocsURL != "" {
+			fmt.Printf("\n📋 Get your credentials from: %s\n", provider.CredDocsURL)
+			if provider.Notes != "" {
+				fmt.Printf("   Note: %s\n\n", provider.Notes)
+			}
+		}
+
+		// Provider-specific credential forms
+		if err := collectVPNCredentials(cfg, provider); err != nil {
 			return err
 		}
 	}
@@ -500,7 +532,11 @@ func printConfigSummary(cfg *config.Config) {
 	printRow("Media Path", cfg.MediaPath)
 
 	if cfg.VPNEnabled {
-		printRow("VPN", fmt.Sprintf("%s (%s)", cfg.VPNProvider, cfg.VPNCountry))
+		vpnInfo := fmt.Sprintf("%s via %s", cfg.VPNProvider, cfg.VPNType)
+		if cfg.VPNCountry != "" {
+			vpnInfo += fmt.Sprintf(" (%s)", cfg.VPNCountry)
+		}
+		printRow("VPN", vpnInfo)
 	} else {
 		printRow("VPN", tui.MutedStyle.Render("disabled"))
 	}
@@ -533,11 +569,6 @@ func printSuccessMessage(cfg *config.Config) {
 
 	steps = append(steps, fmt.Sprintf("%d. Review and edit %s file", step, tui.CommandStyle.Render(".env")))
 	step++
-
-	if cfg.VPNEnabled {
-		steps = append(steps, fmt.Sprintf("%d. Add VPN credentials to %s", step, tui.CommandStyle.Render("secrets/vpn_password.txt")))
-		step++
-	}
 
 	if cfg.Expose.Mode == config.ExposeModeCloudflared {
 		steps = append(steps, fmt.Sprintf("%d. Add tunnel token to %s", step, tui.CommandStyle.Render("secrets/cloudflared_tunnel_token.txt")))
@@ -576,4 +607,96 @@ func generateArgon2Hash(password string) (string, error) {
 	b64Hash := base64.RawStdEncoding.EncodeToString(hash)
 
 	return fmt.Sprintf("$argon2id$v=19$m=%d,t=%d,p=%d$%s$%s", memory, time, threads, b64Salt, b64Hash), nil
+}
+
+// collectVPNCredentials collects VPN credentials based on provider auth type
+func collectVPNCredentials(cfg *config.Config, provider config.VPNProvider) error {
+	switch provider.AuthType {
+	case config.VPNAuthUserPass:
+		return collectUserPassCredentials(cfg, provider)
+	case config.VPNAuthToken:
+		return collectTokenCredentials(cfg, provider)
+	case config.VPNAuthWireguard:
+		return collectWireguardCredentials(cfg, provider)
+	case config.VPNAuthConfig:
+		// Custom config - just inform user
+		fmt.Println("\n📝 Custom VPN configuration:")
+		fmt.Println("   Place your .ovpn file in configs/gluetun/")
+		fmt.Println("   Edit configs/gluetun/gluetun.env with your settings")
+		return nil
+	default:
+		return fmt.Errorf("unsupported auth type: %s", provider.AuthType)
+	}
+}
+
+// collectUserPassCredentials collects username/password credentials
+func collectUserPassCredentials(cfg *config.Config, provider config.VPNProvider) error {
+	usernameLabel := provider.UsernameLabel
+	if usernameLabel == "" {
+		usernameLabel = "Username"
+	}
+	passwordLabel := provider.PasswordLabel
+	if passwordLabel == "" {
+		passwordLabel = "Password"
+	}
+
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewInput().
+				Title(usernameLabel).
+				Value(&cfg.VPNUsername),
+
+			huh.NewInput().
+				Title(passwordLabel).
+				EchoMode(huh.EchoModePassword).
+				Value(&cfg.VPNPassword),
+		).Title("VPN Credentials"),
+	)
+
+	return form.Run()
+}
+
+// collectTokenCredentials collects token-based credentials (Mullvad, IVPN, AirVPN)
+func collectTokenCredentials(cfg *config.Config, provider config.VPNProvider) error {
+	tokenLabel := provider.TokenLabel
+	if tokenLabel == "" {
+		tokenLabel = "Account Token"
+	}
+
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewInput().
+				Title(tokenLabel).
+				Description("This will be stored securely in your gluetun.env file").
+				Value(&cfg.VPNToken),
+		).Title("VPN Credentials"),
+	)
+
+	return form.Run()
+}
+
+// collectWireguardCredentials collects Wireguard credentials (e.g., NordVPN)
+func collectWireguardCredentials(cfg *config.Config, provider config.VPNProvider) error {
+	// For Wireguard providers, we need the private key
+	// For OpenVPN fallback, we need username/password
+	if cfg.VPNType == "wireguard" {
+		keyLabel := provider.TokenLabel
+		if keyLabel == "" {
+			keyLabel = "Wireguard Private Key"
+		}
+
+		form := huh.NewForm(
+			huh.NewGroup(
+				huh.NewInput().
+					Title(keyLabel).
+					Description("Your Wireguard private key from the provider's setup page").
+					Value(&cfg.VPNWireguardKey),
+			).Title("Wireguard Credentials"),
+		)
+
+		return form.Run()
+	}
+
+	// OpenVPN fallback
+	return collectUserPassCredentials(cfg, provider)
 }

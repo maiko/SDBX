@@ -47,10 +47,16 @@ type Config struct {
 	Umask string `mapstructure:"umask"`
 
 	// VPN
-	VPNEnabled  bool   `mapstructure:"vpn_enabled"`
-	VPNProvider string `mapstructure:"vpn_provider"`
-	VPNUsername string `mapstructure:"vpn_username"`
-	VPNCountry  string `mapstructure:"vpn_country"`
+	VPNEnabled         bool   `mapstructure:"vpn_enabled"`
+	VPNProvider        string `mapstructure:"vpn_provider"`
+	VPNType            string `mapstructure:"vpn_type"`   // "wireguard" | "openvpn"
+	VPNCountry         string `mapstructure:"vpn_country"`
+	// VPN Credentials (stored in env file, not main config)
+	VPNUsername        string `mapstructure:"-"` // For username/password providers
+	VPNPassword        string `mapstructure:"-"` // For username/password providers
+	VPNToken           string `mapstructure:"-"` // For token-based providers (Mullvad, IVPN, AirVPN)
+	VPNWireguardKey    string `mapstructure:"-"` // Wireguard private key
+	VPNWireguardAddr   string `mapstructure:"-"` // Wireguard address (e.g., 10.x.x.x/32)
 
 	// Addons
 	Addons []string `mapstructure:"addons"`
@@ -118,6 +124,7 @@ func DefaultConfig() *Config {
 		Umask:         "002",
 		VPNEnabled:    false,
 		VPNProvider:   "",
+		VPNType:       "wireguard",
 		VPNCountry:    "",
 		Addons:        []string{},
 		Services:      make(map[string]ServiceOverride),
@@ -225,6 +232,7 @@ func Load() (*Config, error) {
 	viper.SetDefault("pgid", cfg.PGID)
 	viper.SetDefault("umask", cfg.Umask)
 	viper.SetDefault("vpn_provider", cfg.VPNProvider)
+	viper.SetDefault("vpn_type", cfg.VPNType)
 	viper.SetDefault("vpn_country", cfg.VPNCountry)
 	viper.SetDefault("addons", cfg.Addons)
 
@@ -270,6 +278,7 @@ func (c *Config) Save(path string) error {
 	viper.Set("umask", c.Umask)
 	viper.Set("vpn_enabled", c.VPNEnabled)
 	viper.Set("vpn_provider", c.VPNProvider)
+	viper.Set("vpn_type", c.VPNType)
 	viper.Set("vpn_country", c.VPNCountry)
 	viper.Set("addons", c.Addons)
 	if len(c.Services) > 0 {

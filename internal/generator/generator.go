@@ -16,7 +16,7 @@ import (
 )
 
 //go:embed templates/*
-var templatesFS embed.FS
+var TemplatesFS embed.FS
 
 // Generator handles project generation
 type Generator struct {
@@ -227,7 +227,7 @@ func (g *Generator) generateFromRegistry(data TemplateData) error {
 // generateFile renders a template to a file
 func (g *Generator) generateFile(templateName, outputPath string, data TemplateData) error {
 	// Read template
-	tmplContent, err := templatesFS.ReadFile("templates/" + templateName)
+	tmplContent, err := TemplatesFS.ReadFile("templates/" + templateName)
 	if err != nil {
 		return fmt.Errorf("template not found: %s: %w", templateName, err)
 	}
