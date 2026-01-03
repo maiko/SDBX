@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"html/template"
 	"net/http"
 	"strings"
@@ -41,7 +40,7 @@ type ServiceInfo struct {
 
 // HandleDashboard handles the main dashboard page
 func (h *DashboardHandler) HandleDashboard(w http.ResponseWriter, r *http.Request) {
-	ctx := context.Background()
+	ctx := r.Context()
 
 	// Get service status from Docker
 	dockerServices, err := h.compose.PS(ctx)

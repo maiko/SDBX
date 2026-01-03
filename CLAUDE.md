@@ -60,6 +60,7 @@ cmd/sdbx/
     config.go          # Configuration get/set
 
 internal/
+  backup/              # Backup/restore functionality (tar.gz archives with metadata)
   config/              # Configuration structs and loaders (Load, Save, Validate)
   secrets/             # Secret generation with crypto/rand, rotation with backups
   docker/              # Docker Compose wrapper (up, down, ps, logs, exec)
@@ -101,7 +102,7 @@ internal/
       logs.go          # WebSocket log streaming
       addons.go        # Addon catalog and management
       config.go        # YAML configuration editor
-      integration.go   # Integration center and backup management
+      integration.go   # Integration center and backup management (uses internal/backup)
       common.go        # Shared utility functions
     middleware/        # HTTP middleware
       auth.go          # Two-phase auth (token for pre-init, Authelia for post-init)
@@ -293,6 +294,16 @@ Integrations configured:
 - **qBittorrent → *arr apps**: Adds qBittorrent as download client, creates categories
 
 Services must be running before integration. Run `sdbx up` first if needed.
+
+### Backup Management
+```bash
+sdbx backup                         # Create timestamped backup
+sdbx backup list                    # List all backups with metadata
+sdbx backup restore <name>          # Restore from backup
+sdbx backup delete <name>           # Delete backup
+```
+
+Backups are stored in `./backups/` as tar.gz archives containing `.sdbx.yaml`, `.sdbx.lock`, `compose.yaml`, `secrets/`, and `configs/`.
 
 ## Testing Notes
 

@@ -101,7 +101,7 @@ func (h *IntegrationHandler) HandleRunIntegration(w http.ResponseWriter, r *http
 	// Create integrator
 	integrator := integrate.NewIntegrator(cfg)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Minute)
 	defer cancel()
 
 	// Run integrations
@@ -155,7 +155,7 @@ func (h *IntegrationHandler) HandleBackupPage(w http.ResponseWriter, r *http.Req
 func (h *IntegrationHandler) HandleListBackups(w http.ResponseWriter, r *http.Request) {
 	manager := backup.NewManager(h.projectDir)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
 
 	backups, err := manager.List(ctx)
@@ -192,7 +192,7 @@ func (h *IntegrationHandler) HandleListBackups(w http.ResponseWriter, r *http.Re
 func (h *IntegrationHandler) HandleCreateBackup(w http.ResponseWriter, r *http.Request) {
 	manager := backup.NewManager(h.projectDir)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Minute)
 	defer cancel()
 
 	b, err := manager.Create(ctx)
@@ -234,7 +234,7 @@ func (h *IntegrationHandler) HandleRestoreBackup(w http.ResponseWriter, r *http.
 
 	manager := backup.NewManager(h.projectDir)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Minute)
 	defer cancel()
 
 	if err := manager.Restore(ctx, backupName); err != nil {
@@ -264,7 +264,7 @@ func (h *IntegrationHandler) HandleDeleteBackup(w http.ResponseWriter, r *http.R
 
 	manager := backup.NewManager(h.projectDir)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
 
 	if err := manager.Delete(ctx, backupName); err != nil {

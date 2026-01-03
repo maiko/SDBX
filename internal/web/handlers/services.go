@@ -39,7 +39,7 @@ type ServiceResponse struct {
 
 // HandleServicesPage handles the services management page
 func (h *ServicesHandler) HandleServicesPage(w http.ResponseWriter, r *http.Request) {
-	ctx := context.Background()
+	ctx := r.Context()
 
 	// Get service status from Docker
 	dockerServices, err := h.compose.PS(ctx)
@@ -96,7 +96,7 @@ func (h *ServicesHandler) HandleServicesPage(w http.ResponseWriter, r *http.Requ
 
 // HandleGetServices handles GET /api/services - returns service list as JSON
 func (h *ServicesHandler) HandleGetServices(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
 	// Get service status from Docker
@@ -167,7 +167,7 @@ func (h *ServicesHandler) HandleStartService(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
 
 	// Start the service
@@ -199,7 +199,7 @@ func (h *ServicesHandler) HandleStopService(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
 
 	// Stop the service
@@ -231,7 +231,7 @@ func (h *ServicesHandler) HandleRestartService(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
 	defer cancel()
 
 	// Restart the service

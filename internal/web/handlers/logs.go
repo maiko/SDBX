@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -53,8 +54,8 @@ func (h *LogsHandler) HandleLogsPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get service info from registry
-	ctx := context.Background()
+	// Get service info from registry - use request context for cancellation
+	ctx := r.Context()
 	services, err := h.registry.ListServices(ctx)
 	if err != nil {
 		http.Error(w, "Failed to load services", http.StatusInternalServerError)
@@ -98,14 +99,24 @@ func (h *LogsHandler) HandleLogStream(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	// Create context with cancellation
-	ctx, cancel := context.WithCancel(context.Background())
+	// Mutex to protect concurrent WebSocket writes
+	var wsMu sync.Mutex
+
+	// Helper function for safe WebSocket writes
+	writeJSON := func(v interface{}) error {
+		wsMu.Lock()
+		defer wsMu.Unlock()
+		return conn.WriteJSON(v)
+	}
+
+	// Create context with cancellation - use request context as parent
+	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 
 	// Start streaming logs
 	cmd, err := h.compose.LogsStream(ctx, serviceName, 100)
 	if err != nil {
-		conn.WriteJSON(map[string]string{
+		writeJSON(map[string]string{
 			"error": fmt.Sprintf("Failed to start log stream: %v", err),
 		})
 		return
@@ -113,7 +124,7 @@ func (h *LogsHandler) HandleLogStream(w http.ResponseWriter, r *http.Request) {
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		conn.WriteJSON(map[string]string{
+		writeJSON(map[string]string{
 			"error": fmt.Sprintf("Failed to get stdout pipe: %v", err),
 		})
 		return
@@ -121,21 +132,36 @@ func (h *LogsHandler) HandleLogStream(w http.ResponseWriter, r *http.Request) {
 
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		conn.WriteJSON(map[string]string{
+		writeJSON(map[string]string{
 			"error": fmt.Sprintf("Failed to get stderr pipe: %v", err),
 		})
 		return
 	}
 
 	if err := cmd.Start(); err != nil {
-		conn.WriteJSON(map[string]string{
+		writeJSON(map[string]string{
 			"error": fmt.Sprintf("Failed to start command: %v", err),
 		})
 		return
 	}
 
+	// Ensure process is always cleaned up
+	defer func() {
+		cancel() // Cancel context first
+		// Kill the process if still running and wait for cleanup
+		if cmd.Process != nil {
+			cmd.Process.Kill()
+		}
+		cmd.Wait()
+	}()
+
+	// WaitGroup to track streaming goroutines
+	var wg sync.WaitGroup
+
 	// Handle client disconnection
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		for {
 			if _, _, err := conn.ReadMessage(); err != nil {
 				cancel() // Cancel context to stop log streaming
@@ -145,39 +171,53 @@ func (h *LogsHandler) HandleLogStream(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	// Stream stdout
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
-			msg := LogMessage{
-				Timestamp: time.Now().Format("15:04:05"),
-				Service:   serviceName,
-				Line:      scanner.Text(),
-			}
-			if err := conn.WriteJSON(msg); err != nil {
-				cancel()
+			select {
+			case <-ctx.Done():
 				return
+			default:
+				msg := LogMessage{
+					Timestamp: time.Now().Format("15:04:05"),
+					Service:   serviceName,
+					Line:      scanner.Text(),
+				}
+				if err := writeJSON(msg); err != nil {
+					cancel()
+					return
+				}
 			}
 		}
 	}()
 
 	// Stream stderr
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		scanner := bufio.NewScanner(stderr)
 		for scanner.Scan() {
-			msg := LogMessage{
-				Timestamp: time.Now().Format("15:04:05"),
-				Service:   serviceName,
-				Line:      scanner.Text(),
-			}
-			if err := conn.WriteJSON(msg); err != nil {
-				cancel()
+			select {
+			case <-ctx.Done():
 				return
+			default:
+				msg := LogMessage{
+					Timestamp: time.Now().Format("15:04:05"),
+					Service:   serviceName,
+					Line:      scanner.Text(),
+				}
+				if err := writeJSON(msg); err != nil {
+					cancel()
+					return
+				}
 			}
 		}
 	}()
 
-	// Wait for command to finish
-	cmd.Wait()
+	// Wait for all goroutines to finish
+	wg.Wait()
 }
 
 // HandleGetLogs handles HTTP GET for recent logs
@@ -188,7 +228,8 @@ func (h *LogsHandler) HandleGetLogs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	// Use request context as parent for proper cancellation
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
 	// Get last 100 lines

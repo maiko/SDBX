@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
@@ -320,7 +319,7 @@ func (h *SetupHandler) HandleAddons(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// GET: Load addons from registry
-	ctx := context.Background()
+	ctx := r.Context()
 	services, err := h.registry.ListServices(ctx)
 	if err != nil {
 		http.Error(w, "Failed to load addons", http.StatusInternalServerError)

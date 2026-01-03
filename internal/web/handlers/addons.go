@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -48,7 +47,7 @@ type AddonResponse struct {
 
 // HandleAddonsPage handles the addons catalog page
 func (h *AddonsHandler) HandleAddonsPage(w http.ResponseWriter, r *http.Request) {
-	ctx := context.Background()
+	ctx := r.Context()
 
 	// Load config to check enabled addons
 	cfg, err := config.Load()
@@ -104,7 +103,7 @@ func (h *AddonsHandler) HandleSearchAddons(w http.ResponseWriter, r *http.Reques
 	query := r.URL.Query().Get("q")
 	category := r.URL.Query().Get("category")
 
-	ctx := context.Background()
+	ctx := r.Context()
 
 	var categoryFilter registry.ServiceCategory
 	if category != "" {
@@ -156,7 +155,7 @@ func (h *AddonsHandler) HandleEnableAddon(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	ctx := context.Background()
+	ctx := r.Context()
 
 	// Validate addon exists in registry
 	def, _, err := h.registry.GetService(ctx, addonName)
