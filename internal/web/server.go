@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -187,10 +188,38 @@ func (s *Server) loadTemplates() error {
 		},
 	}
 
-	tmpl, err := template.New("").Funcs(funcMap).ParseFS(templatesFS, "templates/**/*.html")
+	tmpl := template.New("").Funcs(funcMap)
+
+	// Walk the embedded filesystem to find all .html files
+	// Note: ParseFS with "**" glob doesn't work in Go - must walk manually
+	err := fs.WalkDir(templatesFS, "templates", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		// Only process .html files
+		if strings.HasSuffix(path, ".html") {
+			content, err := fs.ReadFile(templatesFS, path)
+			if err != nil {
+				return fmt.Errorf("failed to read template %s: %w", path, err)
+			}
+			// Strip "templates/" prefix so handlers can use shorter paths
+			// e.g., "templates/pages/setup/welcome.html" -> "pages/setup/welcome.html"
+			templateName := strings.TrimPrefix(path, "templates/")
+			_, err = tmpl.New(templateName).Parse(string(content))
+			if err != nil {
+				return fmt.Errorf("failed to parse template %s: %w", path, err)
+			}
+		}
+		return nil
+	})
+
 	if err != nil {
-		return fmt.Errorf("failed to parse templates: %w", err)
+		return fmt.Errorf("failed to load templates: %w", err)
 	}
+
 	s.templates = tmpl
 	return nil
 }
