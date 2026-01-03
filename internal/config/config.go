@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -138,9 +139,13 @@ func (c *Config) Validate() error {
 		return NewValidationError("domain", "invalid domain format")
 	}
 
-	// Timezone validation (basic check - just ensure it's not empty)
+	// Timezone validation - must be a valid IANA timezone
 	if c.Timezone == "" {
 		return NewValidationError("timezone", "timezone is required")
+	}
+	if _, err := time.LoadLocation(c.Timezone); err != nil {
+		return NewValidationError("timezone",
+			fmt.Sprintf("invalid timezone %q - must be a valid IANA timezone (e.g., America/New_York, Europe/London)", c.Timezone))
 	}
 
 	// Expose mode validation
