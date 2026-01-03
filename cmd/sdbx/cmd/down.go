@@ -10,22 +10,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	downVolumes bool
-)
-
 var downCmd = &cobra.Command{
 	Use:   "down",
 	Short: "Stop all SDBX services",
-	Long: `Stop all running SDBX services.
-
-By default, volumes are preserved. Use --volumes to remove them as well.`,
-	RunE: runDown,
+	Long:  `Stop all running SDBX services.`,
+	RunE:  runDown,
 }
 
 func init() {
 	rootCmd.AddCommand(downCmd)
-	downCmd.Flags().BoolVarP(&downVolumes, "volumes", "v", false, "Remove volumes as well")
 }
 
 func runDown(_ *cobra.Command, args []string) error {

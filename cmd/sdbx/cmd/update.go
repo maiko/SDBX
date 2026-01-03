@@ -8,6 +8,7 @@ import (
 
 	"github.com/maiko/sdbx/internal/config"
 	"github.com/maiko/sdbx/internal/docker"
+	"github.com/maiko/sdbx/internal/registry"
 	"github.com/maiko/sdbx/internal/tui"
 	"github.com/spf13/cobra"
 )
@@ -75,17 +76,10 @@ func runUpdate(_ *cobra.Command, args []string) error {
 	} else {
 		fmt.Println(tui.InfoStyle.Render("Restarting services (ordered)..."))
 
-		// Restart in dependency order
-		services := []string{
-			"traefik",
-			"authelia",
-			"gluetun",
-			"qbittorrent",
-			"prowlarr",
-			"radarr",
-			"sonarr",
-			"plex",
-			"homepage",
+		// Get enabled services from registry in dependency order
+		services, err := getEnabledServicesOrdered(ctx, projectDir)
+		if err != nil {
+			return fmt.Errorf("failed to get enabled services: %w", err)
 		}
 
 		for _, svc := range services {
@@ -118,4 +112,27 @@ func runUpdate(_ *cobra.Command, args []string) error {
 	fmt.Println(tui.MutedStyle.Render("Run 'sdbx status' to verify all services are healthy"))
 
 	return nil
+}
+
+// getEnabledServicesOrdered returns enabled services in dependency order
+func getEnabledServicesOrdered(ctx context.Context, projectDir string) ([]string, error) {
+	// Load config
+	cfg, err := config.Load()
+	if err != nil {
+		cfg = config.DefaultConfig()
+	}
+
+	// Get registry
+	reg, err := registry.NewWithDefaults()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create registry: %w", err)
+	}
+
+	// Resolve services based on config
+	graph, err := reg.Resolve(ctx, cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve services: %w", err)
+	}
+
+	return graph.Order, nil
 }

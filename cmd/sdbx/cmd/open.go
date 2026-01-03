@@ -1,11 +1,15 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 	"runtime"
+	"sort"
+	"strings"
 
 	"github.com/maiko/sdbx/internal/config"
+	"github.com/maiko/sdbx/internal/registry"
 	"github.com/maiko/sdbx/internal/tui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -27,36 +31,55 @@ func init() {
 	rootCmd.AddCommand(openCmd)
 }
 
-// Service URL mappings
-var serviceURLs = map[string]string{
-	"plex":        "https://plex.%s",
-	"radarr":      "https://radarr.%s",
-	"sonarr":      "https://sonarr.%s",
-	"prowlarr":    "https://prowlarr.%s",
-	"lidarr":      "https://lidarr.%s",
-	"readarr":     "https://readarr.%s",
-	"bazarr":      "https://bazarr.%s",
-	"qbittorrent": "https://qbt.%s",
-	"qbt":         "https://qbt.%s",
-	"overseerr":   "https://overseerr.%s",
-	"wizarr":      "https://wizarr.%s",
-	"tautulli":    "https://tautulli.%s",
-	"authelia":    "https://auth.%s",
-	"auth":        "https://auth.%s",
-	"homepage":    "https://home.%s",
-	"home":        "https://home.%s",
+// serviceURLInfo holds URL information for a service
+type serviceURLInfo struct {
+	Name     string
+	URL      string
+	Category string
 }
 
 func runOpen(_ *cobra.Command, args []string) error {
+	cfg, err := config.Load()
+	if err != nil {
+		cfg = config.DefaultConfig()
+	}
+
 	domain := viper.GetString("domain")
-	if domain == "" {
-		cfg, err := config.Load()
-		if err == nil {
-			domain = cfg.Domain
-		}
+	if domain == "" && cfg != nil {
+		domain = cfg.Domain
 	}
 	if domain == "" {
-		domain = "sdbx.example.com"
+		return fmt.Errorf("no domain configured. Run 'sdbx init' first")
+	}
+
+	ctx := context.Background()
+
+	// Get enabled services from registry
+	services, err := getEnabledServicesWithRouting(ctx, cfg)
+	if err != nil {
+		return fmt.Errorf("failed to get services: %w", err)
+	}
+
+	// Build URL map for lookup and display
+	urlMap := make(map[string]serviceURLInfo)
+	for _, svc := range services {
+		url := cfg.GetServiceURL(svc.Name)
+		if url != "" {
+			urlMap[svc.Name] = serviceURLInfo{
+				Name:     svc.Name,
+				URL:      url,
+				Category: string(svc.Category),
+			}
+			// Add common aliases
+			switch svc.Name {
+			case "qbittorrent":
+				urlMap["qbt"] = urlMap[svc.Name]
+			case "authelia":
+				urlMap["auth"] = urlMap[svc.Name]
+			case "homepage":
+				urlMap["home"] = urlMap[svc.Name]
+			}
+		}
 	}
 
 	// No args - list all URLs
@@ -64,59 +87,96 @@ func runOpen(_ *cobra.Command, args []string) error {
 		fmt.Println(tui.TitleStyle.Render("SDBX Service URLs"))
 		fmt.Println()
 
-		// Core services
-		fmt.Println(tui.InfoStyle.Render("Core:"))
-		fmt.Printf("  %-14s %s\n", "Homepage", fmt.Sprintf("https://home.%s", domain))
-		fmt.Printf("  %-14s %s\n", "Authelia", fmt.Sprintf("https://auth.%s", domain))
-		fmt.Println()
+		// Group services by category
+		categories := map[string][]serviceURLInfo{
+			"auth":       {},
+			"networking": {},
+			"media":      {},
+			"downloads":  {},
+			"management": {},
+			"utility":    {},
+		}
 
-		// Media
-		fmt.Println(tui.InfoStyle.Render("Media:"))
-		fmt.Printf("  %-14s %s\n", "Plex", fmt.Sprintf("https://plex.%s", domain))
-		fmt.Printf("  %-14s %s\n", "Radarr", fmt.Sprintf("https://radarr.%s", domain))
-		fmt.Printf("  %-14s %s\n", "Sonarr", fmt.Sprintf("https://sonarr.%s", domain))
-		fmt.Printf("  %-14s %s\n", "Prowlarr", fmt.Sprintf("https://prowlarr.%s", domain))
-		fmt.Println()
-
-		// Downloads
-		fmt.Println(tui.InfoStyle.Render("Downloads:"))
-		fmt.Printf("  %-14s %s\n", "qBittorrent", fmt.Sprintf("https://qbt.%s", domain))
-		fmt.Println()
-
-		// Optional - check config for enabled addons
-		cfg, _ := config.Load()
-		if cfg != nil {
-			enabledAddons := false
-			for _, addon := range []string{"overseerr", "wizarr", "tautulli", "lidarr", "readarr", "bazarr"} {
-				if cfg.IsAddonEnabled(addon) {
-					if !enabledAddons {
-						fmt.Println(tui.InfoStyle.Render("Addons:"))
-						enabledAddons = true
-					}
-					if url, ok := serviceURLs[addon]; ok {
-						fmt.Printf("  %-14s %s\n", addon, fmt.Sprintf(url, domain))
-					}
+		for _, svc := range services {
+			if info, ok := urlMap[svc.Name]; ok {
+				cat := strings.ToLower(info.Category)
+				if _, exists := categories[cat]; exists {
+					categories[cat] = append(categories[cat], info)
+				} else {
+					categories["utility"] = append(categories["utility"], info)
 				}
 			}
-			if enabledAddons {
-				fmt.Println()
+		}
+
+		// Display in order
+		categoryOrder := []string{"auth", "networking", "media", "downloads", "management", "utility"}
+		categoryNames := map[string]string{
+			"auth":       "Authentication",
+			"networking": "Networking",
+			"media":      "Media",
+			"downloads":  "Downloads",
+			"management": "Management",
+			"utility":    "Utility",
+		}
+
+		for _, cat := range categoryOrder {
+			svcs := categories[cat]
+			if len(svcs) == 0 {
+				continue
 			}
+
+			// Sort services in category by name
+			sort.Slice(svcs, func(i, j int) bool {
+				return svcs[i].Name < svcs[j].Name
+			})
+
+			fmt.Println(tui.InfoStyle.Render(categoryNames[cat] + ":"))
+			for _, svc := range svcs {
+				fmt.Printf("  %-14s %s\n", svc.Name, svc.URL)
+			}
+			fmt.Println()
 		}
 
 		return nil
 	}
 
 	// Open specific service
-	service := args[0]
-	urlPattern, ok := serviceURLs[service]
+	service := strings.ToLower(args[0])
+	info, ok := urlMap[service]
 	if !ok {
-		return fmt.Errorf("unknown service: %s\nRun 'sdbx open' to see available services", service)
+		return fmt.Errorf("unknown or not enabled service: %s\nRun 'sdbx open' to see available services", service)
 	}
 
-	url := fmt.Sprintf(urlPattern, domain)
-	fmt.Printf("Opening %s...\n", url)
+	fmt.Printf("Opening %s...\n", info.URL)
+	return openBrowser(info.URL)
+}
 
-	return openBrowser(url)
+// getEnabledServicesWithRouting returns enabled services that have routing enabled
+func getEnabledServicesWithRouting(ctx context.Context, cfg *config.Config) ([]registry.ServiceInfo, error) {
+	reg, err := registry.NewWithDefaults()
+	if err != nil {
+		return nil, err
+	}
+
+	graph, err := reg.Resolve(ctx, cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []registry.ServiceInfo
+	for _, name := range graph.Order {
+		svc := graph.Services[name]
+		if svc != nil && svc.Definition.Routing.Enabled {
+			result = append(result, registry.ServiceInfo{
+				Name:        svc.Definition.Metadata.Name,
+				Description: svc.Definition.Metadata.Description,
+				Category:    svc.Definition.Metadata.Category,
+				IsAddon:     svc.Definition.Conditions.RequireAddon,
+			})
+		}
+	}
+
+	return result, nil
 }
 
 // openBrowser opens the specified URL in the default browser

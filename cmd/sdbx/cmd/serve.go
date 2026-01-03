@@ -8,9 +8,8 @@ import (
 )
 
 var (
-	serveHost   string
-	servePort   int
-	serveNoOpen bool
+	serveHost string
+	servePort int
 )
 
 var serveCmd = &cobra.Command{
@@ -36,7 +35,6 @@ func init() {
 
 	serveCmd.Flags().StringVar(&serveHost, "host", "0.0.0.0", "Host to bind to (0.0.0.0 for all interfaces)")
 	serveCmd.Flags().IntVarP(&servePort, "port", "p", 3000, "Port to listen on")
-	serveCmd.Flags().BoolVar(&serveNoOpen, "no-open", false, "Don't open browser automatically")
 }
 
 func runServe(cmd *cobra.Command, args []string) error {
