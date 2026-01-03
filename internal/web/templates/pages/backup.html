@@ -313,10 +313,18 @@
         toast.className = `toast ${type}`;
 
         const icon = type === 'success' ? '✓' : '✗';
-        toast.innerHTML = `
-            <span class="toast-icon">${icon}</span>
-            <span class="toast-message">${message}</span>
-        `;
+
+        // Use textContent to prevent XSS from API responses
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'toast-icon';
+        iconSpan.textContent = icon;
+
+        const msgSpan = document.createElement('span');
+        msgSpan.className = 'toast-message';
+        msgSpan.textContent = message;
+
+        toast.appendChild(iconSpan);
+        toast.appendChild(msgSpan);
 
         container.appendChild(toast);
 
@@ -333,47 +341,90 @@
             .then(response => response.json())
             .then(data => {
                 if (!data.success) {
-                    listDiv.innerHTML = `<p class="loading-text">Failed to load backups: ${data.message}</p>`;
+                    while (listDiv.firstChild) listDiv.removeChild(listDiv.firstChild);
+                    const p = document.createElement('p');
+                    p.className = 'loading-text';
+                    p.textContent = 'Failed to load backups: ' + data.message;
+                    listDiv.appendChild(p);
                     return;
                 }
 
                 if (!data.backups || data.backups.length === 0) {
-                    listDiv.innerHTML = `
-                        <div class="empty-state">
-                            <div class="empty-state-icon">📦</div>
-                            <p class="empty-state-text">No backups found. Create your first backup!</p>
-                        </div>
-                    `;
+                    while (listDiv.firstChild) listDiv.removeChild(listDiv.firstChild);
+                    const empty = document.createElement('div');
+                    empty.className = 'empty-state';
+                    const icon = document.createElement('div');
+                    icon.className = 'empty-state-icon';
+                    icon.textContent = '📦';
+                    const text = document.createElement('p');
+                    text.className = 'empty-state-text';
+                    text.textContent = 'No backups found. Create your first backup!';
+                    empty.appendChild(icon);
+                    empty.appendChild(text);
+                    listDiv.appendChild(empty);
                     return;
                 }
 
-                listDiv.innerHTML = '';
+                while (listDiv.firstChild) listDiv.removeChild(listDiv.firstChild);
                 data.backups.forEach(backup => {
                     const card = document.createElement('div');
                     card.className = 'backup-card';
-                    card.innerHTML = `
-                        <div class="backup-info">
-                            <div class="backup-name">${backup.name}</div>
-                            <div class="backup-meta">
-                                <span class="backup-meta-item">📅 ${backup.age}</span>
-                                <span class="backup-meta-item">💾 ${backup.sizeHuman}</span>
-                                <span class="backup-meta-item">🖥️ ${backup.hostname}</span>
-                            </div>
-                        </div>
-                        <div class="backup-actions">
-                            <button class="btn-sm btn-success" onclick="restoreBackup('${backup.name}')">
-                                ↻ Restore
-                            </button>
-                            <button class="btn-sm btn-danger" onclick="deleteBackup('${backup.name}')">
-                                ✗ Delete
-                            </button>
-                        </div>
-                    `;
+
+                    const info = document.createElement('div');
+                    info.className = 'backup-info';
+
+                    const nameDiv = document.createElement('div');
+                    nameDiv.className = 'backup-name';
+                    nameDiv.textContent = backup.name;
+
+                    const meta = document.createElement('div');
+                    meta.className = 'backup-meta';
+
+                    const ageSpan = document.createElement('span');
+                    ageSpan.className = 'backup-meta-item';
+                    ageSpan.textContent = '📅 ' + backup.age;
+
+                    const sizeSpan = document.createElement('span');
+                    sizeSpan.className = 'backup-meta-item';
+                    sizeSpan.textContent = '💾 ' + backup.sizeHuman;
+
+                    const hostSpan = document.createElement('span');
+                    hostSpan.className = 'backup-meta-item';
+                    hostSpan.textContent = '🖥️ ' + backup.hostname;
+
+                    meta.appendChild(ageSpan);
+                    meta.appendChild(sizeSpan);
+                    meta.appendChild(hostSpan);
+                    info.appendChild(nameDiv);
+                    info.appendChild(meta);
+
+                    const actions = document.createElement('div');
+                    actions.className = 'backup-actions';
+
+                    const restoreBtn = document.createElement('button');
+                    restoreBtn.className = 'btn-sm btn-success';
+                    restoreBtn.textContent = '↻ Restore';
+                    restoreBtn.addEventListener('click', () => restoreBackup(backup.name));
+
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'btn-sm btn-danger';
+                    deleteBtn.textContent = '✗ Delete';
+                    deleteBtn.addEventListener('click', () => deleteBackup(backup.name));
+
+                    actions.appendChild(restoreBtn);
+                    actions.appendChild(deleteBtn);
+
+                    card.appendChild(info);
+                    card.appendChild(actions);
                     listDiv.appendChild(card);
                 });
             })
             .catch(error => {
-                listDiv.innerHTML = `<p class="loading-text">Error loading backups: ${error}</p>`;
+                while (listDiv.firstChild) listDiv.removeChild(listDiv.firstChild);
+                const p = document.createElement('p');
+                p.className = 'loading-text';
+                p.textContent = 'Error loading backups: ' + error;
+                listDiv.appendChild(p);
             });
     }
 
