@@ -315,3 +315,257 @@ func TestValidationError(t *testing.T) {
 		t.Errorf("ValidationError.Error() = %s, want %s", err.Error(), expectedMsg)
 	}
 }
+
+func TestGetServiceRoutingStrategy(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.Routing.Strategy = "subdomain"
+
+	// Default: use global strategy
+	if cfg.GetServiceRoutingStrategy("sonarr") != "subdomain" {
+		t.Error("should return global strategy for service without override")
+	}
+
+	// With override
+	cfg.Services["radarr"] = ServiceOverride{Routing: "path"}
+	if cfg.GetServiceRoutingStrategy("radarr") != "path" {
+		t.Error("should return override strategy")
+	}
+
+	// Empty override should fall back to global
+	cfg.Services["lidarr"] = ServiceOverride{Routing: ""}
+	if cfg.GetServiceRoutingStrategy("lidarr") != "subdomain" {
+		t.Error("should return global strategy for empty override")
+	}
+}
+
+func TestGetServiceSubdomain(t *testing.T) {
+	cfg := DefaultConfig()
+
+	// Default: use service name
+	if cfg.GetServiceSubdomain("sonarr") != "sonarr" {
+		t.Error("should return service name as subdomain")
+	}
+
+	// With override
+	cfg.Services["overseerr"] = ServiceOverride{Subdomain: "requests"}
+	if cfg.GetServiceSubdomain("overseerr") != "requests" {
+		t.Error("should return custom subdomain")
+	}
+}
+
+func TestGetServicePath(t *testing.T) {
+	cfg := DefaultConfig()
+
+	// Default: /service-name
+	if cfg.GetServicePath("sonarr") != "/sonarr" {
+		t.Error("should return /service-name as path")
+	}
+
+	// With override
+	cfg.Services["radarr"] = ServiceOverride{Path: "/movies"}
+	if cfg.GetServicePath("radarr") != "/movies" {
+		t.Error("should return custom path")
+	}
+}
+
+func TestGetServiceURL(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.Domain = "example.com"
+	cfg.Routing.Strategy = "subdomain"
+
+	// Subdomain routing
+	url := cfg.GetServiceURL("sonarr")
+	if url != "https://sonarr.example.com" {
+		t.Errorf("subdomain URL = %s, want https://sonarr.example.com", url)
+	}
+
+	// Path routing
+	cfg.Routing.Strategy = "path"
+	cfg.Routing.BaseDomain = "apps"
+	url = cfg.GetServiceURL("radarr")
+	if url != "https://apps.example.com/radarr" {
+		t.Errorf("path URL = %s, want https://apps.example.com/radarr", url)
+	}
+
+	// Path routing without base domain
+	cfg.Routing.BaseDomain = ""
+	url = cfg.GetServiceURL("lidarr")
+	if url != "https://example.com/lidarr" {
+		t.Errorf("path URL without base = %s, want https://example.com/lidarr", url)
+	}
+
+	// Custom subdomain override
+	cfg.Routing.Strategy = "subdomain"
+	cfg.Services["overseerr"] = ServiceOverride{Subdomain: "requests"}
+	url = cfg.GetServiceURL("overseerr")
+	if url != "https://requests.example.com" {
+		t.Errorf("custom subdomain URL = %s, want https://requests.example.com", url)
+	}
+}
+
+func TestIsPathRouting(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.Routing.Strategy = "subdomain"
+
+	if cfg.IsPathRouting("sonarr") {
+		t.Error("should return false for subdomain routing")
+	}
+
+	cfg.Routing.Strategy = "path"
+	if !cfg.IsPathRouting("sonarr") {
+		t.Error("should return true for path routing")
+	}
+
+	// Service override
+	cfg.Services["radarr"] = ServiceOverride{Routing: "subdomain"}
+	if cfg.IsPathRouting("radarr") {
+		t.Error("should return false for service with subdomain override")
+	}
+}
+
+func TestNeedsTLS(t *testing.T) {
+	cfg := DefaultConfig()
+
+	cfg.Expose.Mode = ExposeModeDirect
+	if !cfg.NeedsTLS() {
+		t.Error("direct mode should need TLS")
+	}
+
+	cfg.Expose.Mode = ExposeModeCloudflared
+	if cfg.NeedsTLS() {
+		t.Error("cloudflared mode should not need TLS")
+	}
+
+	cfg.Expose.Mode = ExposeModeLAN
+	if cfg.NeedsTLS() {
+		t.Error("lan mode should not need TLS")
+	}
+}
+
+func TestIsCloudflared(t *testing.T) {
+	cfg := DefaultConfig()
+
+	cfg.Expose.Mode = ExposeModeCloudflared
+	if !cfg.IsCloudflared() {
+		t.Error("should return true for cloudflared mode")
+	}
+
+	cfg.Expose.Mode = ExposeModeDirect
+	if cfg.IsCloudflared() {
+		t.Error("should return false for direct mode")
+	}
+}
+
+func TestIsLANMode(t *testing.T) {
+	cfg := DefaultConfig()
+
+	cfg.Expose.Mode = ExposeModeLAN
+	if !cfg.IsLANMode() {
+		t.Error("should return true for lan mode")
+	}
+
+	cfg.Expose.Mode = ExposeModeCloudflared
+	if cfg.IsLANMode() {
+		t.Error("should return false for cloudflared mode")
+	}
+}
+
+func TestSaveConfig(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, ".sdbx.yaml")
+
+	cfg := DefaultConfig()
+	cfg.Domain = "test.example.com"
+	cfg.Addons = []string{"sonarr", "radarr"}
+
+	err := cfg.Save(configPath)
+	if err != nil {
+		t.Fatalf("Save failed: %v", err)
+	}
+
+	// Verify file was created
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		t.Error("config file should exist after save")
+	}
+}
+
+func TestTimezoneValidation(t *testing.T) {
+	tests := []struct {
+		name     string
+		timezone string
+		wantErr  bool
+	}{
+		{"valid UTC", "UTC", false},
+		{"valid America/New_York", "America/New_York", false},
+		{"valid Europe/London", "Europe/London", false},
+		{"valid Asia/Tokyo", "Asia/Tokyo", false},
+		{"invalid timezone", "Invalid/Timezone", true},
+		{"empty timezone", "", true},
+		{"random string", "not-a-timezone", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := DefaultConfig()
+			cfg.Timezone = tt.timezone
+
+			err := cfg.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Validate() with timezone %q error = %v, wantErr %v", tt.timezone, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestContainsHelper(t *testing.T) {
+	slice := []string{"a", "b", "c"}
+
+	if !contains(slice, "a") {
+		t.Error("should find 'a' in slice")
+	}
+
+	if !contains(slice, "c") {
+		t.Error("should find 'c' in slice")
+	}
+
+	if contains(slice, "d") {
+		t.Error("should not find 'd' in slice")
+	}
+
+	if contains([]string{}, "a") {
+		t.Error("should not find anything in empty slice")
+	}
+}
+
+func TestDomainValidation(t *testing.T) {
+	tests := []struct {
+		domain  string
+		wantErr bool
+	}{
+		{"example.com", false},
+		{"sub.example.com", false},
+		{"a.b.c.example.com", false},
+		{"my-domain.io", false},
+		{"example123.com", false},
+		{"", true},
+		{"invalid", true},
+		{"invalid_domain.com", true},
+		{"-invalid.com", true},
+		{"invalid-.com", true},
+		{".com", true},
+		{"example.", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.domain, func(t *testing.T) {
+			cfg := DefaultConfig()
+			cfg.Domain = tt.domain
+
+			err := cfg.Validate()
+			hasErr := err != nil
+			if hasErr != tt.wantErr {
+				t.Errorf("domain %q: error = %v, wantErr = %v", tt.domain, err, tt.wantErr)
+			}
+		})
+	}
+}
