@@ -122,7 +122,6 @@ func (g *IntegrationsGenerator) GenerateHomepageServices(graph *registry.Resolut
 
 // CloudflaredConfig represents cloudflared config.yml
 type CloudflaredConfig struct {
-	Tunnel  string            `yaml:"tunnel"`
 	Ingress []CloudflaredRule `yaml:"ingress"`
 }
 
@@ -135,9 +134,11 @@ type CloudflaredRule struct {
 // GenerateCloudflaredConfig generates cloudflared config.yml content
 func (g *IntegrationsGenerator) GenerateCloudflaredConfig(graph *registry.ResolutionGraph) ([]byte, error) {
 	cfg := CloudflaredConfig{
-		Tunnel:  "sdbx",
 		Ingress: []CloudflaredRule{},
 	}
+
+	// Track unique hostnames to avoid duplicates
+	seenHostnames := make(map[string]bool)
 
 	// Process services
 	for _, serviceName := range graph.Order {
@@ -170,6 +171,12 @@ func (g *IntegrationsGenerator) GenerateCloudflaredConfig(graph *registry.Resolu
 		} else {
 			hostname = fmt.Sprintf("%s.%s", g.Config.Routing.BaseDomain, g.Config.Domain)
 		}
+
+		// Skip if we've already seen this hostname
+		if seenHostnames[hostname] {
+			continue
+		}
+		seenHostnames[hostname] = true
 
 		cfg.Ingress = append(cfg.Ingress, CloudflaredRule{
 			Hostname: hostname,
