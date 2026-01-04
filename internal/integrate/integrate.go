@@ -15,7 +15,7 @@ import (
 // arrConfig represents the structure of *arr config.xml files
 type arrConfig struct {
 	XMLName xml.Name `xml:"Config"`
-	ApiKey  string   `xml:"ApiKey"`
+	APIKey  string   `xml:"ApiKey"`
 }
 
 // Integrator orchestrates service integrations
@@ -275,7 +275,10 @@ func (i *Integrator) integrateQBittorrent(ctx context.Context) []*IntegrationRes
 }
 
 // addQBittorrentToArr adds qBittorrent as download client to *arr app
-func (i *Integrator) addQBittorrentToArr(ctx context.Context, qbit *QBittorrentClient, appName string, arrSvc *ServiceConfig, qbitCfg *QBittorrentConfig) *IntegrationResult {
+func (i *Integrator) addQBittorrentToArr(
+	ctx context.Context, qbit *QBittorrentClient, appName string,
+	arrSvc *ServiceConfig, qbitCfg *QBittorrentConfig,
+) *IntegrationResult {
 	arr := NewArrClient(i.httpClient, arrSvc)
 
 	// Get existing download clients
@@ -385,11 +388,11 @@ func LoadServicesFromConfig(projectDir string) (map[string]*ServiceConfig, error
 			return "", fmt.Errorf("failed to parse config.xml: %w", err)
 		}
 
-		if cfg.ApiKey == "" {
+		if cfg.APIKey == "" {
 			return "", fmt.Errorf("api key not found in config")
 		}
 
-		return cfg.ApiKey, nil
+		return cfg.APIKey, nil
 	}
 
 	// Prowlarr

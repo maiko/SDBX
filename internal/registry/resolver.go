@@ -76,7 +76,7 @@ func (r *Resolver) Resolve(ctx context.Context, cfg *config.Config) (*Resolution
 }
 
 // determineEnabledServices determines which services should be enabled
-func (r *Resolver) determineEnabledServices(ctx context.Context, cfg *config.Config, serviceMap map[string]ServiceInfo) map[string]bool {
+func (r *Resolver) determineEnabledServices(_ context.Context, cfg *config.Config, serviceMap map[string]ServiceInfo) map[string]bool {
 	enabled := make(map[string]bool)
 
 	for name, svc := range serviceMap {
@@ -116,11 +116,8 @@ func (r *Resolver) resolveService(ctx context.Context, cfg *config.Config, graph
 	// Calculate definition hash
 	hash := r.calculateHash(def)
 
-	// Look for overrides
-	overrides, err := r.loadOverrides(ctx, serviceName)
-	if err != nil {
-		// Overrides are optional, just log warning
-	}
+	// Look for overrides (optional, ignore errors)
+	overrides, _ := r.loadOverrides(ctx, serviceName)
 
 	// Merge overrides to get final definition
 	finalDef := def
@@ -242,7 +239,7 @@ func (r *Resolver) evaluateConditionString(condition string, cfg *config.Config)
 }
 
 // loadOverrides loads all overrides for a service
-func (r *Resolver) loadOverrides(ctx context.Context, serviceName string) ([]*ServiceOverride, error) {
+func (r *Resolver) loadOverrides(_ context.Context, serviceName string) ([]*ServiceOverride, error) {
 	var overrides []*ServiceOverride
 
 	// Get all sources and sort by priority (lowest first, so high priority wins when applied)

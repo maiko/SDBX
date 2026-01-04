@@ -139,7 +139,7 @@ func TestAuthPostInitDockerMode(t *testing.T) {
 	auth := NewAuth(true, true, "")
 
 	handler := auth.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user := r.Context().Value("user")
+		user := r.Context().Value(UserContextKey)
 		if user != "testuser" {
 			t.Errorf("expected user 'testuser' in context, got %v", user)
 		}

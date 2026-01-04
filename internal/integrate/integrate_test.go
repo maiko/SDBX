@@ -399,8 +399,8 @@ func TestArrConfigXMLParsing(t *testing.T) {
 		t.Fatalf("failed to unmarshal XML: %v", err)
 	}
 
-	if cfg.ApiKey != "test-api-key-12345" {
-		t.Errorf("expected API key 'test-api-key-12345', got %q", cfg.ApiKey)
+	if cfg.APIKey != "test-api-key-12345" {
+		t.Errorf("expected API key 'test-api-key-12345', got %q", cfg.APIKey)
 	}
 }
 
@@ -466,7 +466,7 @@ func TestIntegratorContextCancellation(t *testing.T) {
 	cancel() // Cancel immediately
 
 	_, err := integrator.Run(ctx)
-	// Should handle cancelled context gracefully
+	// Should handle canceled context gracefully
 	// The exact behavior depends on where cancellation is checked
 	_ = err // Error may or may not occur depending on timing
 }

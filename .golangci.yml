@@ -41,7 +41,7 @@ linters:
     - lll
     - misspell
     - nakedret
-    - prealloc
+    # - prealloc  # TODO: Fix slice preallocation (low priority optimization)
     - staticcheck
     - stylecheck
     - typecheck

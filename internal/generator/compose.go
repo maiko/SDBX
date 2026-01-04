@@ -139,11 +139,7 @@ func (g *ComposeGenerator) Generate(graph *registry.ResolutionGraph) (*ComposeFi
 		}
 
 		// Generate compose service
-		svc, err := g.generateService(def)
-		if err != nil {
-			return nil, fmt.Errorf("failed to generate service %s: %w", serviceName, err)
-		}
-
+		svc := g.generateService(def)
 		compose.Services[serviceName] = svc
 
 		// Collect secrets
@@ -158,7 +154,7 @@ func (g *ComposeGenerator) Generate(graph *registry.ResolutionGraph) (*ComposeFi
 }
 
 // generateService generates a single compose service
-func (g *ComposeGenerator) generateService(def *registry.ServiceDefinition) (ComposeService, error) {
+func (g *ComposeGenerator) generateService(def *registry.ServiceDefinition) ComposeService {
 	ctx := TemplateContext{
 		Config:  g.Config,
 		Secrets: g.Secrets,
@@ -213,7 +209,7 @@ func (g *ComposeGenerator) generateService(def *registry.ServiceDefinition) (Com
 		svc.Secrets = append(svc.Secrets, secret.Name)
 	}
 
-	return svc, nil
+	return svc
 }
 
 // resolveImage builds the full image reference
@@ -362,7 +358,7 @@ func (g *ComposeGenerator) buildLabels(def *registry.ServiceDefinition, ctx Temp
 }
 
 // buildTraefikLabels generates Traefik routing labels
-func (g *ComposeGenerator) buildTraefikLabels(def *registry.ServiceDefinition, ctx TemplateContext) []string {
+func (g *ComposeGenerator) buildTraefikLabels(def *registry.ServiceDefinition, _ TemplateContext) []string {
 	var labels []string
 	name := def.Metadata.Name
 

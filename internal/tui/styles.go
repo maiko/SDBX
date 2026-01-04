@@ -175,7 +175,7 @@ func RenderSuccessBox(title, message string) string {
 		Render(
 			lipgloss.JoinVertical(
 				lipgloss.Left,
-				SuccessStyle.Copy().Foreground(ColorSuccess).Bold(true).Render(IconSuccess+" "+title),
+				SuccessStyle.Foreground(ColorSuccess).Bold(true).Render(IconSuccess+" "+title),
 				"",
 				lipgloss.NewStyle().Foreground(ColorWhite).Render(message),
 			),
@@ -192,7 +192,7 @@ func RenderInfoBox(title, message string) string {
 		Render(
 			lipgloss.JoinVertical(
 				lipgloss.Left,
-				InfoStyle.Copy().Bold(true).Render(IconInfo+" "+title),
+				InfoStyle.Bold(true).Render(IconInfo+" "+title),
 				"",
 				lipgloss.NewStyle().Foreground(ColorWhite).Render(message),
 			),
@@ -209,7 +209,7 @@ func RenderErrorBox(title, message string) string {
 		Render(
 			lipgloss.JoinVertical(
 				lipgloss.Left,
-				ErrorStyle.Copy().Bold(true).Render(IconError+" "+title),
+				ErrorStyle.Bold(true).Render(IconError+" "+title),
 				"",
 				lipgloss.NewStyle().Foreground(ColorWhite).Render(message),
 			),
@@ -226,7 +226,7 @@ func RenderWarningBox(title, message string) string {
 		Render(
 			lipgloss.JoinVertical(
 				lipgloss.Left,
-				WarningStyle.Copy().Bold(true).Render(IconWarning+" "+title),
+				WarningStyle.Bold(true).Render(IconWarning+" "+title),
 				"",
 				lipgloss.NewStyle().Foreground(ColorWhite).Render(message),
 			),

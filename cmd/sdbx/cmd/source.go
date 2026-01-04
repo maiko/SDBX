@@ -93,10 +93,7 @@ func init() {
 }
 
 func runSourceList(_ *cobra.Command, _ []string) error {
-	cfg, err := loadSourceConfig()
-	if err != nil {
-		return err
-	}
+	cfg := loadSourceConfig()
 
 	// JSON output
 	if IsJSONOutput() {
@@ -139,10 +136,7 @@ func runSourceAdd(_ *cobra.Command, args []string) error {
 	name := args[0]
 	url := args[1]
 
-	cfg, err := loadSourceConfig()
-	if err != nil {
-		cfg = registry.DefaultSourceConfig()
-	}
+	cfg := loadSourceConfig()
 
 	// Check for duplicate
 	for _, src := range cfg.Sources {
@@ -184,10 +178,7 @@ func runSourceRemove(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("cannot remove built-in source: %s", name)
 	}
 
-	cfg, err := loadSourceConfig()
-	if err != nil {
-		return err
-	}
+	cfg := loadSourceConfig()
 
 	// Find and remove
 	found := false
@@ -377,16 +368,16 @@ func runSourceInfo(_ *cobra.Command, args []string) error {
 }
 
 // loadSourceConfig loads the source configuration
-func loadSourceConfig() (*registry.SourceConfig, error) {
+func loadSourceConfig() *registry.SourceConfig {
 	configPath := getSourceConfigPath()
 
 	loader := registry.NewLoader()
 	cfg, err := loader.LoadSourceConfig(configPath)
 	if err != nil {
-		return registry.DefaultSourceConfig(), nil
+		return registry.DefaultSourceConfig()
 	}
 
-	return cfg, nil
+	return cfg
 }
 
 // saveSourceConfig saves the source configuration

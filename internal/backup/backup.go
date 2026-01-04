@@ -135,7 +135,7 @@ func (m *Manager) createArchive(ctx context.Context, archivePath string, files [
 }
 
 // addToArchive adds a file or directory to the tar archive
-func (m *Manager) addToArchive(ctx context.Context, tw *tar.Writer, fullPath, archivePath string) error {
+func (m *Manager) addToArchive(_ context.Context, tw *tar.Writer, fullPath, archivePath string) error {
 	// Get file info
 	info, err := os.Stat(fullPath)
 	if err != nil {

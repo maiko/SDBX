@@ -115,7 +115,7 @@ func runUpdate(_ *cobra.Command, args []string) error {
 }
 
 // getEnabledServicesOrdered returns enabled services in dependency order
-func getEnabledServicesOrdered(ctx context.Context, projectDir string) ([]string, error) {
+func getEnabledServicesOrdered(ctx context.Context, _ string) ([]string, error) {
 	// Load config
 	cfg, err := config.Load()
 	if err != nil {

@@ -5,6 +5,12 @@ import (
 	"net/http"
 )
 
+// contextKey is a custom type for context keys to avoid collisions
+type contextKey string
+
+// UserContextKey is the context key for storing the authenticated user
+const UserContextKey contextKey = "user"
+
 // Auth middleware handles authentication based on deployment phase
 type Auth struct {
 	initialized bool
@@ -49,12 +55,10 @@ func (a *Auth) Middleware(next http.Handler) http.Handler {
 				return
 			}
 			// Add user to context
-			ctx := context.WithValue(r.Context(), "user", username)
+			ctx := context.WithValue(r.Context(), UserContextKey, username)
 			r = r.WithContext(ctx)
-		} else {
-			// Post-init standalone: Dev mode, no auth but log warning
-			// In production, this path should not be used
 		}
+		// Post-init standalone: Dev mode, no auth (warning logged elsewhere)
 
 		next.ServeHTTP(w, r)
 	})

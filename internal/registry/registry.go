@@ -444,8 +444,9 @@ func (r *Registry) DiffLockFiles(existing, current *LockFile) []LockFileDiff {
 		if currentSrc, exists := current.Sources[name]; exists {
 			if lockedSrc.Commit != currentSrc.Commit {
 				diffs = append(diffs, LockFileDiff{
-					Type:        "changed",
-					Description: fmt.Sprintf("Source %s: commit changed from %s to %s", name, truncateCommit(lockedSrc.Commit), truncateCommit(currentSrc.Commit)),
+					Type: "changed",
+					Description: fmt.Sprintf("Source %s: commit changed from %s to %s",
+						name, truncateCommit(lockedSrc.Commit), truncateCommit(currentSrc.Commit)),
 				})
 			}
 		} else {
@@ -501,7 +502,9 @@ func (r *Registry) DiffLockFiles(existing, current *LockFile) []LockFileDiff {
 }
 
 // UpdateLockFile updates services in the lock file
-func (r *Registry) UpdateLockFile(ctx context.Context, cfg *config.Config, existing *LockFile, servicesToUpdate []string) (*LockFile, error) {
+func (r *Registry) UpdateLockFile(
+	ctx context.Context, cfg *config.Config, existing *LockFile, servicesToUpdate []string,
+) (*LockFile, error) {
 	// Generate new lock file
 	current, err := r.GenerateLockFile(ctx, cfg)
 	if err != nil {
