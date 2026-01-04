@@ -101,6 +101,16 @@ func (g *Generator) Generate() error {
 		return fmt.Errorf("failed to generate secrets: %w", err)
 	}
 
+	// Write Cloudflare tunnel token if collected during wizard
+	if g.Config.CloudflareTunnelToken != "" {
+		tokenPath := filepath.Join(secretsDir, "cloudflared_tunnel_token.txt")
+		if err := os.WriteFile(tokenPath, []byte(g.Config.CloudflareTunnelToken), 0600); err != nil {
+			return fmt.Errorf("failed to write cloudflared token: %w", err)
+		}
+	}
+
+	// Plex claim token is NOT written here - it's prompted during sdbx up
+
 	// Read ALL generated secrets into the map
 	secretsMap := make(map[string]string)
 	for filename := range secrets.SecretFiles {

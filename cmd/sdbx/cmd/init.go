@@ -287,6 +287,13 @@ func runWizard(cfg *config.Config, reg *registry.Registry) error {
 		}
 	}
 
+	// Step 1.5: Cloudflare Tunnel Token (conditional)
+	if cfg.Expose.Mode == config.ExposeModeCloudflared {
+		if err := collectCloudflareToken(cfg); err != nil {
+			return err
+		}
+	}
+
 	// Step 2: Admin User
 	progress.Next()
 	renderStep()
@@ -607,12 +614,18 @@ func printSuccessMessage(cfg *config.Config) {
 	steps = append(steps, fmt.Sprintf("%d. Review and edit %s file", step, tui.CommandStyle.Render(".env")))
 	step++
 
-	if cfg.Expose.Mode == config.ExposeModeCloudflared {
+	// Only show Cloudflare token instruction if token wasn't collected
+	if cfg.Expose.Mode == config.ExposeModeCloudflared && cfg.CloudflareTunnelToken == "" {
 		steps = append(steps, fmt.Sprintf("%d. Add tunnel token to %s", step, tui.CommandStyle.Render("secrets/cloudflared_tunnel_token.txt")))
 		step++
 	}
 
-	steps = append(steps, fmt.Sprintf("%d. Run %s to start services", step, tui.CommandStyle.Render("sdbx up")))
+	// Always mention Plex claiming happens during sdbx up
+	if containsAddon(cfg.Addons, "plex") {
+		steps = append(steps, fmt.Sprintf("%d. Run %s - you'll be prompted for Plex claim token before containers start", step, tui.CommandStyle.Render("sdbx up")))
+	} else {
+		steps = append(steps, fmt.Sprintf("%d. Run %s to start services", step, tui.CommandStyle.Render("sdbx up")))
+	}
 	step++
 
 	steps = append(steps, fmt.Sprintf("%d. Login at %s (User: %s)", step, tui.CommandStyle.Render(autheliaURL), cfg.AdminUser))
@@ -736,4 +749,60 @@ func collectWireguardCredentials(cfg *config.Config, provider config.VPNProvider
 
 	// OpenVPN fallback
 	return collectUserPassCredentials(cfg, provider)
+}
+
+// collectCloudflareToken collects Cloudflare tunnel token
+func collectCloudflareToken(cfg *config.Config) error {
+	instructions := fmt.Sprintf(
+		"Get your tunnel token from Cloudflare Zero Trust Dashboard:\n"+
+			"1. Go to https://one.dash.cloudflare.com/\n"+
+			"2. Navigate to Networks > Tunnels\n"+
+			"3. Create a new tunnel or select existing\n"+
+			"4. Copy the tunnel token\n\n"+
+			"You can skip this and add the token to secrets/cloudflared_tunnel_token.txt later.",
+	)
+
+	var skipToken bool
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewNote().
+				Title("Cloudflare Tunnel Setup").
+				Description(instructions),
+			huh.NewConfirm().
+				Title("Do you have your Cloudflare tunnel token ready?").
+				Value(&skipToken).
+				Affirmative("Yes, I have it").
+				Negative("Skip for now"),
+		),
+	)
+
+	if err := form.Run(); err != nil {
+		return err
+	}
+
+	if skipToken {
+		return nil
+	}
+
+	form = huh.NewForm(
+		huh.NewGroup(
+			huh.NewInput().
+				Title("Cloudflare Tunnel Token").
+				Description("Paste your tunnel token here").
+				Value(&cfg.CloudflareTunnelToken).
+				Placeholder("eyJhIjoi..."),
+		).Title("Cloudflare Credentials"),
+	)
+
+	return form.Run()
+}
+
+// containsAddon checks if an addon is in the list
+func containsAddon(addons []string, name string) bool {
+	for _, addon := range addons {
+		if addon == name {
+			return true
+		}
+	}
+	return false
 }

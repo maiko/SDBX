@@ -255,6 +255,7 @@ func (s *Server) setupRoutes(mux *http.ServeMux) {
 		setupHandler := handlers.NewSetupHandler(s.registry, s.config.ProjectDir, s.templates)
 		mux.HandleFunc("/", setupHandler.HandleWelcome)
 		mux.HandleFunc("/setup/domain", setupHandler.HandleDomain)
+		mux.HandleFunc("/setup/cloudflare", setupHandler.HandleCloudflareTokenForm)
 		mux.HandleFunc("/setup/admin", setupHandler.HandleAdmin)
 		mux.HandleFunc("/setup/storage", setupHandler.HandleStorage)
 		mux.HandleFunc("/setup/vpn", setupHandler.HandleVPN)

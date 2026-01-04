@@ -1,0 +1,36 @@
+{{define "pages/setup/cloudflare.html"}}
+<h2>Cloudflare Tunnel Setup</h2>
+<p>Configure your Cloudflare tunnel for secure remote access.</p>
+
+<div class="instructions-card">
+    <h3>Get Your Tunnel Token</h3>
+    <ol>
+        <li>Go to <a href="https://one.dash.cloudflare.com/" target="_blank" rel="noopener">Cloudflare Zero Trust Dashboard</a></li>
+        <li>Navigate to <strong>Networks → Tunnels</strong></li>
+        <li>Create a new tunnel or select an existing one</li>
+        <li>Copy the tunnel token (long base64-encoded string)</li>
+    </ol>
+    <p class="note">Don't have a tunnel yet? You can create one in the Cloudflare dashboard in a few minutes.</p>
+</div>
+
+<form hx-post="/setup/cloudflare" hx-target="body" hx-swap="outerHTML">
+    <div class="form-group">
+        <label for="cloudflare_token">Cloudflare Tunnel Token</label>
+        <span class="description">Paste the full token from Cloudflare</span>
+        <textarea
+            id="cloudflare_token"
+            name="cloudflare_token"
+            rows="4"
+            placeholder="eyJhIjoiYWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXowMTIzNDU2Nzg5IiwidCI6Ijk4NzY1NDMyMTAiLCJzIjoiWm1GclpTMTBiMnRsYmkxa2FYSmxZM1F0Wm5KdmJTMWpaR0U9In0="
+        ></textarea>
+    </div>
+
+    <div class="wizard-actions">
+        <a href="/setup/domain" class="btn btn-secondary">← Back</a>
+        <button type="submit" class="btn btn-primary">Continue</button>
+        <button type="submit" name="skip_token" value="true" class="btn btn-secondary">
+            Skip (I'll add it later)
+        </button>
+    </div>
+</form>
+{{end}}

@@ -416,9 +416,10 @@ func (g *IntegrationsGenerator) GenerateEnvFile(graph *registry.ResolutionGraph)
 		lines = append(lines, "")
 	}
 
-	// Plex claim (user fills in)
-	lines = append(lines, "# Get your Plex claim token from https://plex.tv/claim")
-	lines = append(lines, "PLEX_CLAIM=")
+	// Plex claim (now handled via secrets file, prompted during sdbx up)
+	lines = append(lines, "# Plex claim token is now stored in secrets/plex_claim_token.txt")
+	lines = append(lines, "# You'll be prompted for it when running 'sdbx up'")
+	lines = append(lines, "# PLEX_CLAIM=  # Deprecated - use secrets file instead")
 	lines = append(lines, "")
 
 	// Enabled addons

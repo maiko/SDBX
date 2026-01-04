@@ -68,6 +68,9 @@ type Config struct {
 	AdminUser         string `mapstructure:"-"`
 	AdminPasswordHash string `mapstructure:"-"`
 
+	// Cloudflare Tunnel (Transient, not saved to config)
+	CloudflareTunnelToken string `mapstructure:"-"`
+
 	// Legacy field for backward compatibility (deprecated)
 	ExposeMode string `mapstructure:"expose_mode"`
 }

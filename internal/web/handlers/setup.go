@@ -28,8 +28,9 @@ type SetupHandler struct {
 
 // WizardSession holds the state of a setup wizard session
 type WizardSession struct {
-	Config   *config.Config
-	Password string // Temporary storage for password (cleared after hashing)
+	Config                *config.Config
+	Password              string // Temporary storage for password (cleared after hashing)
+	CloudflareTunnelToken string // Temporary storage for Cloudflare token
 }
 
 // NewSetupHandler creates a new setup handler
@@ -149,8 +150,8 @@ func (h *SetupHandler) HandleDomain(w http.ResponseWriter, r *http.Request) {
 			session.Config.Routing.BaseDomain = baseDomain
 		}
 
-		// Redirect to next step
-		w.Header().Set("HX-Redirect", "/setup/admin")
+		// Redirect to next step (cloudflare token collection or admin)
+		w.Header().Set("HX-Redirect", "/setup/cloudflare")
 		w.WriteHeader(http.StatusOK)
 		return
 	}
@@ -160,6 +161,49 @@ func (h *SetupHandler) HandleDomain(w http.ResponseWriter, r *http.Request) {
 		"Config": session.Config,
 	}
 	h.renderTemplate(w, "pages/setup/domain.html", data)
+}
+
+// HandleCloudflareTokenForm handles Cloudflare token collection (conditional step)
+func (h *SetupHandler) HandleCloudflareTokenForm(w http.ResponseWriter, r *http.Request) {
+	session, sessionID := h.getSession(r)
+	setSessionCookie(w, sessionID)
+
+	// Only show if cloudflared mode is selected
+	if session.Config.Expose.Mode != config.ExposeModeCloudflared {
+		// Skip to next step
+		w.Header().Set("HX-Redirect", "/setup/admin")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	if r.Method == http.MethodPost {
+		// Process token submission
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "Invalid form data", http.StatusBadRequest)
+			return
+		}
+
+		skipToken := r.FormValue("skip_token") == "true"
+
+		if !skipToken {
+			token := r.FormValue("cloudflare_token")
+			if token != "" {
+				session.CloudflareTunnelToken = token
+				session.Config.CloudflareTunnelToken = token
+			}
+		}
+
+		w.Header().Set("HX-Redirect", "/setup/admin")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	// GET: Show form
+	data := map[string]interface{}{
+		"SessionID": sessionID,
+	}
+
+	h.renderTemplate(w, "pages/setup/cloudflare.html", data)
 }
 
 // HandleAdmin handles admin credentials (step 2)

@@ -279,3 +279,44 @@ input[type="radio"] {
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
 }
+
+/* Instruction cards */
+.instructions-card {
+    background: var(--color-surface);
+    border: 1px solid var(--border-default);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.instructions-card.warning {
+    border-color: var(--color-warning);
+    background: rgba(255, 193, 7, 0.05);
+}
+
+.instructions-card h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+}
+
+.instructions-card ol {
+    margin: 1rem 0;
+    padding-left: 1.5rem;
+}
+
+.instructions-card li {
+    margin: 0.5rem 0;
+}
+
+.instructions-card .note {
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+textarea {
+    font-family: monospace;
+    font-size: 0.85rem;
+    resize: vertical;
+}

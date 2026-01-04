@@ -19,6 +19,7 @@ var SecretFiles = map[string]int{
 	"authelia_oidc_hmac_secret.txt":       64,
 	"vpn_password.txt":                    0, // User-provided
 	"cloudflared_tunnel_token.txt":        0, // User-provided
+	"plex_claim_token.txt":                0, // User-provided
 	"sonarr_api_key.txt":                  32,
 	"radarr_api_key.txt":                  32,
 }
