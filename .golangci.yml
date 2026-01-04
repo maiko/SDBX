@@ -88,6 +88,11 @@ issues:
       linters:
         - dupl
 
+    # Web handlers have similar request/response patterns
+    - path: internal/web/handlers/
+      linters:
+        - dupl
+
   max-issues-per-linter: 0
   max-same-issues: 0
 
