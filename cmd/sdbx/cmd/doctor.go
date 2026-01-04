@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/maiko/sdbx/internal/config"
 	"github.com/maiko/sdbx/internal/doctor"
 	"github.com/maiko/sdbx/internal/tui"
@@ -43,82 +42,69 @@ func runDoctor(_ *cobra.Command, args []string) error {
 	ctx := context.Background()
 	doc := doctor.NewDoctor(projectDir)
 
-	// Header
-	if !IsJSONOutput() {
-		titleStyle := lipgloss.NewStyle().
-			Bold(true).
-			Foreground(tui.ColorPrimary)
-		fmt.Println(titleStyle.Render("SDBX Doctor"))
-		fmt.Println()
-		fmt.Println(tui.MutedStyle.Render("Running diagnostics..."))
-		fmt.Println()
-	}
-
-	// Run checks
-	checks := doc.RunAll(ctx)
-
-	// JSON output
+	// JSON output - run all at once
 	if IsJSONOutput() {
+		checks := doc.RunAll(ctx)
 		return OutputJSON(checks)
 	}
 
-	// Display results
+	// Interactive output with animated progress
+	fmt.Println()
+	fmt.Println(tui.TitleStyle.Render("SDBX Doctor"))
+	fmt.Println(tui.MutedStyle.Render("  Running diagnostic checks...\n"))
+
+	// Run checks with live updates
+	checks := doc.RunAll(ctx)
+
+	// Display results using CheckList
+	checklist := tui.NewCheckList()
 	passed := 0
 	failed := 0
+	warnings := 0
 
 	for _, check := range checks {
-		var icon string
-		var style lipgloss.Style
+		idx := checklist.Add(check.Name)
+
+		var status string
+		var detail string
 
 		switch check.Status {
 		case doctor.StatusPassed:
-			icon = tui.IconSuccess
-			style = tui.SuccessStyle
+			status = "success"
 			passed++
 		case doctor.StatusWarning:
-			icon = tui.IconWarning
-			style = tui.WarningStyle
+			status = "warning"
+			warnings++
 		case doctor.StatusFailed:
-			icon = tui.IconError
-			style = tui.ErrorStyle
+			status = "error"
 			failed++
 		default:
-			icon = "○"
-			style = tui.MutedStyle
+			status = "pending"
 		}
 
-		// Format: ✓ Check name          message (duration)
-		nameWidth := 25
-		name := check.Name
-		if len(name) > nameWidth {
-			name = name[:nameWidth-3] + "..."
-		}
-		for len(name) < nameWidth {
-			name += " "
-		}
-
-		durationStr := ""
+		detail = check.Message
 		if check.Duration > 0 {
-			durationStr = fmt.Sprintf(" (%s)", check.Duration.Round(time.Millisecond))
+			detail += fmt.Sprintf(" (%s)", check.Duration.Round(time.Millisecond))
 		}
 
-		fmt.Printf("  %s %s %s%s\n",
-			style.Render(icon),
-			name,
-			check.Message,
-			tui.MutedStyle.Render(durationStr),
-		)
+		checklist.SetStatus(idx, status, detail)
 	}
 
-	// Summary
+	fmt.Println(checklist.Render())
+
+	// Summary box
 	fmt.Println()
-	if failed == 0 {
-		fmt.Println(tui.SuccessStyle.Render(fmt.Sprintf("✓ All %d checks passed", passed)))
+	if failed == 0 && warnings == 0 {
+		fmt.Print(tui.RenderSuccessBox("All checks passed!",
+			fmt.Sprintf("%d checks completed successfully", passed)))
+	} else if failed == 0 {
+		fmt.Print(tui.RenderInfoBox("Checks completed with warnings",
+			fmt.Sprintf("%d passed, %d warnings", passed, warnings)))
 	} else {
-		fmt.Println(tui.ErrorStyle.Render(fmt.Sprintf("✗ %d of %d checks failed", failed, passed+failed)))
-		fmt.Println()
-		fmt.Println(tui.MutedStyle.Render("Fix the failed checks and run 'sdbx doctor' again."))
+		fmt.Print(tui.RenderErrorBox("Some checks failed",
+			fmt.Sprintf("%d passed, %d failed, %d warnings\n\nFix the issues and run 'sdbx doctor' again.", passed, failed, warnings)))
 	}
+	fmt.Println()
 
 	return nil
 }

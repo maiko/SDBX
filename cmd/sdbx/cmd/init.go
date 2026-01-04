@@ -206,7 +206,30 @@ func runInit(cmd *cobra.Command, args []string) error {
 }
 
 func runWizard(cfg *config.Config, reg *registry.Registry) error {
+	// Define wizard steps for progress indicator
+	wizardSteps := []string{
+		"Domain & Routing",
+		"Admin Credentials",
+		"Storage Paths",
+		"VPN Configuration",
+		"System Settings",
+		"Addons",
+		"Confirmation",
+	}
+	progress := tui.NewStepProgress(wizardSteps...)
+
+	// Helper to render step header
+	renderStep := func() {
+		fmt.Print("\033[H\033[2J") // Clear screen
+		fmt.Println()
+		fmt.Println(tui.TitleStyle.Render("SDBX Setup Wizard"))
+		fmt.Println()
+		fmt.Println(progress.Render())
+		fmt.Println()
+	}
+
 	// Step 1: Domain configuration
+	renderStep()
 	form1 := huh.NewForm(
 		huh.NewGroup(
 			huh.NewInput().
@@ -263,6 +286,8 @@ func runWizard(cfg *config.Config, reg *registry.Registry) error {
 	}
 
 	// Step 2: Admin User
+	progress.Next()
+	renderStep()
 	var adminPassword string
 	formAuth := huh.NewForm(
 		huh.NewGroup(
@@ -299,6 +324,8 @@ func runWizard(cfg *config.Config, reg *registry.Registry) error {
 	cfg.AdminPasswordHash = hash
 
 	// Step 3: Storage configuration
+	progress.Next()
+	renderStep()
 	form2 := huh.NewForm(
 		huh.NewGroup(
 			huh.NewInput().
@@ -326,6 +353,8 @@ func runWizard(cfg *config.Config, reg *registry.Registry) error {
 	}
 
 	// Step 4: VPN configuration
+	progress.Next()
+	renderStep()
 	var wantVPN bool
 	formVPN := huh.NewForm(
 		huh.NewGroup(
@@ -416,6 +445,8 @@ func runWizard(cfg *config.Config, reg *registry.Registry) error {
 	}
 
 	// Step 5: Timezone
+	progress.Next()
+	renderStep()
 	form4 := huh.NewForm(
 		huh.NewGroup(
 			huh.NewInput().
@@ -431,6 +462,8 @@ func runWizard(cfg *config.Config, reg *registry.Registry) error {
 	}
 
 	// Step 6: Addons - Load from registry
+	progress.Next()
+	renderStep()
 	addonOptions, err := getAddonOptions(reg)
 	if err != nil {
 		return fmt.Errorf("failed to load addons: %w", err)
@@ -453,7 +486,9 @@ func runWizard(cfg *config.Config, reg *registry.Registry) error {
 
 	cfg.Addons = selectedAddons
 
-	// Confirmation with styled summary
+	// Step 7: Confirmation
+	progress.Next()
+	renderStep()
 	printConfigSummary(cfg)
 
 	var confirm bool

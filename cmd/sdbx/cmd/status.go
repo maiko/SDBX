@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/maiko/sdbx/internal/config"
 	"github.com/maiko/sdbx/internal/docker"
+	"github.com/maiko/sdbx/internal/registry"
 	"github.com/maiko/sdbx/internal/tui"
 	"github.com/spf13/cobra"
 )
@@ -20,7 +20,7 @@ var statusCmd = &cobra.Command{
 Shows:
   • Service name and health status
   • Container state (running/stopped)
-  • Port mappings
+  • Service URLs
   • VPN connection status`,
 	RunE: runStatus,
 }
@@ -51,6 +51,17 @@ func runStatus(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to get service status: %w", err)
 	}
 
+	// Get registry for service info
+	reg, _ := registry.NewWithDefaults()
+	serviceInfo := make(map[string]registry.ServiceInfo)
+	if reg != nil {
+		if svcList, err := reg.ListServices(ctx); err == nil {
+			for _, svc := range svcList {
+				serviceInfo[svc.Name] = svc
+			}
+		}
+	}
+
 	// JSON output mode
 	if IsJSONOutput() {
 		return OutputJSON(map[string]interface{}{
@@ -59,77 +70,60 @@ func runStatus(_ *cobra.Command, args []string) error {
 		})
 	}
 
-	// Header
-	titleStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(tui.ColorPrimary).
-		MarginBottom(1)
+	// Header with summary
+	running := 0
+	for _, svc := range services {
+		if svc.Running {
+			running++
+		}
+	}
 
-	fmt.Println(titleStyle.Render("SDBX Status — " + cfg.Domain))
+	fmt.Println()
+	fmt.Println(tui.TitleStyle.Render("SDBX Status"))
+	fmt.Printf("  %s %s\n", tui.MutedStyle.Render("Domain:"), cfg.Domain)
+	fmt.Printf("  %s %s\n", tui.MutedStyle.Render("Mode:"), cfg.Expose.Mode)
+	if cfg.VPNEnabled {
+		fmt.Printf("  %s %s\n", tui.MutedStyle.Render("VPN:"), tui.SuccessStyle.Render(cfg.VPNProvider+" (enabled)"))
+	}
 	fmt.Println()
 
 	// Services table
 	if len(services) == 0 {
-		fmt.Println(tui.MutedStyle.Render("No services running. Run 'sdbx up' to start."))
+		fmt.Println(tui.MutedStyle.Render("  No services running. Run 'sdbx up' to start."))
 		return nil
 	}
 
-	// Calculate column widths
-	maxName := 20
-	for _, svc := range services {
-		name := extractServiceName(svc.Name)
-		if len(name) > maxName {
-			maxName = len(name)
-		}
-	}
+	// Create table
+	table := tui.NewTable("Service", "Status", "Health", "URL")
 
-	// Header row
-	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(tui.ColorMuted)
-	fmt.Printf("%s  %s  %s\n",
-		headerStyle.Render(padRight("SERVICE", maxName)),
-		headerStyle.Render(padRight("STATUS", 12)),
-		headerStyle.Render("HEALTH"),
-	)
-	fmt.Println(strings.Repeat("─", maxName+30))
-
-	// Service rows
 	for _, svc := range services {
 		name := extractServiceName(svc.Name)
 
-		var statusIcon, statusText string
-		var statusStyle lipgloss.Style
+		// Status badge
+		status := tui.StatusBadge(svc.Running)
 
-		if svc.Running {
-			statusIcon = tui.IconRunning
-			statusText = "running"
-			statusStyle = tui.SuccessStyle
-		} else {
-			statusIcon = tui.IconStopped
-			statusText = "stopped"
-			statusStyle = tui.MutedStyle
+		// Health badge
+		health := tui.HealthBadge(svc.Health)
+
+		// URL
+		url := tui.MutedStyle.Render("—")
+		if info, ok := serviceInfo[name]; ok && info.HasWebUI && svc.Running {
+			url = tui.InfoStyle.Render(cfg.GetServiceURL(name))
 		}
 
-		var healthText string
-		switch svc.Health {
-		case "healthy":
-			healthText = tui.SuccessStyle.Render("✓ healthy")
-		case "unhealthy":
-			healthText = tui.ErrorStyle.Render("✗ unhealthy")
-		case "starting":
-			healthText = tui.WarningStyle.Render("◐ starting")
-		default:
-			healthText = tui.MutedStyle.Render("—")
-		}
-
-		fmt.Printf("%s  %s  %s\n",
-			statusStyle.Render(statusIcon)+" "+padRight(name, maxName-2),
-			padRight(statusText, 12),
-			healthText,
-		)
+		table.AddRow(name, status, health, url)
 	}
 
+	fmt.Println(table.Render())
+
+	// Summary
+	summaryStyle := tui.MutedStyle
+	if running == len(services) {
+		fmt.Printf("%s %s\n", tui.SuccessStyle.Render(tui.IconSuccess), summaryStyle.Render(fmt.Sprintf("All %d services running", running)))
+	} else {
+		fmt.Printf("%s %s\n", tui.WarningStyle.Render(tui.IconWarning), summaryStyle.Render(fmt.Sprintf("%d/%d services running", running, len(services))))
+	}
 	fmt.Println()
-	fmt.Println(tui.MutedStyle.Render(fmt.Sprintf("Total: %d services", len(services))))
 
 	return nil
 }
