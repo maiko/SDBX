@@ -6,9 +6,10 @@ import (
 	"strings"
 	"text/template"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/maiko/sdbx/internal/config"
 	"github.com/maiko/sdbx/internal/registry"
-	"gopkg.in/yaml.v3"
 )
 
 // ComposeGenerator generates Docker Compose files from registry definitions

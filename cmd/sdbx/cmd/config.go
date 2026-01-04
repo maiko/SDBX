@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/maiko/sdbx/internal/tui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/maiko/sdbx/internal/tui"
 )
 
 var configCmd = &cobra.Command{

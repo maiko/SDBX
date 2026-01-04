@@ -6,11 +6,12 @@ import (
 	"os"
 	"time"
 
+	"github.com/spf13/cobra"
+
 	"github.com/maiko/sdbx/internal/config"
 	"github.com/maiko/sdbx/internal/docker"
 	"github.com/maiko/sdbx/internal/registry"
 	"github.com/maiko/sdbx/internal/tui"
-	"github.com/spf13/cobra"
 )
 
 var (

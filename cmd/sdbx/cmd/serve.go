@@ -3,8 +3,9 @@ package cmd
 import (
 	"os"
 
-	"github.com/maiko/sdbx/internal/web"
 	"github.com/spf13/cobra"
+
+	"github.com/maiko/sdbx/internal/web"
 )
 
 var (

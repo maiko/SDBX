@@ -8,8 +8,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/maiko/sdbx/internal/config"
 	"gopkg.in/yaml.v3"
+
+	"github.com/maiko/sdbx/internal/config"
 )
 
 // ConfigHandler handles configuration editing routes

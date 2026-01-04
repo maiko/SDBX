@@ -8,11 +8,12 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+
 	"github.com/maiko/sdbx/internal/config"
 	"github.com/maiko/sdbx/internal/registry"
 	"github.com/maiko/sdbx/internal/tui"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var openCmd = &cobra.Command{

@@ -10,10 +10,11 @@ import (
 	"path/filepath"
 	"sync"
 
+	"golang.org/x/crypto/argon2"
+
 	"github.com/maiko/sdbx/internal/config"
 	"github.com/maiko/sdbx/internal/generator"
 	"github.com/maiko/sdbx/internal/registry"
-	"golang.org/x/crypto/argon2"
 )
 
 // SetupHandler handles the setup wizard

@@ -8,8 +8,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/maiko/sdbx/internal/config"
 	"gopkg.in/yaml.v3"
+
+	"github.com/maiko/sdbx/internal/config"
 )
 
 // LockManager handles lock file operations

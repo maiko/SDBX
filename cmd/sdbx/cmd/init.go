@@ -11,12 +11,13 @@ import (
 
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/spf13/cobra"
+	"golang.org/x/crypto/argon2"
+
 	"github.com/maiko/sdbx/internal/config"
 	"github.com/maiko/sdbx/internal/generator"
 	"github.com/maiko/sdbx/internal/registry"
 	"github.com/maiko/sdbx/internal/tui"
-	"github.com/spf13/cobra"
-	"golang.org/x/crypto/argon2"
 )
 
 var (

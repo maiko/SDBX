@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+
 	"github.com/maiko/sdbx/internal/docker"
 	"github.com/maiko/sdbx/internal/registry"
 )

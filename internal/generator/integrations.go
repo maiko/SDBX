@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"strings"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/maiko/sdbx/internal/config"
 	"github.com/maiko/sdbx/internal/registry"
-	"gopkg.in/yaml.v3"
 )
 
 // IntegrationsGenerator generates integration configs (homepage, cloudflared, traefik)

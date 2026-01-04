@@ -6,9 +6,10 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/spf13/cobra"
+
 	"github.com/maiko/sdbx/internal/config"
 	"github.com/maiko/sdbx/internal/docker"
-	"github.com/spf13/cobra"
 )
 
 var (

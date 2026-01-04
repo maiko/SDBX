@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/spf13/cobra"
+
 	"github.com/maiko/sdbx/internal/config"
 	"github.com/maiko/sdbx/internal/secrets"
 	"github.com/maiko/sdbx/internal/tui"
-	"github.com/spf13/cobra"
 )
 
 var secretsCmd = &cobra.Command{

@@ -6,10 +6,11 @@ import (
 	"os"
 	"text/tabwriter"
 
+	"github.com/spf13/cobra"
+
 	"github.com/maiko/sdbx/internal/config"
 	"github.com/maiko/sdbx/internal/integrate"
 	"github.com/maiko/sdbx/internal/tui"
-	"github.com/spf13/cobra"
 )
 
 var integrateCmd = &cobra.Command{

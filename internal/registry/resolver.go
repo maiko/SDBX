@@ -10,8 +10,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/maiko/sdbx/internal/config"
 	"gopkg.in/yaml.v3"
+
+	"github.com/maiko/sdbx/internal/config"
 )
 
 // Resolver handles service resolution and dependency ordering
