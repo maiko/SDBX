@@ -201,13 +201,3 @@ func runIntegrate(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
-// Helper to format duration
-func formatDuration(d time.Duration) string {
-	if d < time.Second {
-		return fmt.Sprintf("%dms", d.Milliseconds())
-	}
-	if d < time.Minute {
-		return fmt.Sprintf("%.1fs", d.Seconds())
-	}
-	return fmt.Sprintf("%.1fm", d.Minutes())
-}

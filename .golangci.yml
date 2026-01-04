@@ -89,6 +89,11 @@ issues:
       linters:
         - gosec
 
+    # CLI commands have style patterns that gocritic flags
+    - path: cmd/sdbx/cmd/
+      linters:
+        - gocritic
+
     # G306: Config files need 0644 for Docker/other services to read them
     - text: "G306:"
       linters:

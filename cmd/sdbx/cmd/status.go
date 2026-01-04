@@ -137,10 +137,3 @@ func extractServiceName(containerName string) string {
 	return containerName
 }
 
-// padRight pads a string to a minimum width
-func padRight(s string, width int) string {
-	if len(s) >= width {
-		return s
-	}
-	return s + strings.Repeat(" ", width-len(s))
-}
