@@ -83,6 +83,11 @@ issues:
       linters:
         - gosec
 
+    # Integrate package has similar API clients with naturally similar patterns
+    - path: internal/integrate/
+      linters:
+        - dupl
+
   max-issues-per-linter: 0
   max-same-issues: 0
 
