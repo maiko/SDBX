@@ -311,7 +311,11 @@ func (r *Resolver) topologicalSort(graph *ResolutionGraph) ([]string, error) {
 		if _, exists := inDegree[name]; !exists {
 			inDegree[name] = 0
 		}
-		adjList[name] = []string{}
+		// Only initialize adjList entry if not already set
+		// (prevents overwriting entries created by processing dependencies of other services)
+		if _, exists := adjList[name]; !exists {
+			adjList[name] = []string{}
+		}
 
 		for _, dep := range svc.Dependencies {
 			// Only count dependencies that are in our graph
