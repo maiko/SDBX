@@ -76,6 +76,12 @@ issues:
         - dupl
         - gosec
         - lll
+        - revive
+
+    # Registry package has ctx parameters for interface compliance
+    - path: internal/registry/
+      linters:
+        - revive
 
     # Exclude known false positives
     - path: cmd/sdbx/cmd/
