@@ -166,6 +166,7 @@ func (g *ComposeGenerator) generateService(def *registry.ServiceDefinition) Comp
 		Image:         g.resolveImage(def),
 		ContainerName: g.evalTemplate(def.Spec.Container.NameTemplate, ctx),
 		Restart:       def.Spec.Container.Restart,
+		Command:       def.Spec.Container.Command,
 	}
 
 	// Environment variables

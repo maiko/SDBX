@@ -74,6 +74,7 @@ type ImageSpec struct {
 type ContainerSpec struct {
 	NameTemplate string           `yaml:"name_template"`
 	Restart      string           `yaml:"restart,omitempty"`
+	Command      string           `yaml:"command,omitempty"`
 	Privileged   bool             `yaml:"privileged,omitempty"`
 	Capabilities CapabilitiesSpec `yaml:"capabilities,omitempty"`
 	Devices      []string         `yaml:"devices,omitempty"`
