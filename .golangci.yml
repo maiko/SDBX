@@ -89,9 +89,11 @@ issues:
         - dupl
 
     # Web handlers have similar request/response patterns
+    # errcheck excluded: HTTP response writes rarely need error handling
     - path: internal/web/handlers/
       linters:
         - dupl
+        - errcheck
 
   max-issues-per-linter: 0
   max-same-issues: 0

@@ -84,5 +84,8 @@ jobs:
       - name: Generate SBOM
         if: github.event_name != 'pull_request'
         uses: anchore/sbom-action@v0
+        env:
+          # Use lowercase image name (github.repository preserves case)
+          IMAGE_REF: ghcr.io/maiko/sdbx:${{ steps.version.outputs.commit }}
         with:
-          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.commit }}
+          image: ${{ env.IMAGE_REF }}

@@ -335,10 +335,17 @@ func (l *Loader) MergeOverride(base *ServiceDefinition, override *ServiceOverrid
 // deepCopyServiceDefinition creates a deep copy of a service definition
 func (l *Loader) deepCopyServiceDefinition(def *ServiceDefinition) *ServiceDefinition {
 	// Use YAML marshal/unmarshal for deep copy
-	data, _ := yaml.Marshal(def)
-	var copy ServiceDefinition
-	yaml.Unmarshal(data, &copy)
-	return &copy
+	data, err := yaml.Marshal(def)
+	if err != nil {
+		// Fallback: return original if marshal fails
+		return def
+	}
+	var copyDef ServiceDefinition
+	if err := yaml.Unmarshal(data, &copyDef); err != nil {
+		// Fallback: return original if unmarshal fails
+		return def
+	}
+	return &copyDef
 }
 
 // WriteYAML writes data as YAML to a writer

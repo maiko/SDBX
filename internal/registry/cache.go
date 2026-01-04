@@ -37,7 +37,9 @@ func NewCache(baseDir string) *Cache {
 	}
 
 	// Ensure cache directory exists
-	os.MkdirAll(baseDir, 0o755)
+	if err := os.MkdirAll(baseDir, 0o755); err != nil {
+		log.Printf("Warning: failed to create cache directory: %v", err)
+	}
 
 	// Load existing metadata
 	c.loadMetadata()
