@@ -83,6 +83,17 @@ issues:
       linters:
         - gosec
 
+    # G306: Config files need 0644 for Docker/other services to read them
+    - text: "G306:"
+      linters:
+        - gosec
+
+    # Backup code operates on trusted internal data
+    - path: internal/backup/
+      linters:
+        - gosec
+        - revive
+
     # Integrate package has similar API clients with naturally similar patterns
     - path: internal/integrate/
       linters:
