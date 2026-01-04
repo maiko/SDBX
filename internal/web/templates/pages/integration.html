@@ -327,16 +327,28 @@
                     const statusClass = integration.success ? 'status-success' : 'status-failed';
                     const statusText = integration.success ? 'Success' : 'Failed';
 
+                    // Build cells safely using textContent to prevent XSS
+                    const serviceCell = document.createElement('td');
+                    const strong = document.createElement('strong');
+                    strong.textContent = integration.service;
+                    serviceCell.appendChild(strong);
+
+                    const statusCell = document.createElement('td');
+                    const badge = document.createElement('span');
+                    badge.className = 'status-badge ' + statusClass;
+                    badge.textContent = statusText;
+                    statusCell.appendChild(badge);
+
+                    const messageCell = document.createElement('td');
                     let message = integration.message;
                     if (integration.error) {
-                        message += ` (${integration.error})`;
+                        message += ' (' + integration.error + ')';
                     }
+                    messageCell.textContent = message;
 
-                    row.innerHTML = `
-                        <td><strong>${integration.service}</strong></td>
-                        <td><span class="status-badge ${statusClass}">${statusText}</span></td>
-                        <td>${message}</td>
-                    `;
+                    row.appendChild(serviceCell);
+                    row.appendChild(statusCell);
+                    row.appendChild(messageCell);
 
                     tbody.appendChild(row);
                 });

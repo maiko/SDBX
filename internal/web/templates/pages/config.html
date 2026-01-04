@@ -316,23 +316,37 @@
         })
         .then(response => response.json())
         .then(data => {
+            // Clear previous content safely
+            validationResult.textContent = '';
+
             if (data.success) {
                 validationResult.className = 'validation-result success';
-                validationResult.innerHTML = '<h4>✓ Validation Successful</h4><p>Configuration is valid and ready to save.</p>';
+                const h4 = document.createElement('h4');
+                h4.textContent = '✓ Validation Successful';
+                const p = document.createElement('p');
+                p.textContent = 'Configuration is valid and ready to save.';
+                validationResult.appendChild(h4);
+                validationResult.appendChild(p);
                 showToast('Configuration is valid', 'success');
             } else {
                 validationResult.className = 'validation-result error';
-                let errorHtml = '<h4>✗ Validation Failed</h4>';
+                const h4 = document.createElement('h4');
+                h4.textContent = '✗ Validation Failed';
+                validationResult.appendChild(h4);
+
                 if (data.errors && data.errors.length > 0) {
-                    errorHtml += '<ul>';
+                    const ul = document.createElement('ul');
                     data.errors.forEach(err => {
-                        errorHtml += `<li>${err}</li>`;
+                        const li = document.createElement('li');
+                        li.textContent = err; // Safe: uses textContent
+                        ul.appendChild(li);
                     });
-                    errorHtml += '</ul>';
+                    validationResult.appendChild(ul);
                 } else {
-                    errorHtml += `<p>${data.message}</p>`;
+                    const p = document.createElement('p');
+                    p.textContent = data.message; // Safe: uses textContent
+                    validationResult.appendChild(p);
                 }
-                validationResult.innerHTML = errorHtml;
                 showToast(data.message, 'error');
             }
             validationResult.style.display = 'block';
@@ -360,10 +374,22 @@
         })
         .then(response => response.json())
         .then(data => {
+            // Clear previous content safely
+            validationResult.textContent = '';
+
             if (data.success) {
                 showToast(data.message, 'success');
                 validationResult.className = 'validation-result success';
-                validationResult.innerHTML = '<h4>✓ Saved Successfully</h4><p>Run <code>sdbx down && sdbx up</code> to apply changes.</p>';
+                const h4 = document.createElement('h4');
+                h4.textContent = '✓ Saved Successfully';
+                const p = document.createElement('p');
+                p.textContent = 'Run ';
+                const code = document.createElement('code');
+                code.textContent = 'sdbx down && sdbx up';
+                p.appendChild(code);
+                p.appendChild(document.createTextNode(' to apply changes.'));
+                validationResult.appendChild(h4);
+                validationResult.appendChild(p);
                 validationResult.style.display = 'block';
             } else {
                 let errorMsg = data.message;
@@ -372,7 +398,12 @@
                 }
                 showToast(errorMsg, 'error');
                 validationResult.className = 'validation-result error';
-                validationResult.innerHTML = `<h4>✗ Save Failed</h4><p>${data.message}</p>`;
+                const h4 = document.createElement('h4');
+                h4.textContent = '✗ Save Failed';
+                const p = document.createElement('p');
+                p.textContent = data.message; // Safe: uses textContent
+                validationResult.appendChild(h4);
+                validationResult.appendChild(p);
                 validationResult.style.display = 'block';
             }
             btn.disabled = false;
