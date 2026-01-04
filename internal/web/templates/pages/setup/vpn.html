@@ -1,4 +1,4 @@
-{{define "content"}}
+{{define "pages/setup/vpn.html"}}
 <h2>VPN Configuration</h2>
 <p>Optionally route torrent traffic through a VPN for privacy.</p>
 
@@ -45,5 +45,3 @@
     toggleVPNFields(document.getElementById('vpn_enabled').checked);
 </script>
 {{end}}
-
-{{template "wizard" .}}

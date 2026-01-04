@@ -403,15 +403,32 @@ func (h *SetupHandler) HandleComplete(w http.ResponseWriter, r *http.Request) {
 	// Clear session
 	h.deleteSession(sessionID)
 
-	// Return success response (htmx will handle UI update)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, `{"success": true, "message": "Project initialized successfully!"}`)
+	// Return success HTML fragment (htmx will swap into #generation-status)
+	w.Header().Set("Content-Type", "text/html")
+	if err := h.templates.ExecuteTemplate(w, "pages/setup/complete-success.html", nil); err != nil {
+		http.Error(w, "Failed to render success template", http.StatusInternalServerError)
+	}
 }
 
-// renderTemplate renders a template with data
+// renderTemplate renders a page template wrapped in the wizard layout
 func (h *SetupHandler) renderTemplate(w http.ResponseWriter, name string, data interface{}) {
-	if err := h.templates.ExecuteTemplate(w, name, data); err != nil {
+	// Clone the template set to avoid modifying the original
+	tmpl, err := h.templates.Clone()
+	if err != nil {
+		httpError(w, "template clone", err, http.StatusInternalServerError)
+		return
+	}
+
+	// Create a wrapper template that includes the page content in the wizard layout
+	wrapperTmpl := `{{define "page-content"}}{{template "` + name + `" .}}{{end}}{{template "layouts/wizard.html" .}}`
+
+	_, err = tmpl.Parse(wrapperTmpl)
+	if err != nil {
+		httpError(w, "template parse", err, http.StatusInternalServerError)
+		return
+	}
+
+	if err := tmpl.Execute(w, data); err != nil {
 		httpError(w, "setup template render", err, http.StatusInternalServerError)
 	}
 }

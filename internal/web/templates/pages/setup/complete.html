@@ -1,58 +1,34 @@
-{{define "content"}}
+{{define "pages/setup/complete.html"}}
 <div id="generation-status">
     <h2>Ready to Generate</h2>
     <p>Click the button below to generate your SDBX project.</p>
 
-    <form hx-post="/setup/complete" hx-target="#generation-status" hx-swap="outerHTML">
+    <form hx-post="/setup/complete" hx-target="#generation-status" hx-swap="innerHTML">
         <div class="wizard-actions" style="justify-content: center; margin-top: 2rem;">
             <button type="submit" class="btn btn-primary" style="padding: 1rem 3rem; font-size: 1.1rem;">
-                🚀 Generate Project
+                Generate Project
             </button>
         </div>
     </form>
 </div>
-
-<script>
-    // Handle success response
-    document.body.addEventListener('htmx:afterRequest', function(event) {
-        if (event.detail.xhr.status === 200) {
-            try {
-                const response = JSON.parse(event.detail.xhr.responseText);
-                if (response.success) {
-                    document.getElementById('generation-status').innerHTML = `
-                        <div style="text-align: center;">
-                            <div style="font-size: 4rem; margin-bottom: 1rem;">✓</div>
-                            <h2 style="color: var(--color-success);">Success!</h2>
-                            <p>Your SDBX project has been initialized successfully.</p>
-                            <div style="background: #f0fdf4; border: 2px solid var(--color-success); border-radius: 8px; padding: 1.5rem; margin-top: 2rem; text-align: left;">
-                                <h3 style="margin-top: 0; color: var(--color-success);">Next Steps:</h3>
-                                <ol style="line-height: 1.8; color: #333;">
-                                    <li>Review and edit <code>.env</code> file</li>
-                                    {{if .Config.VPNEnabled}}
-                                    <li>Add VPN credentials to <code>secrets/vpn_password.txt</code></li>
-                                    {{end}}
-                                    {{if eq .Config.Expose.Mode "cloudflared"}}
-                                    <li>Add tunnel token to <code>secrets/cloudflared_tunnel_token.txt</code></li>
-                                    {{end}}
-                                    <li>Run <code>sdbx up</code> to start services</li>
-                                    <li>Login at your configured domain (User: {{.Config.AdminUser}})</li>
-                                    <li>Run <code>sdbx doctor</code> to verify setup</li>
-                                </ol>
-                            </div>
-                            <div style="margin-top: 2rem;">
-                                <button onclick="window.location.reload()" class="btn btn-primary">
-                                    Start Over
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }
-            } catch (e) {
-                console.error('Failed to parse response', e);
-            }
-        }
-    });
-</script>
 {{end}}
 
-{{template "wizard" .}}
+{{define "pages/setup/complete-success.html"}}
+<div style="text-align: center;">
+    <div style="font-size: 4rem; margin-bottom: 1rem;">&#10003;</div>
+    <h2 style="color: var(--color-success);">Success!</h2>
+    <p>Your SDBX project has been initialized successfully.</p>
+    <div style="background: #f0fdf4; border: 2px solid var(--color-success); border-radius: 8px; padding: 1.5rem; margin-top: 2rem; text-align: left;">
+        <h3 style="margin-top: 0; color: var(--color-success);">Next Steps:</h3>
+        <ol style="line-height: 1.8; color: #333;">
+            <li>Review and edit <code>.env</code> file</li>
+            <li>Run <code>sdbx up</code> to start services</li>
+            <li>Login at your configured domain</li>
+            <li>Run <code>sdbx doctor</code> to verify setup</li>
+        </ol>
+    </div>
+    <div style="margin-top: 2rem;">
+        <a href="/" class="btn btn-primary">Start Over</a>
+    </div>
+</div>
+{{end}}

@@ -1,4 +1,4 @@
-{{define "wizard"}}
+{{define "layouts/wizard.html"}}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,7 +7,7 @@
     <title>SDBX Setup Wizard</title>
     <link rel="stylesheet" href="/static/css/colors.css">
     <link rel="stylesheet" href="/static/css/main.css">
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="/static/js/htmx.min.js"></script>
     <style>
         body {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -95,6 +95,8 @@
             cursor: pointer;
             transition: all 0.2s;
             font-size: 1rem;
+            text-decoration: none;
+            display: inline-block;
         }
 
         .btn-primary {
@@ -203,10 +205,10 @@
     <div class="wizard-container">
         <div class="wizard-header">
             <div class="wizard-logo">SDBX</div>
-            <div class="wizard-subtitle">Seedbox in a Box — Setup Wizard</div>
+            <div class="wizard-subtitle">Seedbox in a Box - Setup Wizard</div>
         </div>
         <div class="wizard-content">
-            {{template "content" .}}
+            {{block "page-content" .}}{{end}}
         </div>
     </div>
 </body>
