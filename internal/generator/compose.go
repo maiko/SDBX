@@ -320,16 +320,20 @@ func (g *ComposeGenerator) buildNetworking(def *registry.ServiceDefinition, ctx 
 func (g *ComposeGenerator) buildDependsOn(def *registry.ServiceDefinition, ctx TemplateContext) map[string]DependsOnCondition {
 	deps := make(map[string]DependsOnCondition)
 
-	// Required dependencies
+	// Required dependencies - default to service_started condition
 	for _, dep := range def.Spec.Dependencies.Required {
-		deps[dep] = DependsOnCondition{}
+		deps[dep] = DependsOnCondition{Condition: "service_started"}
 	}
 
 	// Conditional dependencies
 	for _, dep := range def.Spec.Dependencies.Conditional {
 		if g.evalCondition(dep.When, ctx) {
+			condition := dep.Condition
+			if condition == "" {
+				condition = "service_started"
+			}
 			deps[dep.Name] = DependsOnCondition{
-				Condition: dep.Condition,
+				Condition: condition,
 			}
 		}
 	}
