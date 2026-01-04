@@ -1,6 +1,8 @@
 linters-settings:
   govet:
     enable-all: true
+    disable:
+      - shadow  # Variable shadowing is common in Go error handling
   gocyclo:
     min-complexity: 30
   dupl:
