@@ -491,3 +491,354 @@ func TestHTTPClientNilBody(t *testing.T) {
 		t.Errorf("unexpected response: %s", string(body))
 	}
 }
+
+// TestCreateSonarrApplication tests Sonarr application creation
+func TestCreateSonarrApplication(t *testing.T) {
+	app := CreateSonarrApplication("Sonarr", "http://localhost:8989", "test-api-key", "fullSync")
+
+	if app.Name != "Sonarr" {
+		t.Errorf("Name = %q, want 'Sonarr'", app.Name)
+	}
+
+	if app.Implementation != "Sonarr" {
+		t.Errorf("Implementation = %q, want 'Sonarr'", app.Implementation)
+	}
+
+	if app.ConfigContract != "SonarrSettings" {
+		t.Errorf("ConfigContract = %q, want 'SonarrSettings'", app.ConfigContract)
+	}
+
+	if app.SyncLevel != "fullSync" {
+		t.Errorf("SyncLevel = %q, want 'fullSync'", app.SyncLevel)
+	}
+
+	// Check fields
+	if len(app.Fields) != 3 {
+		t.Errorf("expected 3 fields, got %d", len(app.Fields))
+	}
+
+	// Verify baseUrl field
+	found := false
+	for _, f := range app.Fields {
+		if f.Name == "baseUrl" && f.Value == "http://localhost:8989" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("baseUrl field not found or incorrect")
+	}
+}
+
+// TestCreateRadarrApplication tests Radarr application creation
+func TestCreateRadarrApplication(t *testing.T) {
+	app := CreateRadarrApplication("Radarr", "http://localhost:7878", "radarr-key", "addOnly")
+
+	if app.Implementation != "Radarr" {
+		t.Errorf("Implementation = %q, want 'Radarr'", app.Implementation)
+	}
+
+	if app.ConfigContract != "RadarrSettings" {
+		t.Errorf("ConfigContract = %q, want 'RadarrSettings'", app.ConfigContract)
+	}
+
+	if app.SyncLevel != "addOnly" {
+		t.Errorf("SyncLevel = %q, want 'addOnly'", app.SyncLevel)
+	}
+}
+
+// TestCreateLidarrApplication tests Lidarr application creation
+func TestCreateLidarrApplication(t *testing.T) {
+	app := CreateLidarrApplication("Lidarr", "http://localhost:8686", "lidarr-key", "fullSync")
+
+	if app.Implementation != "Lidarr" {
+		t.Errorf("Implementation = %q, want 'Lidarr'", app.Implementation)
+	}
+
+	if app.ConfigContract != "LidarrSettings" {
+		t.Errorf("ConfigContract = %q, want 'LidarrSettings'", app.ConfigContract)
+	}
+
+	// Check music categories
+	found := false
+	for _, f := range app.Fields {
+		if f.Name == "syncCategories" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("syncCategories field not found")
+	}
+}
+
+// TestCreateReadarrApplication tests Readarr application creation
+func TestCreateReadarrApplication(t *testing.T) {
+	app := CreateReadarrApplication("Readarr", "http://localhost:8787", "readarr-key", "fullSync")
+
+	if app.Implementation != "Readarr" {
+		t.Errorf("Implementation = %q, want 'Readarr'", app.Implementation)
+	}
+
+	if app.ConfigContract != "ReadarrSettings" {
+		t.Errorf("ConfigContract = %q, want 'ReadarrSettings'", app.ConfigContract)
+	}
+}
+
+// TestNewProwlarrClient tests Prowlarr client creation
+func TestNewProwlarrClient(t *testing.T) {
+	httpClient := NewHTTPClient(10*time.Second, 3, 1*time.Second)
+	cfg := &ServiceConfig{
+		Name:    "prowlarr",
+		URL:     "http://localhost:9696",
+		APIKey:  "test-key",
+		Enabled: true,
+	}
+
+	client := NewProwlarrClient(httpClient, cfg)
+
+	if client == nil {
+		t.Fatal("NewProwlarrClient returned nil")
+	}
+
+	if client.config.URL != "http://localhost:9696" {
+		t.Errorf("URL = %q, want 'http://localhost:9696'", client.config.URL)
+	}
+}
+
+// TestProwlarrClientCheckHealth tests health check endpoint
+func TestProwlarrClientCheckHealth(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v1/system/status" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+
+		if r.Header.Get("X-Api-Key") != "test-key" {
+			t.Error("X-Api-Key header not set")
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"version":"1.0.0"}`))
+	}))
+	defer server.Close()
+
+	httpClient := NewHTTPClient(10*time.Second, 0, 0)
+	cfg := &ServiceConfig{
+		URL:    server.URL,
+		APIKey: "test-key",
+	}
+
+	client := NewProwlarrClient(httpClient, cfg)
+	ctx := context.Background()
+
+	err := client.CheckHealth(ctx)
+	if err != nil {
+		t.Fatalf("CheckHealth failed: %v", err)
+	}
+}
+
+// TestProwlarrClientCheckHealthError tests health check failure
+func TestProwlarrClientCheckHealthError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer server.Close()
+
+	httpClient := NewHTTPClient(10*time.Second, 0, 0)
+	cfg := &ServiceConfig{
+		URL:    server.URL,
+		APIKey: "test-key",
+	}
+
+	client := NewProwlarrClient(httpClient, cfg)
+	ctx := context.Background()
+
+	err := client.CheckHealth(ctx)
+	if err == nil {
+		t.Error("CheckHealth should fail on 503")
+	}
+}
+
+// TestProwlarrClientGetApplications tests getting applications
+func TestProwlarrClientGetApplications(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v1/applications" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+
+		apps := []ProwlarrApplication{
+			{ID: 1, Name: "Sonarr", Implementation: "Sonarr"},
+			{ID: 2, Name: "Radarr", Implementation: "Radarr"},
+		}
+
+		data, _ := json.Marshal(apps)
+		w.WriteHeader(http.StatusOK)
+		w.Write(data)
+	}))
+	defer server.Close()
+
+	httpClient := NewHTTPClient(10*time.Second, 0, 0)
+	cfg := &ServiceConfig{
+		URL:    server.URL,
+		APIKey: "test-key",
+	}
+
+	client := NewProwlarrClient(httpClient, cfg)
+	ctx := context.Background()
+
+	apps, err := client.GetApplications(ctx)
+	if err != nil {
+		t.Fatalf("GetApplications failed: %v", err)
+	}
+
+	if len(apps) != 2 {
+		t.Errorf("expected 2 apps, got %d", len(apps))
+	}
+
+	if apps[0].Name != "Sonarr" {
+		t.Errorf("first app name = %q, want 'Sonarr'", apps[0].Name)
+	}
+}
+
+// TestProwlarrClientAddApplication tests adding an application
+func TestProwlarrClientAddApplication(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+
+		if r.URL.Path != "/api/v1/applications" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+
+		// Return the app with an ID
+		app := ProwlarrApplication{
+			ID:             123,
+			Name:           "TestApp",
+			Implementation: "Sonarr",
+		}
+
+		data, _ := json.Marshal(app)
+		w.WriteHeader(http.StatusOK)
+		w.Write(data)
+	}))
+	defer server.Close()
+
+	httpClient := NewHTTPClient(10*time.Second, 0, 0)
+	cfg := &ServiceConfig{
+		URL:    server.URL,
+		APIKey: "test-key",
+	}
+
+	client := NewProwlarrClient(httpClient, cfg)
+	ctx := context.Background()
+
+	newApp := CreateSonarrApplication("TestApp", "http://localhost:8989", "key", "fullSync")
+	result, err := client.AddApplication(ctx, newApp)
+	if err != nil {
+		t.Fatalf("AddApplication failed: %v", err)
+	}
+
+	if result.ID != 123 {
+		t.Errorf("expected ID 123, got %d", result.ID)
+	}
+}
+
+// TestProwlarrClientUpdateApplication tests updating an application
+func TestProwlarrClientUpdateApplication(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PUT" {
+			t.Errorf("expected PUT, got %s", r.Method)
+		}
+
+		if r.URL.Path != "/api/v1/applications/42" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{}`))
+	}))
+	defer server.Close()
+
+	httpClient := NewHTTPClient(10*time.Second, 0, 0)
+	cfg := &ServiceConfig{
+		URL:    server.URL,
+		APIKey: "test-key",
+	}
+
+	client := NewProwlarrClient(httpClient, cfg)
+	ctx := context.Background()
+
+	app := &ProwlarrApplication{
+		ID:             42,
+		Name:           "UpdatedApp",
+		Implementation: "Sonarr",
+	}
+
+	err := client.UpdateApplication(ctx, app)
+	if err != nil {
+		t.Fatalf("UpdateApplication failed: %v", err)
+	}
+}
+
+// TestProwlarrFieldStruct tests ProwlarrField struct
+func TestProwlarrFieldStruct(t *testing.T) {
+	field := ProwlarrField{
+		Name:  "baseUrl",
+		Value: "http://localhost:8989",
+	}
+
+	if field.Name != "baseUrl" {
+		t.Errorf("Name = %q, want 'baseUrl'", field.Name)
+	}
+
+	data, _ := json.Marshal(field)
+	if !strings.Contains(string(data), "baseUrl") {
+		t.Error("JSON should contain 'baseUrl'")
+	}
+}
+
+// TestDownloadClientFieldStruct tests DownloadClientField struct
+func TestDownloadClientFieldStruct(t *testing.T) {
+	field := DownloadClientField{
+		Name:  "host",
+		Value: "localhost",
+	}
+
+	if field.Name != "host" {
+		t.Errorf("Name = %q, want 'host'", field.Name)
+	}
+
+	data, _ := json.Marshal(field)
+	if !strings.Contains(string(data), "localhost") {
+		t.Error("JSON should contain 'localhost'")
+	}
+}
+
+// TestConfigStruct tests Config struct
+func TestConfigStruct(t *testing.T) {
+	cfg := &Config{
+		Services:      make(map[string]*ServiceConfig),
+		Timeout:       60 * time.Second,
+		RetryAttempts: 5,
+		RetryDelay:    10 * time.Second,
+		DryRun:        true,
+		Verbose:       true,
+	}
+
+	if cfg.Timeout != 60*time.Second {
+		t.Errorf("Timeout = %v, want 60s", cfg.Timeout)
+	}
+
+	if cfg.RetryAttempts != 5 {
+		t.Errorf("RetryAttempts = %d, want 5", cfg.RetryAttempts)
+	}
+
+	if !cfg.DryRun {
+		t.Error("DryRun should be true")
+	}
+
+	if !cfg.Verbose {
+		t.Error("Verbose should be true")
+	}
+}
