@@ -48,20 +48,23 @@ cmd/sdbx/
   main.go              # Entry point, sets version info (version, commit, date)
   cmd/                 # Cobra command definitions
     root.go            # Root command + global flags (--no-tui, --json, --config)
-    init.go            # Interactive wizard for project bootstrapping
+    init.go            # Interactive wizard for project bootstrapping (7-step with progress)
     up.go, down.go     # Docker Compose lifecycle
-    doctor.go          # Diagnostic checks
-    status.go          # Service status display
+    doctor.go          # Diagnostic checks (with CheckList TUI)
+    status.go          # Service status display (with Table TUI)
     addon.go           # Addon management (search, enable, disable)
     source.go          # Source management (add, remove, list, update)
     lock.go            # Lock file management (lock, verify, diff)
     integrate.go       # Service integration (auto-configure connections)
     secrets.go         # Secret generation/rotation
     config.go          # Configuration get/set
+    vpn.go             # VPN configuration (configure, status, providers)
 
 internal/
   backup/              # Backup/restore functionality (tar.gz archives with metadata)
   config/              # Configuration structs and loaders (Load, Save, Validate)
+    config.go          # Main Config struct with VPN credentials
+    vpn_providers.go   # VPN provider definitions (17 providers with auth types)
   secrets/             # Secret generation with crypto/rand, rotation with backups
   docker/              # Docker Compose wrapper (up, down, ps, logs, exec)
   doctor/              # Health checks (Docker, disk space, ports, permissions)
@@ -91,7 +94,11 @@ internal/
     prowlarr.go        # Prowlarr API client (add *arr apps, sync indexers)
     arr.go             # *arr apps API client (add download clients)
     qbittorrent.go     # qBittorrent API client (create categories, config)
-  tui/                 # Terminal UI styles and helpers
+  tui/                 # Terminal UI styles and components
+    styles.go          # Lipgloss styles, icons, colors, render helpers
+    spinner.go         # Animated spinner for long operations
+    table.go           # Table rendering with auto-width columns and badges
+    progress.go        # Step progress tracker and CheckList component
   web/                 # Web UI server (htmx + Go templates + WebSockets)
     server.go          # HTTP server with two-phase detection (pre-init vs post-init)
     embed.go           # go:embed directives for static assets and templates
@@ -295,6 +302,22 @@ Integrations configured:
 
 Services must be running before integration. Run `sdbx up` first if needed.
 
+### VPN Configuration
+```bash
+sdbx vpn configure                  # Interactive VPN credential configuration
+sdbx vpn status                     # Show VPN configuration status
+sdbx vpn providers                  # List supported VPN providers with auth types
+```
+
+Supported VPN providers (17 total) with different authentication types:
+- **Username/Password**: NordVPN, Surfshark, ExpressVPN, IPVanish, CyberGhost, TorGuard, VyprVPN, PureVPN, HMA, PIA
+- **Token/Key**: Mullvad (account number), AirVPN (device key), IVPN (account ID)
+- **Service Credentials**: ProtonVPN (OpenVPN creds from dashboard)
+- **Wireguard**: Mullvad, ProtonVPN, AirVPN, IVPN (generate keys via provider dashboard)
+- **Config File**: Custom OpenVPN configuration
+
+The init wizard collects provider-specific credentials and generates the appropriate `gluetun.env` file.
+
 ### Backup Management
 ```bash
 sdbx backup                         # Create timestamped backup
@@ -308,8 +331,10 @@ Backups are stored in `./backups/` as tar.gz archives containing `.sdbx.yaml`, `
 ## Testing Notes
 
 - Go 1.25.5+ required (see go.mod)
-- Tests across 8 packages including registry
-- Package coverage: tui (100%), generator (82%), registry, secrets (76%), doctor (71%), config (43%), cmd (34%)
+- Tests across 10+ packages including registry, web, tui
+- Package coverage: tui (100%), generator (82%), web (80%), registry (76%), secrets (76%), doctor (71%), config (43%), cmd (34%)
+- Web tests cover template loading, phase detection, token generation, health endpoint
+- TUI tests cover table rendering, progress tracking, checklist, badges
 - No integration tests for Docker Compose operations (would require Docker in CI)
 
 ## Common Patterns
