@@ -168,7 +168,10 @@ func (i *Integrator) integrateProwlarr(ctx context.Context) []*IntegrationResult
 }
 
 // addProwlarrApplication adds or updates a *arr app in Prowlarr
-func (i *Integrator) addProwlarrApplication(ctx context.Context, prowlarr *ProwlarrClient, appName string, svc *ServiceConfig, existing map[string]*ProwlarrApplication) *IntegrationResult {
+func (i *Integrator) addProwlarrApplication(
+	ctx context.Context, prowlarr *ProwlarrClient, appName string,
+	svc *ServiceConfig, existing map[string]*ProwlarrApplication,
+) *IntegrationResult {
 	// Check if already exists
 	if existingApp, exists := existing[appName]; exists {
 		return &IntegrationResult{

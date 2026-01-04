@@ -207,6 +207,12 @@ func TestIntegrationResponseStruct(t *testing.T) {
 	if resp.Total != 5 {
 		t.Error("Total should be 5")
 	}
+	if resp.Successful != 3 {
+		t.Error("Successful should be 3")
+	}
+	if resp.Failed != 2 {
+		t.Error("Failed should be 2")
+	}
 	if len(resp.Integrations) != 1 {
 		t.Error("should have 1 integration")
 	}
@@ -214,12 +220,13 @@ func TestIntegrationResponseStruct(t *testing.T) {
 
 // TestBackupDisplayStruct verifies backup display struct
 func TestBackupDisplayStruct(t *testing.T) {
+	ts := time.Now()
 	display := BackupDisplay{
 		Name:      "backup.tar.gz",
 		Path:      "/path/to/backup.tar.gz",
 		Size:      1024,
 		SizeHuman: "1.0 KB",
-		Timestamp: time.Now(),
+		Timestamp: ts,
 		Age:       "just now",
 		Hostname:  "testhost",
 	}
@@ -227,8 +234,23 @@ func TestBackupDisplayStruct(t *testing.T) {
 	if display.Name != "backup.tar.gz" {
 		t.Error("Name not set correctly")
 	}
+	if display.Path != "/path/to/backup.tar.gz" {
+		t.Error("Path not set correctly")
+	}
+	if display.Size != 1024 {
+		t.Error("Size not set correctly")
+	}
 	if display.SizeHuman != "1.0 KB" {
 		t.Error("SizeHuman not set correctly")
+	}
+	if display.Timestamp != ts {
+		t.Error("Timestamp not set correctly")
+	}
+	if display.Age != "just now" {
+		t.Error("Age not set correctly")
+	}
+	if display.Hostname != "testhost" {
+		t.Error("Hostname not set correctly")
 	}
 }
 
@@ -236,7 +258,6 @@ func TestBackupDisplayStruct(t *testing.T) {
 func TestBackupResponseStruct(t *testing.T) {
 	resp := BackupResponse{
 		Success: true,
-		Message: "test",
 		Backup: &BackupDisplay{
 			Name: "backup.tar.gz",
 		},

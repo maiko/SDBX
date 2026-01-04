@@ -203,11 +203,11 @@ func TestProgressBarEdgeCases(t *testing.T) {
 	}
 
 	// Test with negative percent (should handle gracefully)
-	result = ProgressBar(-0.1, 10)
+	_ = ProgressBar(-0.1, 10)
 	// Should not panic
 
 	// Test with > 100% (should handle gracefully)
-	result = ProgressBar(1.5, 10)
+	_ = ProgressBar(1.5, 10)
 	// Should not panic
 }
 

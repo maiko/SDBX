@@ -116,8 +116,8 @@ func (r *Resolver) resolveService(ctx context.Context, cfg *config.Config, graph
 	// Calculate definition hash
 	hash := r.calculateHash(def)
 
-	// Look for overrides (optional, ignore errors)
-	overrides, _ := r.loadOverrides(ctx, serviceName)
+	// Look for overrides (optional)
+	overrides := r.loadOverrides(ctx, serviceName)
 
 	// Merge overrides to get final definition
 	finalDef := def
@@ -239,7 +239,7 @@ func (r *Resolver) evaluateConditionString(condition string, cfg *config.Config)
 }
 
 // loadOverrides loads all overrides for a service
-func (r *Resolver) loadOverrides(_ context.Context, serviceName string) ([]*ServiceOverride, error) {
+func (r *Resolver) loadOverrides(_ context.Context, serviceName string) []*ServiceOverride {
 	var overrides []*ServiceOverride
 
 	// Get all sources and sort by priority (lowest first, so high priority wins when applied)
@@ -288,7 +288,7 @@ func (r *Resolver) loadOverrides(_ context.Context, serviceName string) ([]*Serv
 		overrides = append(overrides, override)
 	}
 
-	return overrides, nil
+	return overrides
 }
 
 // calculateHash calculates a hash of the service definition

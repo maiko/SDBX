@@ -119,9 +119,11 @@ func runStatus(_ *cobra.Command, args []string) error {
 	// Summary
 	summaryStyle := tui.MutedStyle
 	if running == len(services) {
-		fmt.Printf("%s %s\n", tui.SuccessStyle.Render(tui.IconSuccess), summaryStyle.Render(fmt.Sprintf("All %d services running", running)))
+		msg := summaryStyle.Render(fmt.Sprintf("All %d services running", running))
+		fmt.Printf("%s %s\n", tui.SuccessStyle.Render(tui.IconSuccess), msg)
 	} else {
-		fmt.Printf("%s %s\n", tui.WarningStyle.Render(tui.IconWarning), summaryStyle.Render(fmt.Sprintf("%d/%d services running", running, len(services))))
+		msg := summaryStyle.Render(fmt.Sprintf("%d/%d services running", running, len(services)))
+		fmt.Printf("%s %s\n", tui.WarningStyle.Render(tui.IconWarning), msg)
 	}
 	fmt.Println()
 

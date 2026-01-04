@@ -169,7 +169,11 @@ func runBackupList(_ *cobra.Command, _ []string) error {
 	fmt.Println()
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-	fmt.Fprintln(w, tui.TableHeaderStyle.Render("NAME")+"\t"+tui.TableHeaderStyle.Render("DATE")+"\t"+tui.TableHeaderStyle.Render("SIZE")+"\t"+tui.TableHeaderStyle.Render("HOSTNAME"))
+	headers := tui.TableHeaderStyle.Render("NAME") + "\t" +
+		tui.TableHeaderStyle.Render("DATE") + "\t" +
+		tui.TableHeaderStyle.Render("SIZE") + "\t" +
+		tui.TableHeaderStyle.Render("HOSTNAME")
+	fmt.Fprintln(w, headers)
 
 	for _, b := range backups {
 		size, _ := b.GetSize()

@@ -61,7 +61,8 @@ func init() {
 	initCmd.Flags().StringVar(&initDownloadsPath, "downloads", "", "Downloads storage path")
 	initCmd.Flags().StringVar(&initConfigPath, "config", "", "Config storage path")
 	initCmd.Flags().BoolVar(&initVPNEnabled, "vpn", false, "Enable VPN for downloads (requires --vpn-provider)")
-	initCmd.Flags().StringVar(&initVPNProvider, "vpn-provider", "", "VPN provider (nordvpn, mullvad, pia, surfshark, protonvpn, expressvpn, windscribe, ipvanish, cyberghost, ivpn, torguard, vyprvpn, purevpn, hidemyass, perfectprivacy, airvpn, custom)")
+	initCmd.Flags().StringVar(&initVPNProvider, "vpn-provider", "",
+		"VPN provider (nordvpn, mullvad, pia, surfshark, protonvpn, expressvpn, etc.)")
 	initCmd.Flags().StringVar(&initVPNCountry, "vpn-country", "France", "VPN server country")
 	initCmd.Flags().BoolVar(&initSkipWizard, "skip-wizard", false, "Skip interactive wizard")
 	initCmd.Flags().StringVar(&initAdminUser, "admin-user", "admin", "Admin username for Authelia")

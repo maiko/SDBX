@@ -159,7 +159,10 @@ func runIntegrate(_ *cobra.Command, _ []string) error {
 	fmt.Println()
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-	fmt.Fprintln(w, tui.TableHeaderStyle.Render("INTEGRATION")+"\t"+tui.TableHeaderStyle.Render("STATUS")+"\t"+tui.TableHeaderStyle.Render("MESSAGE"))
+	headers := tui.TableHeaderStyle.Render("INTEGRATION") + "\t" +
+		tui.TableHeaderStyle.Render("STATUS") + "\t" +
+		tui.TableHeaderStyle.Render("MESSAGE")
+	fmt.Fprintln(w, headers)
 
 	successCount := 0
 	for _, result := range results {
