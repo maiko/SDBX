@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"text/tabwriter"
 
 	"github.com/maiko/sdbx/internal/registry"
 	"github.com/maiko/sdbx/internal/tui"
@@ -104,35 +103,34 @@ func runSourceList(_ *cobra.Command, _ []string) error {
 		return OutputJSON(cfg.Sources)
 	}
 
+	fmt.Println()
 	fmt.Println(tui.TitleStyle.Render("Service Sources"))
 	fmt.Println()
 
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "NAME\tTYPE\tPRIORITY\tURL\tSTATUS")
+	// Create table
+	table := tui.SourceTable()
 
 	for _, src := range cfg.Sources {
-		status := tui.SuccessStyle.Render("active")
-		if !src.Enabled {
-			status = tui.MutedStyle.Render("disabled")
-		}
-
 		url := src.URL
 		if src.Type == "local" {
 			url = src.Path
 		}
 
-		fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\n",
+		table.AddRow(
 			src.Name,
 			src.Type,
-			src.Priority,
 			truncate(url, 50),
-			status,
+			tui.EnabledBadge(src.Enabled),
 		)
 	}
-	w.Flush()
 
+	fmt.Println(table.Render())
+	fmt.Printf("%s %d sources configured. Use '%s' to add a new source.\n",
+		tui.IconNetwork,
+		len(cfg.Sources),
+		tui.CommandStyle.Render("sdbx source add <name> <url>"),
+	)
 	fmt.Println()
-	fmt.Printf("Use '%s' to add a new source\n", tui.CommandStyle.Render("sdbx source add <name> <url>"))
 
 	return nil
 }
@@ -234,31 +232,57 @@ func runSourceUpdate(_ *cobra.Command, args []string) error {
 			return err
 		}
 
-		fmt.Printf("Updating source %s...\n", name)
+		fmt.Printf("%s Updating source %s...\n", tui.IconRefresh, name)
 		if err := src.Update(ctx); err != nil {
 			return fmt.Errorf("failed to update %s: %w", name, err)
 		}
 
-		fmt.Println(tui.SuccessStyle.Render(fmt.Sprintf("✓ Updated source: %s", name)))
+		fmt.Println(tui.SuccessStyle.Render(fmt.Sprintf("%s Updated: %s", tui.IconSuccess, name)))
 	} else {
-		// Update all sources
-		fmt.Println("Updating all sources...")
+		// Update all sources using checklist
+		fmt.Println()
+		fmt.Println(tui.TitleStyle.Render("Updating Sources"))
+		fmt.Println()
 
-		for _, src := range reg.Sources() {
+		checklist := tui.NewCheckList()
+		sources := reg.Sources()
+
+		// Add updatable sources to checklist
+		for _, src := range sources {
+			if src.Type() == "local" || src.Type() == "embedded" {
+				continue
+			}
+			checklist.Add(src.Name())
+		}
+
+		updated := 0
+		failed := 0
+		idx := 0
+		for _, src := range sources {
 			if src.Type() == "local" || src.Type() == "embedded" {
 				continue
 			}
 
-			fmt.Printf("  Updating %s...", src.Name())
 			if err := src.Update(ctx); err != nil {
-				fmt.Printf(" %s\n", tui.ErrorStyle.Render("failed"))
-				continue
+				checklist.SetStatus(idx, "error", err.Error())
+				failed++
+			} else {
+				checklist.SetStatus(idx, "success", "updated")
+				updated++
 			}
-			fmt.Printf(" %s\n", tui.SuccessStyle.Render("done"))
+			idx++
 		}
 
+		fmt.Println(checklist.Render())
+
+		if failed == 0 {
+			fmt.Print(tui.RenderSuccessBox("All sources updated",
+				fmt.Sprintf("%d sources updated successfully", updated)))
+		} else {
+			fmt.Print(tui.RenderWarningBox("Update completed with errors",
+				fmt.Sprintf("%d updated, %d failed", updated, failed)))
+		}
 		fmt.Println()
-		fmt.Println(tui.SuccessStyle.Render("✓ All sources updated"))
 	}
 
 	return nil
@@ -279,20 +303,32 @@ func runSourceInfo(_ *cobra.Command, args []string) error {
 
 	ctx := context.Background()
 
-	fmt.Println(tui.TitleStyle.Render("Source: " + name))
+	fmt.Println()
+	fmt.Println(tui.TitleStyle.Render(tui.IconNetwork + " " + name))
 	fmt.Println()
 
-	fmt.Printf("Type:     %s\n", src.Type())
-	fmt.Printf("Priority: %d\n", src.Priority())
-	fmt.Printf("Enabled:  %t\n", src.IsEnabled())
+	// Status badge
+	fmt.Printf("  %s  %s\n",
+		tui.EnabledBadge(src.IsEnabled()),
+		tui.MutedStyle.Render(src.Type()),
+	)
+	fmt.Println()
+
+	// Details section
+	fmt.Println(tui.RenderSection("  Details"))
+	fmt.Printf("  %s\n", tui.RenderKeyValue("Type", src.Type()))
+	fmt.Printf("  %s\n", tui.RenderKeyValue("Priority", fmt.Sprintf("%d", src.Priority())))
 
 	if gitSrc, ok := src.(*registry.GitSource); ok {
-		fmt.Printf("URL:      %s\n", gitSrc.GetURL())
-		fmt.Printf("Branch:   %s\n", gitSrc.GetBranch())
-		fmt.Printf("Commit:   %s\n", truncate(gitSrc.GetCommit(), 12))
-		fmt.Printf("Updated:  %s\n", gitSrc.GetLastUpdated().Format("2006-01-02 15:04:05"))
+		fmt.Printf("  %s\n", tui.RenderKeyValue("URL", gitSrc.GetURL()))
+		fmt.Printf("  %s\n", tui.RenderKeyValue("Branch", gitSrc.GetBranch()))
+		if commit := gitSrc.GetCommit(); commit != "" {
+			fmt.Printf("  %s\n", tui.RenderKeyValue("Commit", truncate(commit, 12)))
+		}
+		if !gitSrc.GetLastUpdated().IsZero() {
+			fmt.Printf("  %s\n", tui.RenderKeyValue("Updated", gitSrc.GetLastUpdated().Format("2006-01-02 15:04:05")))
+		}
 	}
-
 	fmt.Println()
 
 	// List services from this source
@@ -301,19 +337,41 @@ func runSourceInfo(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("Services: %d\n", len(services))
-	if len(services) > 0 && len(services) <= 20 {
+	fmt.Println(tui.RenderSection(fmt.Sprintf("  Services (%d)", len(services))))
+	if len(services) == 0 {
+		fmt.Println(tui.MutedStyle.Render("  No services found"))
+	} else if len(services) <= 20 {
 		for _, svcName := range services {
 			def, _ := src.LoadService(ctx, svcName)
 			if def != nil {
 				addonTag := ""
 				if def.Conditions.RequireAddon {
 					addonTag = tui.MutedStyle.Render(" (addon)")
+				} else {
+					addonTag = tui.SuccessStyle.Render(" (core)")
 				}
-				fmt.Printf("  - %s%s\n", svcName, addonTag)
+				fmt.Printf("  %s %s%s\n", tui.IconPackage, svcName, addonTag)
+			}
+		}
+	} else {
+		// Show count and first few
+		for i, svcName := range services[:10] {
+			def, _ := src.LoadService(ctx, svcName)
+			if def != nil {
+				addonTag := ""
+				if def.Conditions.RequireAddon {
+					addonTag = tui.MutedStyle.Render(" (addon)")
+				} else {
+					addonTag = tui.SuccessStyle.Render(" (core)")
+				}
+				fmt.Printf("  %s %s%s\n", tui.IconPackage, svcName, addonTag)
+			}
+			if i == 9 {
+				fmt.Printf("  %s\n", tui.MutedStyle.Render(fmt.Sprintf("  ... and %d more", len(services)-10)))
 			}
 		}
 	}
+	fmt.Println()
 
 	return nil
 }

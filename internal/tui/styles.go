@@ -102,6 +102,7 @@ const (
 	IconKey     = "🔑"
 	IconRocket  = "🚀"
 	IconPackage = "📦"
+	IconRefresh = "🔄"
 )
 
 // Logo is the ASCII art logo for SDBX

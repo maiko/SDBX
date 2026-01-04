@@ -3,8 +3,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"os"
-	"text/tabwriter"
 
 	"github.com/maiko/sdbx/internal/config"
 	"github.com/maiko/sdbx/internal/registry"
@@ -138,6 +136,7 @@ func runAddonList(_ *cobra.Command, _ []string) error {
 		return OutputJSON(result)
 	}
 
+	fmt.Println()
 	if addonListAll {
 		fmt.Println(tui.TitleStyle.Render("Available Addons"))
 	} else {
@@ -145,8 +144,11 @@ func runAddonList(_ *cobra.Command, _ []string) error {
 	}
 	fmt.Println()
 
+	// Create table
+	table := tui.AddonTable()
 	enabled := 0
 	displayed := 0
+
 	for _, addon := range addons {
 		isEnabled := cfg.IsAddonEnabled(addon.Name)
 
@@ -154,24 +156,15 @@ func runAddonList(_ *cobra.Command, _ []string) error {
 			continue
 		}
 
-		var icon, status string
-		var style = tui.MutedStyle
-
 		if isEnabled {
-			icon = tui.IconRunning
-			status = "enabled"
-			style = tui.SuccessStyle
 			enabled++
-		} else {
-			icon = tui.IconStopped
-			status = "available"
 		}
 
-		fmt.Printf("  %s %-14s %s  %s\n",
-			style.Render(icon),
+		table.AddRow(
 			addon.Name,
-			tui.MutedStyle.Render(status),
-			tui.MutedStyle.Render("— "+addon.Description),
+			tui.RenderCategory(string(addon.Category)),
+			addon.Source,
+			tui.EnabledBadge(isEnabled),
 		)
 		displayed++
 	}
@@ -181,12 +174,14 @@ func runAddonList(_ *cobra.Command, _ []string) error {
 		fmt.Println()
 		fmt.Printf("Use '%s' to see available addons\n", tui.CommandStyle.Render("sdbx addon list --all"))
 	} else {
-		fmt.Println()
-		fmt.Printf("%s enabled, %s available\n",
-			tui.SuccessStyle.Render(fmt.Sprintf("%d", enabled)),
-			tui.MutedStyle.Render(fmt.Sprintf("%d", len(addons)-enabled)),
+		fmt.Println(table.Render())
+		fmt.Printf("%s %d enabled, %d available\n",
+			tui.IconPackage,
+			enabled,
+			len(addons)-enabled,
 		)
 	}
+	fmt.Println()
 
 	return nil
 }
@@ -232,6 +227,7 @@ func runAddonSearch(_ *cobra.Command, args []string) error {
 		return nil
 	}
 
+	fmt.Println()
 	if query != "" {
 		fmt.Println(tui.TitleStyle.Render(fmt.Sprintf("Search Results for '%s'", query)))
 	} else {
@@ -239,30 +235,25 @@ func runAddonSearch(_ *cobra.Command, args []string) error {
 	}
 	fmt.Println()
 
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
-		tui.MutedStyle.Render("NAME"),
-		tui.MutedStyle.Render("CATEGORY"),
-		tui.MutedStyle.Render("SOURCE"),
-		tui.MutedStyle.Render("DESCRIPTION"),
-	)
+	// Create table with description column
+	table := tui.NewTable("Name", "Category", "Source", "Description")
 
 	for _, addon := range addons {
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
-			tui.SuccessStyle.Render(addon.Name),
+		table.AddRow(
+			addon.Name,
 			tui.RenderCategory(string(addon.Category)),
-			tui.MutedStyle.Render(addon.Source),
+			addon.Source,
 			truncateDesc(addon.Description, 40),
 		)
 	}
-	w.Flush()
 
-	fmt.Println()
-	fmt.Printf("%s %d addons. Use '%s' for details.\n",
+	fmt.Println(table.Render())
+	fmt.Printf("%s %d addons found. Use '%s' for details.\n",
 		tui.IconPackage,
 		len(addons),
 		tui.CommandStyle.Render("sdbx addon info <name>"),
 	)
+	fmt.Println()
 
 	return nil
 }
