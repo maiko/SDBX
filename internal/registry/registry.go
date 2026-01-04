@@ -129,7 +129,7 @@ func DefaultSourceConfig() *SourceConfig {
 				Type:     "git",
 				URL:      "https://github.com/maiko/SDBX-Services.git",
 				Branch:   "main",
-				Path:     "services",
+				Path:     "", // Root directory contains addons/ and core/
 				Priority: 0,
 				Enabled:  true,
 				Verified: true,
