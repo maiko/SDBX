@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"text/tabwriter"
-	"time"
 
 	"github.com/maiko/sdbx/internal/config"
 	"github.com/maiko/sdbx/internal/integrate"
