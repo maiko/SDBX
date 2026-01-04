@@ -133,9 +133,9 @@ func TestProjectDir(t *testing.T) {
 
 func TestValidate(t *testing.T) {
 	tests := []struct {
-		name    string
-		config  *Config
-		wantErr bool
+		name     string
+		config   *Config
+		wantErr  bool
 		errField string
 	}{
 		{
@@ -146,9 +146,9 @@ func TestValidate(t *testing.T) {
 		{
 			name: "missing domain",
 			config: &Config{
-				Timezone: "UTC",
-				Expose:   ExposeConfig{Mode: "cloudflared"},
-				Routing:  RoutingConfig{Strategy: "subdomain"},
+				Timezone:      "UTC",
+				Expose:        ExposeConfig{Mode: "cloudflared"},
+				Routing:       RoutingConfig{Strategy: "subdomain"},
 				ConfigPath:    "./config",
 				MediaPath:     "./media",
 				DownloadsPath: "./downloads",
@@ -161,10 +161,10 @@ func TestValidate(t *testing.T) {
 		{
 			name: "invalid domain format",
 			config: &Config{
-				Domain:   "invalid_domain",
-				Timezone: "UTC",
-				Expose:   ExposeConfig{Mode: "cloudflared"},
-				Routing:  RoutingConfig{Strategy: "subdomain"},
+				Domain:        "invalid_domain",
+				Timezone:      "UTC",
+				Expose:        ExposeConfig{Mode: "cloudflared"},
+				Routing:       RoutingConfig{Strategy: "subdomain"},
 				ConfigPath:    "./config",
 				MediaPath:     "./media",
 				DownloadsPath: "./downloads",
@@ -177,10 +177,10 @@ func TestValidate(t *testing.T) {
 		{
 			name: "invalid expose mode",
 			config: &Config{
-				Domain:   "sdbx.example.com",
-				Timezone: "UTC",
-				Expose:   ExposeConfig{Mode: "invalid"},
-				Routing:  RoutingConfig{Strategy: "subdomain"},
+				Domain:        "sdbx.example.com",
+				Timezone:      "UTC",
+				Expose:        ExposeConfig{Mode: "invalid"},
+				Routing:       RoutingConfig{Strategy: "subdomain"},
 				ConfigPath:    "./config",
 				MediaPath:     "./media",
 				DownloadsPath: "./downloads",
@@ -193,10 +193,10 @@ func TestValidate(t *testing.T) {
 		{
 			name: "invalid routing strategy",
 			config: &Config{
-				Domain:   "sdbx.example.com",
-				Timezone: "UTC",
-				Expose:   ExposeConfig{Mode: "cloudflared"},
-				Routing:  RoutingConfig{Strategy: "invalid"},
+				Domain:        "sdbx.example.com",
+				Timezone:      "UTC",
+				Expose:        ExposeConfig{Mode: "cloudflared"},
+				Routing:       RoutingConfig{Strategy: "invalid"},
 				ConfigPath:    "./config",
 				MediaPath:     "./media",
 				DownloadsPath: "./downloads",
@@ -209,10 +209,10 @@ func TestValidate(t *testing.T) {
 		{
 			name: "path routing without base domain",
 			config: &Config{
-				Domain:   "sdbx.example.com",
-				Timezone: "UTC",
-				Expose:   ExposeConfig{Mode: "cloudflared"},
-				Routing:  RoutingConfig{Strategy: "path", BaseDomain: ""},
+				Domain:        "sdbx.example.com",
+				Timezone:      "UTC",
+				Expose:        ExposeConfig{Mode: "cloudflared"},
+				Routing:       RoutingConfig{Strategy: "path", BaseDomain: ""},
 				ConfigPath:    "./config",
 				MediaPath:     "./media",
 				DownloadsPath: "./downloads",
@@ -225,11 +225,11 @@ func TestValidate(t *testing.T) {
 		{
 			name: "vpn enabled without provider",
 			config: &Config{
-				Domain:     "sdbx.example.com",
-				Timezone:   "UTC",
-				Expose:     ExposeConfig{Mode: "cloudflared"},
-				Routing:    RoutingConfig{Strategy: "subdomain"},
-				VPNEnabled: true,
+				Domain:        "sdbx.example.com",
+				Timezone:      "UTC",
+				Expose:        ExposeConfig{Mode: "cloudflared"},
+				Routing:       RoutingConfig{Strategy: "subdomain"},
+				VPNEnabled:    true,
 				ConfigPath:    "./config",
 				MediaPath:     "./media",
 				DownloadsPath: "./downloads",
@@ -242,10 +242,10 @@ func TestValidate(t *testing.T) {
 		{
 			name: "invalid PUID",
 			config: &Config{
-				Domain:   "sdbx.example.com",
-				Timezone: "UTC",
-				Expose:   ExposeConfig{Mode: "cloudflared"},
-				Routing:  RoutingConfig{Strategy: "subdomain"},
+				Domain:        "sdbx.example.com",
+				Timezone:      "UTC",
+				Expose:        ExposeConfig{Mode: "cloudflared"},
+				Routing:       RoutingConfig{Strategy: "subdomain"},
 				ConfigPath:    "./config",
 				MediaPath:     "./media",
 				DownloadsPath: "./downloads",
@@ -258,10 +258,10 @@ func TestValidate(t *testing.T) {
 		{
 			name: "invalid PGID",
 			config: &Config{
-				Domain:   "sdbx.example.com",
-				Timezone: "UTC",
-				Expose:   ExposeConfig{Mode: "cloudflared"},
-				Routing:  RoutingConfig{Strategy: "subdomain"},
+				Domain:        "sdbx.example.com",
+				Timezone:      "UTC",
+				Expose:        ExposeConfig{Mode: "cloudflared"},
+				Routing:       RoutingConfig{Strategy: "subdomain"},
 				ConfigPath:    "./config",
 				MediaPath:     "./media",
 				DownloadsPath: "./downloads",

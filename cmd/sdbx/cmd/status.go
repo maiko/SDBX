@@ -136,4 +136,3 @@ func extractServiceName(containerName string) string {
 	}
 	return containerName
 }
-

@@ -33,7 +33,7 @@ Examples:
 
 // Flags
 var (
-	integrateDryRun bool
+	integrateDryRun  bool
 	integrateVerbose bool
 )
 
@@ -199,4 +199,3 @@ func runIntegrate(_ *cobra.Command, _ []string) error {
 
 	return nil
 }
-

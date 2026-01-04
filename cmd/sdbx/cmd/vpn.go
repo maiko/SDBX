@@ -270,12 +270,12 @@ var vpnProvidersCmd = &cobra.Command{
 			for _, id := range config.GetVPNProviderIDs() {
 				p, _ := config.GetVPNProvider(id)
 				providers = append(providers, map[string]interface{}{
-					"id":              id,
-					"name":            p.Name,
-					"auth_type":       string(p.AuthType),
-					"supports_wg":     p.SupportsWG,
+					"id":               id,
+					"name":             p.Name,
+					"auth_type":        string(p.AuthType),
+					"supports_wg":      p.SupportsWG,
 					"supports_openvpn": p.SupportsOpenVPN,
-					"docs_url":        p.CredDocsURL,
+					"docs_url":         p.CredDocsURL,
 				})
 			}
 			return OutputJSON(providers)

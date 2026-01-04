@@ -117,8 +117,8 @@ func (s *Spinner) UpdateMessage(message string) {
 
 // Task represents a task with spinner
 type Task struct {
-	Name    string
-	Action  func() error
+	Name   string
+	Action func() error
 }
 
 // RunTasks runs multiple tasks with spinners sequentially

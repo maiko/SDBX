@@ -93,11 +93,11 @@ func (p *ProwlarrClient) UpdateApplication(ctx context.Context, app *ProwlarrApp
 // CreateSonarrApplication creates a Sonarr application config
 func CreateSonarrApplication(name, baseURL, apiKey string, syncLevel string) *ProwlarrApplication {
 	return &ProwlarrApplication{
-		Name:              name,
-		SyncLevel:         syncLevel,
-		Implementation:    "Sonarr",
-		ConfigContract:    "SonarrSettings",
-		Tags:              []int{},
+		Name:           name,
+		SyncLevel:      syncLevel,
+		Implementation: "Sonarr",
+		ConfigContract: "SonarrSettings",
+		Tags:           []int{},
 		Fields: []ProwlarrField{
 			{Name: "baseUrl", Value: baseURL},
 			{Name: "apiKey", Value: apiKey},
@@ -109,11 +109,11 @@ func CreateSonarrApplication(name, baseURL, apiKey string, syncLevel string) *Pr
 // CreateRadarrApplication creates a Radarr application config
 func CreateRadarrApplication(name, baseURL, apiKey string, syncLevel string) *ProwlarrApplication {
 	return &ProwlarrApplication{
-		Name:              name,
-		SyncLevel:         syncLevel,
-		Implementation:    "Radarr",
-		ConfigContract:    "RadarrSettings",
-		Tags:              []int{},
+		Name:           name,
+		SyncLevel:      syncLevel,
+		Implementation: "Radarr",
+		ConfigContract: "RadarrSettings",
+		Tags:           []int{},
 		Fields: []ProwlarrField{
 			{Name: "baseUrl", Value: baseURL},
 			{Name: "apiKey", Value: apiKey},
@@ -125,11 +125,11 @@ func CreateRadarrApplication(name, baseURL, apiKey string, syncLevel string) *Pr
 // CreateLidarrApplication creates a Lidarr application config
 func CreateLidarrApplication(name, baseURL, apiKey string, syncLevel string) *ProwlarrApplication {
 	return &ProwlarrApplication{
-		Name:              name,
-		SyncLevel:         syncLevel,
-		Implementation:    "Lidarr",
-		ConfigContract:    "LidarrSettings",
-		Tags:              []int{},
+		Name:           name,
+		SyncLevel:      syncLevel,
+		Implementation: "Lidarr",
+		ConfigContract: "LidarrSettings",
+		Tags:           []int{},
 		Fields: []ProwlarrField{
 			{Name: "baseUrl", Value: baseURL},
 			{Name: "apiKey", Value: apiKey},
@@ -141,11 +141,11 @@ func CreateLidarrApplication(name, baseURL, apiKey string, syncLevel string) *Pr
 // CreateReadarrApplication creates a Readarr application config
 func CreateReadarrApplication(name, baseURL, apiKey string, syncLevel string) *ProwlarrApplication {
 	return &ProwlarrApplication{
-		Name:              name,
-		SyncLevel:         syncLevel,
-		Implementation:    "Readarr",
-		ConfigContract:    "ReadarrSettings",
-		Tags:              []int{},
+		Name:           name,
+		SyncLevel:      syncLevel,
+		Implementation: "Readarr",
+		ConfigContract: "ReadarrSettings",
+		Tags:           []int{},
 		Fields: []ProwlarrField{
 			{Name: "baseUrl", Value: baseURL},
 			{Name: "apiKey", Value: apiKey},

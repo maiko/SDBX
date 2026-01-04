@@ -561,8 +561,8 @@ func TestValidateSecurity(t *testing.T) {
 					Category: CategoryMedia,
 				},
 				Spec: ServiceSpec{
-					Image:     ImageSpec{Repository: "test/image"},
-					Container: ContainerSpec{NameTemplate: "{{ .Name }}"},
+					Image:      ImageSpec{Repository: "test/image"},
+					Container:  ContainerSpec{NameTemplate: "{{ .Name }}"},
 					Networking: NetworkSpec{Mode: "host"},
 				},
 			},

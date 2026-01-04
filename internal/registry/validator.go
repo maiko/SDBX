@@ -16,19 +16,19 @@ type Validator struct {
 func NewValidator() *Validator {
 	return &Validator{
 		allowedRegistries: map[string]bool{
-			"docker.io":   true,
-			"ghcr.io":     true,
-			"lscr.io":     true,
-			"quay.io":     true,
-			"gcr.io":      true,
+			"docker.io":       true,
+			"ghcr.io":         true,
+			"lscr.io":         true,
+			"quay.io":         true,
+			"gcr.io":          true,
 			"registry.k8s.io": true,
 		},
 		dangerousCaps: map[string]bool{
-			"SYS_ADMIN":   true,
-			"SYS_PTRACE":  true,
-			"SYS_MODULE":  true,
-			"SYS_RAWIO":   true,
-			"SYS_TIME":    true,
+			"SYS_ADMIN":       true,
+			"SYS_PTRACE":      true,
+			"SYS_MODULE":      true,
+			"SYS_RAWIO":       true,
+			"SYS_TIME":        true,
 			"DAC_READ_SEARCH": true,
 		},
 	}

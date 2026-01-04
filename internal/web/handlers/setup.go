@@ -452,4 +452,3 @@ func generateArgon2Hash(password string) (string, error) {
 
 	return fmt.Sprintf("$argon2id$v=19$m=%d,t=%d,p=%d$%s$%s", memory, time, threads, b64Salt, b64Hash), nil
 }
-

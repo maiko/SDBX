@@ -7,36 +7,36 @@ import "time"
 
 // API version for service definitions
 const (
-	APIVersion = "sdbx.io/v1"
-	KindService = "Service"
-	KindServiceOverride = "ServiceOverride"
+	APIVersion           = "sdbx.io/v1"
+	KindService          = "Service"
+	KindServiceOverride  = "ServiceOverride"
 	KindSourceRepository = "SourceRepository"
-	KindSourceConfig = "SourceConfig"
-	KindLockFile = "LockFile"
+	KindSourceConfig     = "SourceConfig"
+	KindLockFile         = "LockFile"
 )
 
 // ServiceCategory defines the category of a service
 type ServiceCategory string
 
 const (
-	CategoryMedia       ServiceCategory = "media"
-	CategoryDownloads   ServiceCategory = "downloads"
-	CategoryManagement  ServiceCategory = "management"
-	CategoryUtility     ServiceCategory = "utility"
-	CategoryNetworking  ServiceCategory = "networking"
-	CategoryAuth        ServiceCategory = "auth"
+	CategoryMedia      ServiceCategory = "media"
+	CategoryDownloads  ServiceCategory = "downloads"
+	CategoryManagement ServiceCategory = "management"
+	CategoryUtility    ServiceCategory = "utility"
+	CategoryNetworking ServiceCategory = "networking"
+	CategoryAuth       ServiceCategory = "auth"
 )
 
 // ServiceDefinition represents a complete service definition loaded from YAML
 type ServiceDefinition struct {
-	APIVersion string          `yaml:"apiVersion"`
-	Kind       string          `yaml:"kind"`
-	Metadata   ServiceMetadata `yaml:"metadata"`
-	Spec       ServiceSpec     `yaml:"spec"`
-	Routing    RoutingConfig   `yaml:"routing,omitempty"`
-	Secrets    []SecretDef     `yaml:"secrets,omitempty"`
-	Integrations Integrations  `yaml:"integrations,omitempty"`
-	Conditions Conditions      `yaml:"conditions,omitempty"`
+	APIVersion   string          `yaml:"apiVersion"`
+	Kind         string          `yaml:"kind"`
+	Metadata     ServiceMetadata `yaml:"metadata"`
+	Spec         ServiceSpec     `yaml:"spec"`
+	Routing      RoutingConfig   `yaml:"routing,omitempty"`
+	Secrets      []SecretDef     `yaml:"secrets,omitempty"`
+	Integrations Integrations    `yaml:"integrations,omitempty"`
+	Conditions   Conditions      `yaml:"conditions,omitempty"`
 }
 
 // ServiceMetadata contains service identification and descriptive information
@@ -53,14 +53,14 @@ type ServiceMetadata struct {
 
 // ServiceSpec defines the container and runtime configuration
 type ServiceSpec struct {
-	Image       ImageSpec       `yaml:"image"`
-	Container   ContainerSpec   `yaml:"container"`
-	Environment EnvironmentSpec `yaml:"environment,omitempty"`
-	Volumes     []VolumeMount   `yaml:"volumes,omitempty"`
-	Ports       PortSpec        `yaml:"ports,omitempty"`
-	Networking  NetworkSpec     `yaml:"networking,omitempty"`
-	HealthCheck *HealthCheck    `yaml:"healthcheck,omitempty"`
-	Dependencies DependencySpec `yaml:"dependencies,omitempty"`
+	Image        ImageSpec       `yaml:"image"`
+	Container    ContainerSpec   `yaml:"container"`
+	Environment  EnvironmentSpec `yaml:"environment,omitempty"`
+	Volumes      []VolumeMount   `yaml:"volumes,omitempty"`
+	Ports        PortSpec        `yaml:"ports,omitempty"`
+	Networking   NetworkSpec     `yaml:"networking,omitempty"`
+	HealthCheck  *HealthCheck    `yaml:"healthcheck,omitempty"`
+	Dependencies DependencySpec  `yaml:"dependencies,omitempty"`
 }
 
 // ImageSpec defines the container image configuration
@@ -72,11 +72,11 @@ type ImageSpec struct {
 
 // ContainerSpec defines container runtime settings
 type ContainerSpec struct {
-	NameTemplate string         `yaml:"name_template"`
-	Restart      string         `yaml:"restart,omitempty"`
-	Privileged   bool           `yaml:"privileged,omitempty"`
+	NameTemplate string           `yaml:"name_template"`
+	Restart      string           `yaml:"restart,omitempty"`
+	Privileged   bool             `yaml:"privileged,omitempty"`
 	Capabilities CapabilitiesSpec `yaml:"capabilities,omitempty"`
-	Devices      []string       `yaml:"devices,omitempty"`
+	Devices      []string         `yaml:"devices,omitempty"`
 }
 
 // CapabilitiesSpec defines Linux capabilities to add or drop
@@ -87,9 +87,9 @@ type CapabilitiesSpec struct {
 
 // EnvironmentSpec defines environment variables for the service
 type EnvironmentSpec struct {
-	Static      []EnvVar          `yaml:"static,omitempty"`
+	Static      []EnvVar            `yaml:"static,omitempty"`
 	Conditional []ConditionalEnvVar `yaml:"conditional,omitempty"`
-	EnvFile     []string          `yaml:"envFile,omitempty"`
+	EnvFile     []string            `yaml:"envFile,omitempty"`
 }
 
 // EnvVar represents a single environment variable
@@ -121,8 +121,8 @@ type VolumeMount struct {
 
 // PortSpec defines port mappings
 type PortSpec struct {
-	Static      []string           `yaml:"static,omitempty"`
-	Conditional []ConditionalPort  `yaml:"conditional,omitempty"`
+	Static      []string          `yaml:"static,omitempty"`
+	Conditional []ConditionalPort `yaml:"conditional,omitempty"`
 }
 
 // ConditionalPort is a port mapping with a condition
@@ -146,17 +146,17 @@ type NetworkRef struct {
 
 // HealthCheck defines container health check configuration
 type HealthCheck struct {
-	Test     []string `yaml:"test"`
-	Interval string   `yaml:"interval,omitempty"`
-	Timeout  string   `yaml:"timeout,omitempty"`
-	Retries  int      `yaml:"retries,omitempty"`
-	StartPeriod string `yaml:"start_period,omitempty"`
+	Test        []string `yaml:"test"`
+	Interval    string   `yaml:"interval,omitempty"`
+	Timeout     string   `yaml:"timeout,omitempty"`
+	Retries     int      `yaml:"retries,omitempty"`
+	StartPeriod string   `yaml:"start_period,omitempty"`
 }
 
 // DependencySpec defines service dependencies
 type DependencySpec struct {
-	Required    []string             `yaml:"required,omitempty"`
-	Optional    []string             `yaml:"optional,omitempty"`
+	Required    []string                `yaml:"required,omitempty"`
+	Optional    []string                `yaml:"optional,omitempty"`
 	Conditional []ConditionalDependency `yaml:"conditional,omitempty"`
 }
 
@@ -169,14 +169,14 @@ type ConditionalDependency struct {
 
 // RoutingConfig defines how the service is exposed via Traefik
 type RoutingConfig struct {
-	Enabled       bool              `yaml:"enabled"`
-	Port          int               `yaml:"port,omitempty"`
-	Subdomain     string            `yaml:"subdomain,omitempty"`
-	Path          string            `yaml:"path,omitempty"`
-	PathRouting   PathRoutingConfig `yaml:"pathRouting,omitempty"`
-	Auth          AuthConfig        `yaml:"auth,omitempty"`
-	ForceSubdomain bool             `yaml:"forceSubdomain,omitempty"`
-	Traefik       TraefikConfig     `yaml:"traefik,omitempty"`
+	Enabled        bool              `yaml:"enabled"`
+	Port           int               `yaml:"port,omitempty"`
+	Subdomain      string            `yaml:"subdomain,omitempty"`
+	Path           string            `yaml:"path,omitempty"`
+	PathRouting    PathRoutingConfig `yaml:"pathRouting,omitempty"`
+	Auth           AuthConfig        `yaml:"auth,omitempty"`
+	ForceSubdomain bool              `yaml:"forceSubdomain,omitempty"`
+	Traefik        TraefikConfig     `yaml:"traefik,omitempty"`
 }
 
 // PathRoutingConfig defines path-based routing behavior
@@ -193,8 +193,8 @@ type AuthConfig struct {
 
 // TraefikConfig defines Traefik-specific labels
 type TraefikConfig struct {
-	Priority    *int     `yaml:"priority,omitempty"`
-	Middlewares []string `yaml:"middlewares,omitempty"`
+	Priority     *int              `yaml:"priority,omitempty"`
+	Middlewares  []string          `yaml:"middlewares,omitempty"`
 	CustomLabels map[string]string `yaml:"customLabels,omitempty"`
 }
 
@@ -208,18 +208,18 @@ type SecretDef struct {
 
 // Integrations defines how the service integrates with other components
 type Integrations struct {
-	Homepage    *HomepageIntegration   `yaml:"homepage,omitempty"`
+	Homepage    *HomepageIntegration    `yaml:"homepage,omitempty"`
 	Cloudflared *CloudflaredIntegration `yaml:"cloudflared,omitempty"`
-	Watchtower  *WatchtowerIntegration `yaml:"watchtower,omitempty"`
-	Unpackerr   *UnpackerrIntegration  `yaml:"unpackerr,omitempty"`
+	Watchtower  *WatchtowerIntegration  `yaml:"watchtower,omitempty"`
+	Unpackerr   *UnpackerrIntegration   `yaml:"unpackerr,omitempty"`
 }
 
 // HomepageIntegration defines Homepage dashboard integration
 type HomepageIntegration struct {
-	Enabled     bool   `yaml:"enabled"`
-	Group       string `yaml:"group,omitempty"`
-	Icon        string `yaml:"icon,omitempty"`
-	Description string `yaml:"description,omitempty"`
+	Enabled     bool            `yaml:"enabled"`
+	Group       string          `yaml:"group,omitempty"`
+	Icon        string          `yaml:"icon,omitempty"`
+	Description string          `yaml:"description,omitempty"`
 	Widget      *HomepageWidget `yaml:"widget,omitempty"`
 }
 
@@ -249,9 +249,9 @@ type UnpackerrIntegration struct {
 
 // Conditions defines when a service should be included
 type Conditions struct {
-	Always        bool   `yaml:"always,omitempty"`
-	RequireAddon  bool   `yaml:"requireAddon,omitempty"`
-	RequireConfig string `yaml:"requireConfig,omitempty"`
+	Always         bool   `yaml:"always,omitempty"`
+	RequireAddon   bool   `yaml:"requireAddon,omitempty"`
+	RequireConfig  string `yaml:"requireConfig,omitempty"`
 	RequireFeature string `yaml:"requireFeature,omitempty"`
 }
 
@@ -271,9 +271,9 @@ type OverrideMetadata struct {
 
 // ServiceSpecOverride allows partial spec overrides
 type ServiceSpecOverride struct {
-	Image       *ImageSpec             `yaml:"image,omitempty"`
-	Environment *EnvironmentOverride   `yaml:"environment,omitempty"`
-	Volumes     *VolumeOverride        `yaml:"volumes,omitempty"`
+	Image       *ImageSpec           `yaml:"image,omitempty"`
+	Environment *EnvironmentOverride `yaml:"environment,omitempty"`
+	Volumes     *VolumeOverride      `yaml:"volumes,omitempty"`
 }
 
 // EnvironmentOverride allows adding environment variables
@@ -294,12 +294,12 @@ type RoutingConfigOverride struct {
 
 // SourceConfig defines the user's source configuration
 type SourceConfig struct {
-	APIVersion string       `yaml:"apiVersion"`
-	Kind       string       `yaml:"kind"`
+	APIVersion string               `yaml:"apiVersion"`
+	Kind       string               `yaml:"kind"`
 	Metadata   SourceConfigMetadata `yaml:"metadata"`
-	Sources    []Source     `yaml:"sources"`
-	Cache      CacheConfig  `yaml:"cache,omitempty"`
-	Security   SecurityConfig `yaml:"security,omitempty"`
+	Sources    []Source             `yaml:"sources"`
+	Cache      CacheConfig          `yaml:"cache,omitempty"`
+	Security   SecurityConfig       `yaml:"security,omitempty"`
 }
 
 // SourceConfigMetadata contains version info
@@ -328,9 +328,9 @@ type CacheConfig struct {
 
 // SecurityConfig defines security settings for sources
 type SecurityConfig struct {
-	AllowUnverified   bool                    `yaml:"allowUnverified,omitempty"`
-	RequireSignatures bool                    `yaml:"requireSignatures,omitempty"`
-	TrustLevels       map[string]TrustLevel   `yaml:"trustLevels,omitempty"`
+	AllowUnverified   bool                  `yaml:"allowUnverified,omitempty"`
+	RequireSignatures bool                  `yaml:"requireSignatures,omitempty"`
+	TrustLevels       map[string]TrustLevel `yaml:"trustLevels,omitempty"`
 }
 
 // TrustLevel defines what a source is allowed to do
@@ -368,13 +368,13 @@ type Maintainer struct {
 
 // LockFile represents a lock file for reproducible builds
 type LockFile struct {
-	APIVersion string           `yaml:"apiVersion"`
-	Kind       string           `yaml:"kind"`
-	Metadata   LockFileMetadata `yaml:"metadata"`
-	Sources    map[string]LockedSource `yaml:"sources"`
-	Services   map[string]LockedService `yaml:"services"`
-	InstallOrder []string       `yaml:"installOrder,omitempty"`
-	GeneratedFiles map[string]string `yaml:"generatedFiles,omitempty"`
+	APIVersion     string                   `yaml:"apiVersion"`
+	Kind           string                   `yaml:"kind"`
+	Metadata       LockFileMetadata         `yaml:"metadata"`
+	Sources        map[string]LockedSource  `yaml:"sources"`
+	Services       map[string]LockedService `yaml:"services"`
+	InstallOrder   []string                 `yaml:"installOrder,omitempty"`
+	GeneratedFiles map[string]string        `yaml:"generatedFiles,omitempty"`
 }
 
 // LockFileMetadata contains lock file version info

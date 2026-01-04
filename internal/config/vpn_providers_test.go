@@ -6,9 +6,9 @@ import (
 
 func TestGetVPNProvider(t *testing.T) {
 	tests := []struct {
-		id      string
-		exists  bool
-		name    string
+		id       string
+		exists   bool
+		name     string
 		authType VPNAuthType
 	}{
 		{"nordvpn", true, "NordVPN", VPNAuthWireguard},

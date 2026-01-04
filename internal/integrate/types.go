@@ -21,12 +21,12 @@ type IntegrationResult struct {
 
 // Config holds configuration for the integrator
 type Config struct {
-	Services       map[string]*ServiceConfig
-	Timeout        time.Duration
-	RetryAttempts  int
-	RetryDelay     time.Duration
-	DryRun         bool
-	Verbose        bool
+	Services      map[string]*ServiceConfig
+	Timeout       time.Duration
+	RetryAttempts int
+	RetryDelay    time.Duration
+	DryRun        bool
+	Verbose       bool
 }
 
 // DefaultConfig returns default integration configuration
@@ -51,13 +51,13 @@ type QBittorrentConfig struct {
 
 // ProwlarrApplication represents an *arr app in Prowlarr
 type ProwlarrApplication struct {
-	ID                int                    `json:"id,omitempty"`
-	Name              string                 `json:"name"`
-	SyncLevel         string                 `json:"syncLevel"` // disabled, addOnly, fullSync
-	Implementation    string                 `json:"implementation"`
-	ConfigContract    string                 `json:"configContract"`
-	Tags              []int                  `json:"tags"`
-	Fields            []ProwlarrField        `json:"fields"`
+	ID             int             `json:"id,omitempty"`
+	Name           string          `json:"name"`
+	SyncLevel      string          `json:"syncLevel"` // disabled, addOnly, fullSync
+	Implementation string          `json:"implementation"`
+	ConfigContract string          `json:"configContract"`
+	Tags           []int           `json:"tags"`
+	Fields         []ProwlarrField `json:"fields"`
 }
 
 // ProwlarrField represents a configuration field
@@ -68,14 +68,14 @@ type ProwlarrField struct {
 
 // DownloadClient represents a download client configuration for *arr apps
 type DownloadClient struct {
-	ID                int                    `json:"id,omitempty"`
-	Name              string                 `json:"name"`
-	Implementation    string                 `json:"implementation"`
-	ConfigContract    string                 `json:"configContract"`
-	Protocol          string                 `json:"protocol"` // torrent or usenet
-	Priority          int                    `json:"priority"`
-	Enable            bool                   `json:"enable"`
-	Fields            []DownloadClientField  `json:"fields"`
+	ID             int                   `json:"id,omitempty"`
+	Name           string                `json:"name"`
+	Implementation string                `json:"implementation"`
+	ConfigContract string                `json:"configContract"`
+	Protocol       string                `json:"protocol"` // torrent or usenet
+	Priority       int                   `json:"priority"`
+	Enable         bool                  `json:"enable"`
+	Fields         []DownloadClientField `json:"fields"`
 }
 
 // DownloadClientField represents a download client field

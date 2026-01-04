@@ -13,10 +13,10 @@ import (
 
 // ComposeGenerator generates Docker Compose files from registry definitions
 type ComposeGenerator struct {
-	Config    *config.Config
-	Registry  *registry.Registry
-	Secrets   map[string]string
-	funcMap   template.FuncMap
+	Config   *config.Config
+	Registry *registry.Registry
+	Secrets  map[string]string
+	funcMap  template.FuncMap
 }
 
 // NewComposeGenerator creates a new compose generator
@@ -32,30 +32,30 @@ func NewComposeGenerator(cfg *config.Config, reg *registry.Registry, secrets map
 
 // ComposeFile represents a Docker Compose file
 type ComposeFile struct {
-	Name     string                          `yaml:"name"`
-	Services map[string]ComposeService       `yaml:"services"`
-	Networks map[string]ComposeNetwork       `yaml:"networks,omitempty"`
-	Secrets  map[string]ComposeSecretDef     `yaml:"secrets,omitempty"`
+	Name     string                      `yaml:"name"`
+	Services map[string]ComposeService   `yaml:"services"`
+	Networks map[string]ComposeNetwork   `yaml:"networks,omitempty"`
+	Secrets  map[string]ComposeSecretDef `yaml:"secrets,omitempty"`
 }
 
 // ComposeService represents a Docker Compose service
 type ComposeService struct {
-	Image         string                 `yaml:"image"`
-	ContainerName string                 `yaml:"container_name"`
-	Restart       string                 `yaml:"restart,omitempty"`
-	Environment   []string               `yaml:"environment,omitempty"`
-	EnvFile       []string               `yaml:"env_file,omitempty"`
-	Volumes       []string               `yaml:"volumes,omitempty"`
-	Ports         []string               `yaml:"ports,omitempty"`
-	Networks      []string               `yaml:"networks,omitempty"`
-	NetworkMode   string                 `yaml:"network_mode,omitempty"`
+	Image         string                        `yaml:"image"`
+	ContainerName string                        `yaml:"container_name"`
+	Restart       string                        `yaml:"restart,omitempty"`
+	Environment   []string                      `yaml:"environment,omitempty"`
+	EnvFile       []string                      `yaml:"env_file,omitempty"`
+	Volumes       []string                      `yaml:"volumes,omitempty"`
+	Ports         []string                      `yaml:"ports,omitempty"`
+	Networks      []string                      `yaml:"networks,omitempty"`
+	NetworkMode   string                        `yaml:"network_mode,omitempty"`
 	DependsOn     map[string]DependsOnCondition `yaml:"depends_on,omitempty"`
-	Labels        []string               `yaml:"labels,omitempty"`
-	HealthCheck   *ComposeHealthCheck    `yaml:"healthcheck,omitempty"`
-	CapAdd        []string               `yaml:"cap_add,omitempty"`
-	Devices       []string               `yaml:"devices,omitempty"`
-	Secrets       []string               `yaml:"secrets,omitempty"`
-	Command       string                 `yaml:"command,omitempty"`
+	Labels        []string                      `yaml:"labels,omitempty"`
+	HealthCheck   *ComposeHealthCheck           `yaml:"healthcheck,omitempty"`
+	CapAdd        []string                      `yaml:"cap_add,omitempty"`
+	Devices       []string                      `yaml:"devices,omitempty"`
+	Secrets       []string                      `yaml:"secrets,omitempty"`
+	Command       string                        `yaml:"command,omitempty"`
 }
 
 // DependsOnCondition represents a depends_on condition

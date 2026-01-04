@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	stateRunning = "running"
+	stateRunning  = "running"
 	healthHealthy = "healthy"
 )
 

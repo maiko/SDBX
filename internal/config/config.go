@@ -47,16 +47,16 @@ type Config struct {
 	Umask string `mapstructure:"umask"`
 
 	// VPN
-	VPNEnabled         bool   `mapstructure:"vpn_enabled"`
-	VPNProvider        string `mapstructure:"vpn_provider"`
-	VPNType            string `mapstructure:"vpn_type"`   // "wireguard" | "openvpn"
-	VPNCountry         string `mapstructure:"vpn_country"`
+	VPNEnabled  bool   `mapstructure:"vpn_enabled"`
+	VPNProvider string `mapstructure:"vpn_provider"`
+	VPNType     string `mapstructure:"vpn_type"` // "wireguard" | "openvpn"
+	VPNCountry  string `mapstructure:"vpn_country"`
 	// VPN Credentials (stored in env file, not main config)
-	VPNUsername        string `mapstructure:"-"` // For username/password providers
-	VPNPassword        string `mapstructure:"-"` // For username/password providers
-	VPNToken           string `mapstructure:"-"` // For token-based providers (Mullvad, IVPN, AirVPN)
-	VPNWireguardKey    string `mapstructure:"-"` // Wireguard private key
-	VPNWireguardAddr   string `mapstructure:"-"` // Wireguard address (e.g., 10.x.x.x/32)
+	VPNUsername      string `mapstructure:"-"` // For username/password providers
+	VPNPassword      string `mapstructure:"-"` // For username/password providers
+	VPNToken         string `mapstructure:"-"` // For token-based providers (Mullvad, IVPN, AirVPN)
+	VPNWireguardKey  string `mapstructure:"-"` // Wireguard private key
+	VPNWireguardAddr string `mapstructure:"-"` // Wireguard address (e.g., 10.x.x.x/32)
 
 	// Addons
 	Addons []string `mapstructure:"addons"`

@@ -121,8 +121,8 @@ func (g *IntegrationsGenerator) GenerateHomepageServices(graph *registry.Resolut
 
 // CloudflaredConfig represents cloudflared config.yml
 type CloudflaredConfig struct {
-	Tunnel  string             `yaml:"tunnel"`
-	Ingress []CloudflaredRule  `yaml:"ingress"`
+	Tunnel  string            `yaml:"tunnel"`
+	Ingress []CloudflaredRule `yaml:"ingress"`
 }
 
 // CloudflaredRule represents a single ingress rule
@@ -196,8 +196,8 @@ type TraefikHTTP struct {
 
 // TraefikMiddleware represents a Traefik middleware
 type TraefikMiddleware struct {
-	StripPrefix   *StripPrefixMiddleware   `yaml:"stripPrefix,omitempty"`
-	ForwardAuth   *ForwardAuthMiddleware   `yaml:"forwardAuth,omitempty"`
+	StripPrefix *StripPrefixMiddleware `yaml:"stripPrefix,omitempty"`
+	ForwardAuth *ForwardAuthMiddleware `yaml:"forwardAuth,omitempty"`
 }
 
 // StripPrefixMiddleware represents StripPrefix middleware config
@@ -207,8 +207,8 @@ type StripPrefixMiddleware struct {
 
 // ForwardAuthMiddleware represents ForwardAuth middleware config
 type ForwardAuthMiddleware struct {
-	Address            string   `yaml:"address"`
-	TrustForwardHeader bool     `yaml:"trustForwardHeader"`
+	Address             string   `yaml:"address"`
+	TrustForwardHeader  bool     `yaml:"trustForwardHeader"`
 	AuthResponseHeaders []string `yaml:"authResponseHeaders,omitempty"`
 }
 
@@ -281,8 +281,8 @@ func (g *IntegrationsGenerator) GenerateTraefikDynamic(graph *registry.Resolutio
 
 // AutheliaAccessRule represents an Authelia access control rule
 type AutheliaAccessRule struct {
-	Domain  string `yaml:"domain"`
-	Policy  string `yaml:"policy"`
+	Domain string `yaml:"domain"`
+	Policy string `yaml:"policy"`
 }
 
 // GenerateAutheliaAccessRules generates Authelia access control rules

@@ -11,11 +11,11 @@ import (
 
 // Cache manages caching of Git sources
 type Cache struct {
-	baseDir   string
-	ttl       time.Duration
-	metadata  map[string]CacheMetadata
-	mu        sync.RWMutex
-	metaPath  string
+	baseDir  string
+	ttl      time.Duration
+	metadata map[string]CacheMetadata
+	mu       sync.RWMutex
+	metaPath string
 }
 
 // CacheMetadata stores metadata about cached sources

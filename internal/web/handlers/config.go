@@ -28,8 +28,8 @@ func NewConfigHandler(projectDir string, tmpl *template.Template) *ConfigHandler
 
 // ConfigResponse represents API response for config operations
 type ConfigResponse struct {
-	Success bool   `json:"success"`
-	Message string `json:"message"`
+	Success bool     `json:"success"`
+	Message string   `json:"message"`
 	Errors  []string `json:"errors,omitempty"`
 }
 

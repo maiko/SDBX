@@ -25,8 +25,8 @@ type LogsHandler struct {
 // NewLogsHandler creates a new logs handler
 func NewLogsHandler(compose *docker.Compose, reg *registry.Registry, tmpl *template.Template) *LogsHandler {
 	return &LogsHandler{
-		compose:  compose,
-		registry: reg,
+		compose:   compose,
+		registry:  reg,
 		templates: tmpl,
 		upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,

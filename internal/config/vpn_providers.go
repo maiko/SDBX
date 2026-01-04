@@ -17,16 +17,16 @@ const (
 
 // VPNProvider defines the authentication requirements for a VPN provider
 type VPNProvider struct {
-	Name           string      // Display name
-	ID             string      // Provider ID for gluetun
-	AuthType       VPNAuthType // Primary auth type
-	SupportsWG     bool        // Supports Wireguard
-	SupportsOpenVPN bool       // Supports OpenVPN
-	CredDocsURL    string      // URL to credential documentation
-	UsernameLabel  string      // Label for username field (if applicable)
-	PasswordLabel  string      // Label for password field (if applicable)
-	TokenLabel     string      // Label for token field (if applicable)
-	Notes          string      // Additional notes
+	Name            string      // Display name
+	ID              string      // Provider ID for gluetun
+	AuthType        VPNAuthType // Primary auth type
+	SupportsWG      bool        // Supports Wireguard
+	SupportsOpenVPN bool        // Supports OpenVPN
+	CredDocsURL     string      // URL to credential documentation
+	UsernameLabel   string      // Label for username field (if applicable)
+	PasswordLabel   string      // Label for password field (if applicable)
+	TokenLabel      string      // Label for token field (if applicable)
+	Notes           string      // Additional notes
 }
 
 // VPNProviders is the list of supported VPN providers with their auth requirements

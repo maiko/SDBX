@@ -74,8 +74,8 @@ After disabling, run 'sdbx down && sdbx up' to apply changes.`,
 
 // Flags
 var (
-	addonListAll     bool
-	addonCategory    string
+	addonListAll  bool
+	addonCategory string
 )
 
 func init() {
@@ -315,7 +315,7 @@ func runAddonInfo(_ *cobra.Command, args []string) error {
 	fmt.Println()
 
 	// Description
-	fmt.Println(tui.MutedStyle.Render("  "+def.Metadata.Description))
+	fmt.Println(tui.MutedStyle.Render("  " + def.Metadata.Description))
 	fmt.Println()
 
 	// Details section
@@ -329,7 +329,7 @@ func runAddonInfo(_ *cobra.Command, args []string) error {
 	fmt.Println()
 
 	if def.Routing.Enabled {
-		fmt.Println(tui.RenderSection("  "+tui.IconNetwork+" Routing"))
+		fmt.Println(tui.RenderSection("  " + tui.IconNetwork + " Routing"))
 		fmt.Printf("  %s\n", tui.RenderKeyValue("Subdomain", def.Routing.Subdomain))
 		fmt.Printf("  %s\n", tui.RenderKeyValue("Path", def.Routing.Path))
 		if def.Routing.Auth.Required {

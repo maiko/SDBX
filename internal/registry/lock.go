@@ -238,9 +238,9 @@ func (m *LockManager) Diff(ctx context.Context, cfg *config.Config, lock *LockFi
 		if current, exists := current.Sources[name]; exists {
 			if locked.Commit != current.Commit {
 				diff.Sources[name] = DiffEntry{
-					Type:     "modified",
-					Old:      locked.Commit,
-					New:      current.Commit,
+					Type: "modified",
+					Old:  locked.Commit,
+					New:  current.Commit,
 				}
 			}
 		} else {

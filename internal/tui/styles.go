@@ -290,12 +290,12 @@ var SpinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "�
 
 // CategoryColors maps service categories to colors
 var CategoryColors = map[string]lipgloss.Color{
-	"media":       lipgloss.Color("#E879F9"), // Fuchsia
-	"downloads":   lipgloss.Color("#38BDF8"), // Sky
-	"management":  lipgloss.Color("#A3E635"), // Lime
-	"utility":     lipgloss.Color("#FBBF24"), // Amber
-	"networking":  lipgloss.Color("#2DD4BF"), // Teal
-	"auth":        lipgloss.Color("#F87171"), // Red
+	"media":      lipgloss.Color("#E879F9"), // Fuchsia
+	"downloads":  lipgloss.Color("#38BDF8"), // Sky
+	"management": lipgloss.Color("#A3E635"), // Lime
+	"utility":    lipgloss.Color("#FBBF24"), // Amber
+	"networking": lipgloss.Color("#2DD4BF"), // Teal
+	"auth":       lipgloss.Color("#F87171"), // Red
 }
 
 // RenderCategory renders a styled category tag

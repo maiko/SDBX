@@ -8,11 +8,11 @@ import (
 
 // Table renders data in a formatted table
 type Table struct {
-	Headers     []string
-	Rows        [][]string
-	HeaderStyle lipgloss.Style
-	CellStyle   lipgloss.Style
-	BorderStyle lipgloss.Style
+	Headers      []string
+	Rows         [][]string
+	HeaderStyle  lipgloss.Style
+	CellStyle    lipgloss.Style
+	BorderStyle  lipgloss.Style
 	columnWidths []int
 }
 
