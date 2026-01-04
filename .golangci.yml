@@ -75,6 +75,7 @@ issues:
         - errcheck
         - dupl
         - gosec
+        - govet
         - lll
         - revive
 
