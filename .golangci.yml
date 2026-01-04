@@ -104,6 +104,7 @@ issues:
       linters:
         - gosec
         - revive
+        - gocritic
 
     # Integrate package has similar API clients with naturally similar patterns
     - path: internal/integrate/
