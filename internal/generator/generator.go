@@ -68,6 +68,7 @@ func (g *Generator) Generate() error {
 		"configs/gluetun",
 		"configs/homepage",
 		"configs/qbittorrent",
+		"configs/qbittorrent/qBittorrent",
 		"configs/prowlarr",
 		"configs/sonarr",
 		"configs/radarr",
@@ -223,6 +224,7 @@ func (g *Generator) generateFromRegistry(data TemplateData) error {
 		{"homepage-settings.yaml.tmpl", "configs/homepage/settings.yaml"},
 		{"homepage-docker.yaml.tmpl", "configs/homepage/docker.yaml"},
 		{"gluetun.env.tmpl", "configs/gluetun/gluetun.env"},
+		{"qbittorrent.conf.tmpl", "configs/qbittorrent/qBittorrent/qBittorrent.conf"},
 	}
 
 	for _, f := range staticFiles {
