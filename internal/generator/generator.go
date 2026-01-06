@@ -277,8 +277,22 @@ func (g *Generator) CreateDataDirs() error {
 	}
 
 	for _, dir := range dirs {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
+		// Create directory if it doesn't exist (MkdirAll is safe - won't touch existing)
+		if err := os.MkdirAll(dir, 0o775); err != nil {
 			return fmt.Errorf("failed to create %s: %w", dir, err)
+		}
+
+		// Fix permissions on existing directories (safe - only changes metadata)
+		if err := os.Chmod(dir, 0o775); err != nil {
+			log.Printf("Warning: could not set permissions on %s: %v", dir, err)
+		}
+
+		// Fix ownership to PUID:PGID (safe - only changes metadata)
+		if err := os.Chown(dir, g.Config.PUID, g.Config.PGID); err != nil {
+			// Non-fatal if running without sudo - warn but continue
+			log.Printf("Warning: could not set ownership on %s: %v", dir, err)
+			log.Printf("You may need to run: sudo chown -R %d:%d %s",
+				g.Config.PUID, g.Config.PGID, dir)
 		}
 	}
 

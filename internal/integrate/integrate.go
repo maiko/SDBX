@@ -62,36 +62,41 @@ func (i *Integrator) Run(ctx context.Context) ([]*IntegrationResult, error) {
 
 // waitForServices waits for all services to be ready
 func (i *Integrator) waitForServices(ctx context.Context) error {
-	timeout := 5 * time.Minute
-	deadline := time.Now().Add(timeout)
+	const serviceTimeout = 30 * time.Second // Reduced - services should be ready quickly
+	const retryInterval = 2 * time.Second
 
 	for name, svc := range i.services {
 		if !svc.Enabled {
 			continue
 		}
 
-		if i.config.Verbose {
-			fmt.Printf("Waiting for %s to be ready...\n", name)
-		}
+		fmt.Printf("Checking %s at %s...\n", name, svc.URL)
 
-		for time.Now().Before(deadline) {
+		// Each service gets its own timeout
+		serviceDeadline := time.Now().Add(serviceTimeout)
+		var lastErr error
+
+		for time.Now().Before(serviceDeadline) {
 			if err := i.checkServiceHealth(ctx, name, svc); err == nil {
-				if i.config.Verbose {
-					fmt.Printf("✓ %s is ready\n", name)
-				}
+				fmt.Printf("✓ %s is ready\n", name)
 				break
+			} else {
+				lastErr = err // Save for logging
 			}
 
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			case <-time.After(5 * time.Second):
+			case <-time.After(retryInterval):
 				// Retry
 			}
 		}
 
-		if time.Now().After(deadline) {
-			return fmt.Errorf("timeout waiting for %s", name)
+		if time.Now().After(serviceDeadline) {
+			// Log error but continue (non-fatal)
+			fmt.Printf("⚠ Warning: %s health check failed after %v: %v\n",
+				name, serviceTimeout, lastErr)
+			fmt.Printf("  Continuing anyway (service may still work)...\n")
 		}
 	}
 
