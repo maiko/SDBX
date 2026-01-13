@@ -59,9 +59,6 @@ Retrieves a configuration value from the `.env` file.
 ### `sdbx config set KEY VALUE`
 Updates a configuration value in the `.env` file and applies changes to relevant templates.
 
-### `sdbx secrets generate`
-Generates fresh secrets for Authelia and other services requiring sensitive data.
-
 ---
 
 ## 🧩 Addons
