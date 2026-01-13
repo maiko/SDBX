@@ -42,10 +42,10 @@ func TestTemplateLoading(t *testing.T) {
 		// Dashboard pages
 		"pages/dashboard.html",
 		"pages/services.html",
+		"pages/service_info.html",
 		"pages/logs.html",
 		"pages/addons.html",
 		"pages/config.html",
-		"pages/integration.html",
 		"pages/backup.html",
 	}
 

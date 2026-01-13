@@ -148,12 +148,12 @@ func TestConfigHandlerConstruction(t *testing.T) {
 	}
 }
 
-// TestIntegrationHandlerConstruction verifies integration handler can be created
-func TestIntegrationHandlerConstruction(t *testing.T) {
-	handler := NewIntegrationHandler("", nil)
+// TestBackupHandlerConstruction verifies backup handler can be created
+func TestBackupHandlerConstruction(t *testing.T) {
+	handler := NewBackupHandler("", nil)
 
 	if handler == nil {
-		t.Error("NewIntegrationHandler should return non-nil handler")
+		t.Error("NewBackupHandler should return non-nil handler")
 	}
 }
 
