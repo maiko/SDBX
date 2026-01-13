@@ -151,6 +151,9 @@ func (g *ComposeGenerator) Generate(graph *registry.ResolutionGraph) (*ComposeFi
 		}
 	}
 
+	// Transfer labels for services using network_mode: service:X
+	g.transferLabelsForNetworkSharing(compose)
+
 	return compose, nil
 }
 
@@ -423,6 +426,53 @@ func (g *ComposeGenerator) buildTraefikLabels(def *registry.ServiceDefinition, _
 	}
 
 	return labels
+}
+
+// transferLabelsForNetworkSharing handles routing pass-through for services
+// using network_mode: service:X pattern. Transfers Traefik labels from the
+// network-sharing service to the host service.
+func (g *ComposeGenerator) transferLabelsForNetworkSharing(compose *ComposeFile) {
+	// Iterate through all services
+	for serviceName, service := range compose.Services {
+		// Check if service uses network_mode: service:X pattern
+		if strings.HasPrefix(service.NetworkMode, "service:") {
+			hostServiceName := strings.TrimPrefix(service.NetworkMode, "service:")
+
+			// Verify host service exists
+			hostService, exists := compose.Services[hostServiceName]
+			if !exists {
+				// Log warning but continue
+				continue
+			}
+
+			// Transfer only Traefik labels from network-sharing service to host
+			if len(service.Labels) > 0 {
+				if hostService.Labels == nil {
+					hostService.Labels = []string{}
+				}
+
+				// Copy Traefik labels
+				for _, label := range service.Labels {
+					if strings.HasPrefix(label, "traefik.") {
+						hostService.Labels = append(hostService.Labels, label)
+					}
+				}
+				compose.Services[hostServiceName] = hostService
+
+				// Remove Traefik labels from network-sharing service
+				// (they won't work there anyway)
+				filteredLabels := []string{}
+				svc := service
+				for _, label := range svc.Labels {
+					if !strings.HasPrefix(label, "traefik.") {
+						filteredLabels = append(filteredLabels, label)
+					}
+				}
+				svc.Labels = filteredLabels
+				compose.Services[serviceName] = svc
+			}
+		}
+	}
 }
 
 // evaluateConditions checks if a service's conditions are met
