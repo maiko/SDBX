@@ -55,8 +55,6 @@ cmd/sdbx/
     addon.go           # Addon management (search, enable, disable)
     source.go          # Source management (add, remove, list, update)
     lock.go            # Lock file management (lock, verify, diff)
-    integrate.go       # Service integration (auto-configure connections)
-    secrets.go         # Secret generation/rotation
     config.go          # Configuration get/set
     vpn.go             # VPN configuration (configure, status, providers)
 
@@ -87,13 +85,6 @@ internal/
     services/          # Embedded service definitions (YAML)
       core/            # Core services (7): traefik, authelia, plex, qbittorrent, gluetun, cloudflared, sdbx-webui
                        # NOTE: All addons (27) are in Git source only, not embedded
-  integrate/           # Service integration and auto-configuration
-    types.go           # ServiceConfig, IntegrationResult, API request/response types
-    client.go          # HTTP client with retry logic
-    integrate.go       # Main integrator orchestrating all integrations
-    prowlarr.go        # Prowlarr API client (add *arr apps, sync indexers)
-    arr.go             # *arr apps API client (add download clients)
-    qbittorrent.go     # qBittorrent API client (create categories, config)
   tui/                 # Terminal UI styles and components
     styles.go          # Lipgloss styles, icons, colors, render helpers
     spinner.go         # Animated spinner for long operations
@@ -201,15 +192,12 @@ conditions:
 - Rotation creates timestamped backups before overwriting
 - Never committed to git (`.gitignore` includes `secrets/`)
 
-**8. Service Integration**
-- `sdbx integrate` auto-configures service connections after deployment
-- Prowlarr → *arr apps: registers Sonarr/Radarr/Lidarr/Readarr, syncs indexers
-- qBittorrent → *arr apps: adds as download client, creates categories
-- Uses internal Docker URLs (e.g., `http://sdbx-sonarr:8989`)
-- Reads API keys from service configs (`configs/<service>/config.xml`)
-- Idempotent: checks for existing configs, skips if already present
-- Retry logic with exponential backoff for transient failures
-- Dry-run mode available (`--dry-run`) to preview changes
+**8. Service Interconnection**
+- Services communicate using Docker hostnames following the pattern `sdbx-{servicename}`
+- Example: Sonarr connects to qBittorrent using `http://sdbx-qbittorrent:8080`
+- Services must be manually configured to connect to each other
+- API keys can be found in service config files (`configs/<service>/config.xml`)
+- See `docs/service-interconnection.md` for detailed hostname reference
 
 **9. Web UI Architecture (Two-Phase Deployment)**
 - **Pre-init phase**: `sdbx serve` runs embedded HTTP server for setup wizard
@@ -232,6 +220,16 @@ conditions:
 **VPN Enforcement**
 - qBittorrent container uses `network_mode: service:gluetun` to route all traffic through VPN
 - If VPN drops, qBittorrent has no network access (kill-switch)
+
+**VPN Network Sharing & Routing Pass-Through**
+- When VPN is enabled, qBittorrent uses `network_mode: service:gluetun` (shares network namespace)
+- This provides kill-switch protection: if VPN drops, qBittorrent has no network access
+- ComposeGenerator automatically transfers Traefik labels from qBittorrent to gluetun
+- Gluetun exposes qBittorrent's ports (8080, 6881) and handles routing
+- Pattern is generalizable: any service using `network_mode: service:X` gets routing pass-through
+- Implementation: `transferLabelsForNetworkSharing()` in `internal/generator/compose.go`
+- Non-Traefik labels (watchtower) remain on original service
+- When VPN is disabled, qBittorrent uses normal bridge networking with labels on itself
 
 **Path vs Subdomain Routing**
 - Path routing requires services to support base path configuration
@@ -289,18 +287,15 @@ sdbx lock diff                      # Show differences from lock
 sdbx lock update [service...]       # Update services in lock
 ```
 
-### Service Integration
-```bash
-sdbx integrate                      # Auto-configure all service integrations
-sdbx integrate --dry-run            # Preview changes without applying
-sdbx integrate --verbose            # Show detailed progress
-```
+### Service Interconnection
+Services communicate using Docker hostnames following the pattern `sdbx-{servicename}`.
 
-Integrations configured:
-- **Prowlarr → *arr apps**: Registers Sonarr/Radarr/Lidarr/Readarr, enables indexer sync
-- **qBittorrent → *arr apps**: Adds qBittorrent as download client, creates categories
+Examples:
+- Sonarr → qBittorrent: `http://sdbx-qbittorrent:8080`
+- Prowlarr → Sonarr: `http://sdbx-sonarr:8989`
+- Radarr → qBittorrent: `http://sdbx-qbittorrent:8080`
 
-Services must be running before integration. Run `sdbx up` first if needed.
+See `docs/service-interconnection.md` for complete hostname reference and configuration examples.
 
 ### VPN Configuration
 ```bash

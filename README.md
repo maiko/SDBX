@@ -163,9 +163,8 @@ Dive deeper into the SDBX ecosystem:
 |---------|-------------|
 | `sdbx config get [key]` | View configuration values |
 | `sdbx config set <key> <value>` | Update configuration |
-| `sdbx secrets list` | List all secrets and their status |
-| `sdbx secrets generate` | Generate missing secrets |
-| `sdbx secrets rotate <name>` | Rotate a specific secret |
+
+**Note**: Secrets are auto-generated during `sdbx init` and stored in `secrets/` directory. To rotate manually, delete secret files and restart services.
 
 ### Addon & Source Management
 

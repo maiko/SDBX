@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking Changes
+- **Removed `sdbx integrate` command** - Services must be configured manually using Docker hostnames (see `docs/service-interconnection.md`)
+- **Removed `sdbx secrets` command** - Secrets are auto-generated during `sdbx init`, manual rotation via file editing
+
 ### Added
 
 #### Web UI with Two-Phase Deployment
@@ -67,38 +71,26 @@ Complete web-based management interface inspired by Charm.land design philosophy
 
 **Implementation:**
 - ~5,000 lines Go + ~2,000 lines templates/CSS/JS
-- 8 handlers (setup, dashboard, services, logs, addons, config, integration, backup)
+- 7 handlers (setup, dashboard, services, logs, addons, config, backup)
 - 3 middleware (auth, logging, recovery)
 - 10+ page templates with reusable components
 - Minimal JavaScript footprint (htmx + WebSocket client)
-
-#### Service Auto-Configuration
-Automatic service integration system that configures connections between services:
-
-**New Command:**
-- `sdbx integrate` - Auto-configure service integrations
-- `sdbx integrate --dry-run` - Preview changes without applying
-- `sdbx integrate --verbose` - Show detailed progress
-
-**Features:**
-- **Prowlarr Integration**: Automatically registers *arr apps (Sonarr, Radarr, Lidarr, Readarr) in Prowlarr and enables full indexer sync
-- **Download Client Integration**: Automatically adds qBittorrent as download client in all *arr apps
-- **Category Management**: Creates qBittorrent categories for each *arr app
-- **Smart Detection**: Reads API keys from service configs, uses Docker internal URLs
-- **Idempotent**: Checks for existing configurations, skips if already present
-- **Retry Logic**: Handles transient failures with exponential backoff
-- **Health Checks**: Waits for services to be ready before configuring
-
-**Benefits:**
-- No manual API key copying or URL configuration
-- Automatic indexer sync across all *arr apps via Prowlarr
-- Proper download organization with categories
-- Saves 10-15 minutes of manual configuration per service
-
-**Implementation:**
-- Pure Go API clients for Prowlarr, *arr apps (Sonarr/Radarr/Lidarr/Readarr), qBittorrent
-- HTTP client with retry logic and timeout handling
 - Modular integrator architecture for extensibility
+
+#### Service Interconnection Improvements
+- **Service Info page** in Web UI displaying Docker hostnames (`sdbx-{servicename}`), internal ports, and external URLs
+- **Hostname column** in `sdbx status` command output (both CLI table and JSON format)
+- **Service interconnection documentation** (`docs/service-interconnection.md`) with hostname patterns, reference tables, and configuration examples
+- **Homepage bookmarks** configuration automatically generated with SDBX project links, community resources, and documentation
+
+### Changed
+- Backup management moved to dedicated page and handler (extracted from integration handler)
+- Handler count updated from 8 to 7 (integration handler removed)
+
+### Removed
+- Integration command (~2,000 lines) - users configure services manually using Docker hostnames
+- Secrets rotation command - secrets auto-generated during init, manual rotation via file editing
+- Integration page from Web UI
 
 ## [0.4.0-alpha] - 2026-01-01
 
@@ -247,7 +239,6 @@ This allows users to start with a minimal setup (just qBittorrent + Plex + secur
 - `sdbx addon` - Manage optional addons (list, search, enable, disable)
 - `sdbx source` - Manage service sources (list, add, remove, update)
 - `sdbx lock` - Lock file management for reproducibility
-- `sdbx secrets` - Manage secrets
 - `sdbx config` - View and modify configuration
 
 #### Services Included
