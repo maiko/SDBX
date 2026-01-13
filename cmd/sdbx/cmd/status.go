@@ -65,9 +65,24 @@ func runStatus(_ *cobra.Command, args []string) error {
 
 	// JSON output mode
 	if IsJSONOutput() {
+		// Enhance service data with hostnames
+		type ServiceWithHostname struct {
+			docker.Service
+			Hostname string `json:"hostname"`
+		}
+
+		enriched := make([]ServiceWithHostname, len(services))
+		for i, svc := range services {
+			name := extractServiceName(svc.Name)
+			enriched[i] = ServiceWithHostname{
+				Service:  svc,
+				Hostname: fmt.Sprintf("sdbx-%s", name),
+			}
+		}
+
 		return OutputJSON(map[string]interface{}{
 			"domain":   cfg.Domain,
-			"services": services,
+			"services": enriched,
 		})
 	}
 
@@ -95,10 +110,13 @@ func runStatus(_ *cobra.Command, args []string) error {
 	}
 
 	// Create table
-	table := tui.NewTable("Service", "Status", "Health", "URL")
+	table := tui.NewTable("Service", "Hostname", "Status", "Health", "URL")
 
 	for _, svc := range services {
 		name := extractServiceName(svc.Name)
+
+		// Hostname
+		hostname := tui.MutedStyle.Render(fmt.Sprintf("sdbx-%s", name))
 
 		// Status badge
 		status := tui.StatusBadge(svc.Running)
@@ -112,7 +130,7 @@ func runStatus(_ *cobra.Command, args []string) error {
 			url = tui.InfoStyle.Render(cfg.GetServiceURL(name))
 		}
 
-		table.AddRow(name, status, health, url)
+		table.AddRow(name, hostname, status, health, url)
 	}
 
 	fmt.Println(table.Render())

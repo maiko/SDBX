@@ -23,12 +23,7 @@ spec:
   container:
     name_template: "sdbx-{{ .Name }}"
     restart: unless-stopped
-    command:
-      - serve
-      - --host
-      - "0.0.0.0"
-      - --port
-      - "3000"
+    command: "serve --host 0.0.0.0 --port 3000"
 
   environment:
     static:
