@@ -223,6 +223,7 @@ func (g *Generator) generateFromRegistry(data TemplateData) error {
 		{"authelia-users.yml.tmpl", "configs/authelia/users_database.yml"},
 		{"homepage-settings.yaml.tmpl", "configs/homepage/settings.yaml"},
 		{"homepage-docker.yaml.tmpl", "configs/homepage/docker.yaml"},
+		{"homepage-bookmarks.yaml.tmpl", "configs/homepage/bookmarks.yaml"},
 		{"gluetun.env.tmpl", "configs/gluetun/gluetun.env"},
 		{"qbittorrent.conf.tmpl", "configs/qbittorrent/qBittorrent/qBittorrent.conf"},
 	}

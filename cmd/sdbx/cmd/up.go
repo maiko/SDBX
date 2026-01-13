@@ -109,14 +109,14 @@ func promptPlexClaimToken(cfg *config.Config, projectDir string) error {
 
 	// Show prompt with instructions
 	instructions := fmt.Sprintf(
-		"Your Plex server needs to be claimed to link it to your account.\n\n"+
-			"Two options:\n"+
-			"1. Provide claim token NOW (expires in 4 minutes)\n"+
-			"   - Visit https://plex.tv/claim\n"+
-			"   - Sign in and copy the token\n"+
-			"2. Skip and claim via LOCAL NETWORK after containers start\n"+
-			"   - Access http://YOUR_SERVER_IP:32400/web\n"+
-			"   - Sign in to claim automatically\n\n"+
+		"Your Plex server needs to be claimed to link it to your account.\n\n" +
+			"Two options:\n" +
+			"1. Provide claim token NOW (expires in 4 minutes)\n" +
+			"   - Visit https://plex.tv/claim\n" +
+			"   - Sign in and copy the token\n" +
+			"2. Skip and claim via LOCAL NETWORK after containers start\n" +
+			"   - Access http://YOUR_SERVER_IP:32400/web\n" +
+			"   - Sign in to claim automatically\n\n" +
 			"Which would you like to do?",
 	)
 
