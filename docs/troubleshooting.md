@@ -48,8 +48,51 @@ sdbx logs --tail 500 authelia   # View more history
   ```
 
 ### 4. "Authelia: Invalid Username or Password"
-- **Check secrets**: Regenerate them if they were corrupted: `sdbx secrets generate`.
+- **Check secrets**: If corrupted, delete `secrets/authelia_*.txt` files and run `sdbx down && sdbx up` to regenerate.
 - **Reset Admin Password**: Follow the instructions in the [README](../README.md#5-first-login) to generate a new Argon2 hash.
+
+### 5. Plex Connection Issues
+
+#### Indirect/Relay Connections
+
+**Symptom**: Plex shows "Indirect" connection or limits quality to 720p 2Mbps
+
+**Diagnosis**:
+```bash
+# Check Plex logs for advertise configuration
+sdbx logs plex | grep -i "advertise"
+
+# Verify environment variable is set
+docker inspect sdbx-plex | grep ADVERTISE
+```
+
+**Solution**: Configure `plex_advertise_urls` in `.sdbx.yaml`
+
+**For Cloudflare Tunnel users**:
+Modern Plex supports HTTPS streaming through Cloudflare Tunnel. Add to your `.sdbx.yaml`:
+```yaml
+plex_advertise_urls: "https://plex.yourdomain.com:443"
+```
+
+Then regenerate and restart:
+```bash
+sdbx up --force-recreate plex
+```
+
+This tells Plex its external URL, allowing clients to connect directly through the tunnel instead of using Plex relay servers. All traffic stays within Cloudflare network.
+
+**For LAN users or hybrid setups**:
+Optionally add your local IP for better LAN performance:
+```yaml
+plex_advertise_urls: "https://plex.yourdomain.com:443,http://192.168.1.100:32400"
+```
+
+**Verification**:
+- Access Plex web UI
+- Go to Settings → Network
+- Check "Custom server access URLs" shows your configured value
+- Start streaming from a client
+- Connection should show "Direct" (not "Indirect")
 
 ## 🆘 Getting More Help
 

@@ -61,6 +61,9 @@ type Config struct {
 	// Addons
 	Addons []string `mapstructure:"addons"`
 
+	// Plex configuration
+	PlexAdvertiseURLs string `mapstructure:"plex_advertise_urls"`
+
 	// Per-service overrides
 	Services map[string]ServiceOverride `mapstructure:"services"`
 
@@ -130,6 +133,7 @@ func DefaultConfig() *Config {
 		VPNType:       "wireguard",
 		VPNCountry:    "",
 		Addons:        []string{},
+		PlexAdvertiseURLs: "",
 		Services:      make(map[string]ServiceOverride),
 	}
 }
@@ -238,6 +242,7 @@ func Load() (*Config, error) {
 	viper.SetDefault("vpn_type", cfg.VPNType)
 	viper.SetDefault("vpn_country", cfg.VPNCountry)
 	viper.SetDefault("addons", cfg.Addons)
+	viper.SetDefault("plex_advertise_urls", cfg.PlexAdvertiseURLs)
 
 	// Try to read config file
 	if err := viper.ReadInConfig(); err != nil {
@@ -284,6 +289,9 @@ func (c *Config) Save(path string) error {
 	viper.Set("vpn_type", c.VPNType)
 	viper.Set("vpn_country", c.VPNCountry)
 	viper.Set("addons", c.Addons)
+	if c.PlexAdvertiseURLs != "" {
+		viper.Set("plex_advertise_urls", c.PlexAdvertiseURLs)
+	}
 	if len(c.Services) > 0 {
 		viper.Set("services", c.Services)
 	}

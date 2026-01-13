@@ -33,6 +33,10 @@ spec:
         value: "{{ .Config.PGID }}"
       - name: VERSION
         value: docker
+    conditional:
+      - name: PLEX_ADVERTISE_IP
+        value: "{{ .Config.PlexAdvertiseURLs }}"
+        when: '{{ ne .Config.PlexAdvertiseURLs "" }}'
 
   volumes:
     - name: config

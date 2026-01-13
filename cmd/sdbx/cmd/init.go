@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,19 +22,20 @@ import (
 )
 
 var (
-	initDomain          string
-	initExposeMode      string
-	initRoutingStrategy string
-	initTimezone        string
-	initMediaPath       string
-	initDownloadsPath   string
-	initConfigPath      string
-	initVPNEnabled      bool
-	initVPNProvider     string
-	initVPNCountry      string
-	initSkipWizard      bool
-	initAdminUser       string
-	initAdminPassword   string
+	initDomain            string
+	initExposeMode        string
+	initRoutingStrategy   string
+	initTimezone          string
+	initMediaPath         string
+	initDownloadsPath     string
+	initConfigPath        string
+	initVPNEnabled        bool
+	initVPNProvider       string
+	initVPNCountry        string
+	initSkipWizard        bool
+	initAdminUser         string
+	initAdminPassword     string
+	initPlexAdvertiseURLs string
 )
 
 var initCmd = &cobra.Command{
@@ -68,6 +70,25 @@ func init() {
 	initCmd.Flags().BoolVar(&initSkipWizard, "skip-wizard", false, "Skip interactive wizard")
 	initCmd.Flags().StringVar(&initAdminUser, "admin-user", "admin", "Admin username for Authelia")
 	initCmd.Flags().StringVar(&initAdminPassword, "admin-password", "", "Admin password for Authelia (will be hashed)")
+	initCmd.Flags().StringVar(&initPlexAdvertiseURLs, "plex-advertise-urls", "",
+		"Comma-separated URLs where Plex can be reached (e.g., https://plex.domain.com:443,http://192.168.1.100:32400)")
+}
+
+// detectLocalIP attempts to find the primary local IP address
+func detectLocalIP() string {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return "192.168.1.100"
+	}
+
+	for _, addr := range addrs {
+		if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP.String()
+			}
+		}
+	}
+	return "192.168.1.100"
 }
 
 func runInit(cmd *cobra.Command, args []string) error {
@@ -162,6 +183,11 @@ func runInit(cmd *cobra.Command, args []string) error {
 				cfg.VPNProvider = "custom"
 			}
 			cfg.VPNCountry = initVPNCountry
+		}
+
+		// Plex advertise URLs configuration
+		if initPlexAdvertiseURLs != "" {
+			cfg.PlexAdvertiseURLs = initPlexAdvertiseURLs
 		}
 
 		// Admin User Configuration
@@ -495,6 +521,74 @@ func runWizard(cfg *config.Config, reg *registry.Registry) error {
 
 	cfg.Addons = selectedAddons
 
+	// Step 6.5: Advanced Plex Configuration (conditional)
+	// Only show if using Cloudflare Tunnel or Direct mode
+	if cfg.Expose.Mode == config.ExposeModeCloudflared || cfg.Expose.Mode == config.ExposeModeDirect {
+		var configurePlex bool
+		formPlexQuestion := huh.NewForm(
+			huh.NewGroup(
+				huh.NewConfirm().
+					Title("Configure Plex direct connections?").
+					Description("Recommended for high-quality streaming. Skip if unsure.").
+					Value(&configurePlex).
+					Affirmative("Yes, configure").
+					Negative("Skip for now"),
+			).Title("Advanced: Plex Direct Access"),
+		)
+
+		if err := formPlexQuestion.Run(); err != nil {
+			return err
+		}
+
+		if configurePlex {
+			// Detect local IP
+			localIP := detectLocalIP()
+
+			// Build suggestion based on expose mode
+			var suggestion string
+			var helpText string
+
+			if cfg.Expose.Mode == config.ExposeModeCloudflared {
+				suggestion = fmt.Sprintf("https://plex.%s:443", cfg.Domain)
+				helpText = "For Cloudflare Tunnel deployments (recommended):\n" +
+					"  • Use your Cloudflare Tunnel URL: https://plex.domain.com:443\n" +
+					"  • Modern Plex supports HTTPS streaming through tunnels\n" +
+					"  • All traffic stays within Cloudflare network\n" +
+					"  • Optionally add local IP for LAN: ,http://" + localIP + ":32400\n" +
+					"  • Format: https://plex.domain.com:443,http://local-ip:32400"
+			} else if cfg.Expose.Mode == config.ExposeModeDirect {
+				suggestion = fmt.Sprintf("https://plex.%s:443", cfg.Domain)
+				helpText = "For Direct mode:\n" +
+					"  • Use your public domain with HTTPS\n" +
+					"  • Optionally add local IP for LAN access\n" +
+					"  • Format: https://plex.domain.com:443,http://local-ip:32400"
+			} else {
+				// LAN mode
+				suggestion = fmt.Sprintf("http://%s:32400", localIP)
+				helpText = "For LAN mode:\n" +
+					"  • Use your local IP address\n" +
+					"  • Format: http://192.168.x.x:32400"
+			}
+
+			formPlexURLs := huh.NewForm(
+				huh.NewGroup(
+					huh.NewNote().
+						Title("Plex Advertise URLs").
+						Description(helpText),
+					huh.NewInput().
+						Title("Advertise URLs (comma-separated)").
+						Description("Addresses where Plex can be reached for direct connections").
+						Placeholder(suggestion).
+						Value(&cfg.PlexAdvertiseURLs),
+				).Title("Configure Plex Direct Access"),
+			)
+
+			if err := formPlexURLs.Run(); err != nil {
+				return err
+			}
+		}
+	}
+
 	// Step 7: Confirmation
 	progress.Next()
 	renderStep()
@@ -754,11 +848,11 @@ func collectWireguardCredentials(cfg *config.Config, provider config.VPNProvider
 // collectCloudflareToken collects Cloudflare tunnel token
 func collectCloudflareToken(cfg *config.Config) error {
 	instructions := fmt.Sprintf(
-		"Get your tunnel token from Cloudflare Zero Trust Dashboard:\n"+
-			"1. Go to https://one.dash.cloudflare.com/\n"+
-			"2. Navigate to Networks > Tunnels\n"+
-			"3. Create a new tunnel or select existing\n"+
-			"4. Copy the tunnel token\n\n"+
+		"Get your tunnel token from Cloudflare Zero Trust Dashboard:\n" +
+			"1. Go to https://one.dash.cloudflare.com/\n" +
+			"2. Navigate to Networks > Tunnels\n" +
+			"3. Create a new tunnel or select existing\n" +
+			"4. Copy the tunnel token\n\n" +
 			"You can skip this and add the token to secrets/cloudflared_tunnel_token.txt later.",
 	)
 

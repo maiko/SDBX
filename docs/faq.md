@@ -237,15 +237,17 @@ sdbx update
 
 ### How do I rotate secrets?
 
-```bash
-# Generate new secrets
-sdbx secrets generate
+Secrets are auto-generated during `sdbx init`. To rotate them manually:
 
-# Restart affected services
+```bash
+# Delete the secret files you want to rotate
+rm secrets/authelia_jwt_secret.txt
+
+# Restart services (will auto-regenerate missing secrets)
 sdbx down && sdbx up
 ```
 
-**Note**: Rotating secrets may require re-authenticating users. The old secrets are backed up before regeneration.
+**Note**: Rotating secrets may require re-authenticating users. Keep backups of `secrets/` directory before deletion if needed.
 
 ### How do I view logs?
 
@@ -351,6 +353,40 @@ Restart:
 ```bash
 sdbx down && sdbx up
 ```
+
+### Why is Plex limiting my streaming quality to 720p?
+
+If Plex shows "Indirect" connection or limits quality to 720p 2Mbps, it's routing through Plex's relay servers instead of connecting directly.
+
+**Cause**: Plex doesn't know where it can be reached for direct connections.
+
+**Solution**: Configure `PLEX_ADVERTISE_IP`
+
+1. Edit `.sdbx.yaml` and add:
+   ```yaml
+   plex_advertise_urls: "https://plex.yourdomain.com:443"
+   ```
+
+2. For multiple locations (LAN + Remote with Cloudflare Tunnel):
+   ```yaml
+   plex_advertise_urls: "https://plex.yourdomain.com:443,http://192.168.1.100:32400"
+   ```
+
+3. Regenerate and restart:
+   ```bash
+   sdbx up --force-recreate plex
+   ```
+
+**For Cloudflare Tunnel users (remote servers)**:
+- Use your Cloudflare Tunnel URL: `https://plex.yourdomain.com:443`
+- Modern Plex supports HTTPS streaming through reverse proxies and tunnels
+- This keeps all traffic within Cloudflare network (no need for direct port exposure)
+- For LAN access: Add local IP: `https://plex.domain.com:443,http://192.168.x.x:32400`
+
+**Finding your local IP**:
+- Linux/Mac: `ip addr` or `ifconfig`
+- Windows: `ipconfig`
+- Look for `192.168.x.x` or `10.x.x.x`
 
 ### Out of disk space
 
