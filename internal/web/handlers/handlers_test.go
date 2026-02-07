@@ -103,6 +103,45 @@ func (e *testError) Error() string {
 	return e.msg
 }
 
+// TestJsonErrorHidesInternalDetails verifies jsonError returns generic message and logs internally
+func TestJsonErrorHidesInternalDetails(t *testing.T) {
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
+	defer log.SetOutput(nil)
+
+	w := httptest.NewRecorder()
+	jsonError(w, "Something went wrong", "test.context", &testError{msg: "secret internal: db connection failed at 10.0.0.1:5432"}, http.StatusInternalServerError)
+
+	// Response should contain the user-facing message, not the internal error
+	body := w.Body.String()
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("expected status 500, got %d", w.Code)
+	}
+	if !strings.Contains(body, "Something went wrong") {
+		t.Errorf("response should contain user message, got: %s", body)
+	}
+	if strings.Contains(body, "db connection failed") {
+		t.Errorf("response must not contain internal error details, got: %s", body)
+	}
+	if strings.Contains(body, "10.0.0.1") {
+		t.Errorf("response must not contain internal IP, got: %s", body)
+	}
+
+	// Log should contain the full error
+	logOutput := buf.String()
+	if !strings.Contains(logOutput, "db connection failed") {
+		t.Errorf("log should contain internal error, got: %s", logOutput)
+	}
+	if !strings.Contains(logOutput, "test.context") {
+		t.Errorf("log should contain context, got: %s", logOutput)
+	}
+
+	// Content-Type should be JSON
+	if ct := w.Header().Get("Content-Type"); ct != "application/json" {
+		t.Errorf("expected Content-Type application/json, got %s", ct)
+	}
+}
+
 // TestDashboardHandlerConstruction verifies dashboard handler can be created
 func TestDashboardHandlerConstruction(t *testing.T) {
 	handler := NewDashboardHandler(nil, nil, nil)

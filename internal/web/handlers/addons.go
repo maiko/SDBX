@@ -199,11 +199,7 @@ func (h *AddonsHandler) HandleEnableAddon(w http.ResponseWriter, r *http.Request
 
 	// Save config
 	if err := cfg.Save(".sdbx.yaml"); err != nil {
-		h.respondJSON(w, http.StatusInternalServerError, AddonResponse{
-			Success: false,
-			Message: fmt.Sprintf("Failed to save config: %v", err),
-			Addon:   addonName,
-		})
+		jsonError(w, "Failed to save config", "addons.Enable.Save", err, http.StatusInternalServerError)
 		return
 	}
 
@@ -246,11 +242,7 @@ func (h *AddonsHandler) HandleDisableAddon(w http.ResponseWriter, r *http.Reques
 
 	// Save config
 	if err := cfg.Save(".sdbx.yaml"); err != nil {
-		h.respondJSON(w, http.StatusInternalServerError, AddonResponse{
-			Success: false,
-			Message: fmt.Sprintf("Failed to save config: %v", err),
-			Addon:   addonName,
-		})
+		jsonError(w, "Failed to save config", "addons.Disable.Save", err, http.StatusInternalServerError)
 		return
 	}
 

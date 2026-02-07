@@ -62,10 +62,7 @@ func (h *BackupHandler) HandleListBackups(w http.ResponseWriter, r *http.Request
 
 	backups, err := manager.List(ctx)
 	if err != nil {
-		h.respondJSON(w, http.StatusInternalServerError, BackupResponse{
-			Success: false,
-			Message: fmt.Sprintf("Failed to list backups: %v", err),
-		})
+		jsonError(w, "Failed to list backups", "backup.List", err, http.StatusInternalServerError)
 		return
 	}
 
@@ -99,10 +96,7 @@ func (h *BackupHandler) HandleCreateBackup(w http.ResponseWriter, r *http.Reques
 
 	b, err := manager.Create(ctx)
 	if err != nil {
-		h.respondJSON(w, http.StatusInternalServerError, BackupResponse{
-			Success: false,
-			Message: fmt.Sprintf("Failed to create backup: %v", err),
-		})
+		jsonError(w, "Failed to create backup", "backup.Create", err, http.StatusInternalServerError)
 		return
 	}
 
@@ -148,10 +142,7 @@ func (h *BackupHandler) HandleRestoreBackup(w http.ResponseWriter, r *http.Reque
 	defer cancel()
 
 	if err := manager.Restore(ctx, backupName); err != nil {
-		h.respondJSON(w, http.StatusInternalServerError, BackupResponse{
-			Success: false,
-			Message: fmt.Sprintf("Failed to restore backup: %v", err),
-		})
+		jsonError(w, "Failed to restore backup", "backup.Restore", err, http.StatusInternalServerError)
 		return
 	}
 
@@ -186,10 +177,7 @@ func (h *BackupHandler) HandleDeleteBackup(w http.ResponseWriter, r *http.Reques
 	defer cancel()
 
 	if err := manager.Delete(ctx, backupName); err != nil {
-		h.respondJSON(w, http.StatusInternalServerError, BackupResponse{
-			Success: false,
-			Message: fmt.Sprintf("Failed to delete backup: %v", err),
-		})
+		jsonError(w, "Failed to delete backup", "backup.Delete", err, http.StatusInternalServerError)
 		return
 	}
 

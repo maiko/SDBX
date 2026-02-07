@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"strings"
@@ -22,4 +23,16 @@ func formatServiceName(name string) string {
 func httpError(w http.ResponseWriter, context string, err error, statusCode int) {
 	log.Printf("Error [%s]: %v", context, err)
 	http.Error(w, "An internal error occurred. Please try again later.", statusCode)
+}
+
+// jsonError logs the full error internally and returns a generic JSON error to the client.
+// The userMessage is safe to show to clients; the err is only logged server-side.
+func jsonError(w http.ResponseWriter, userMessage string, context string, err error, statusCode int) {
+	log.Printf("Error [%s]: %v", context, err)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": false,
+		"message": userMessage,
+	})
 }

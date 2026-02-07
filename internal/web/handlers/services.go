@@ -102,20 +102,14 @@ func (h *ServicesHandler) HandleGetServices(w http.ResponseWriter, r *http.Reque
 	// Get service status from Docker
 	dockerServices, err := h.compose.PS(ctx)
 	if err != nil {
-		h.respondJSON(w, http.StatusInternalServerError, ServiceResponse{
-			Success: false,
-			Message: fmt.Sprintf("Failed to get services: %v", err),
-		})
+		jsonError(w, "Failed to get services", "services.PS", err, http.StatusInternalServerError)
 		return
 	}
 
 	// Get service definitions from registry
 	registryServices, err := h.registry.ListServices(ctx)
 	if err != nil {
-		h.respondJSON(w, http.StatusInternalServerError, ServiceResponse{
-			Success: false,
-			Message: fmt.Sprintf("Failed to load service definitions: %v", err),
-		})
+		jsonError(w, "Failed to load service definitions", "services.ListServices", err, http.StatusInternalServerError)
 		return
 	}
 
@@ -172,11 +166,7 @@ func (h *ServicesHandler) HandleStartService(w http.ResponseWriter, r *http.Requ
 
 	// Start the service
 	if err := h.compose.Start(ctx, serviceName); err != nil {
-		h.respondJSON(w, http.StatusInternalServerError, ServiceResponse{
-			Success: false,
-			Message: fmt.Sprintf("Failed to start service: %v", err),
-			Service: serviceName,
-		})
+		jsonError(w, "Failed to start service", "services.Start", err, http.StatusInternalServerError)
 		return
 	}
 
@@ -204,11 +194,7 @@ func (h *ServicesHandler) HandleStopService(w http.ResponseWriter, r *http.Reque
 
 	// Stop the service
 	if err := h.compose.Stop(ctx, serviceName); err != nil {
-		h.respondJSON(w, http.StatusInternalServerError, ServiceResponse{
-			Success: false,
-			Message: fmt.Sprintf("Failed to stop service: %v", err),
-			Service: serviceName,
-		})
+		jsonError(w, "Failed to stop service", "services.Stop", err, http.StatusInternalServerError)
 		return
 	}
 
@@ -236,11 +222,7 @@ func (h *ServicesHandler) HandleRestartService(w http.ResponseWriter, r *http.Re
 
 	// Restart the service
 	if err := h.compose.Restart(ctx, serviceName); err != nil {
-		h.respondJSON(w, http.StatusInternalServerError, ServiceResponse{
-			Success: false,
-			Message: fmt.Sprintf("Failed to restart service: %v", err),
-			Service: serviceName,
-		})
+		jsonError(w, "Failed to restart service", "services.Restart", err, http.StatusInternalServerError)
 		return
 	}
 

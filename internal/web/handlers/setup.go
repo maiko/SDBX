@@ -477,14 +477,14 @@ func (h *SetupHandler) HandleComplete(w http.ResponseWriter, r *http.Request) {
 	// POST: Generate project
 	gen := generator.NewGeneratorWithRegistry(session.Config, h.projectDir, h.registry)
 	if err := gen.Generate(); err != nil {
-		http.Error(w, fmt.Sprintf("Failed to generate project: %v", err), http.StatusInternalServerError)
+		httpError(w, "setup.Generate", err, http.StatusInternalServerError)
 		return
 	}
 
 	// Create data directories if paths are relative
 	if !filepath.IsAbs(session.Config.MediaPath) {
 		if err := gen.CreateDataDirs(); err != nil {
-			http.Error(w, fmt.Sprintf("Failed to create directories: %v", err), http.StatusInternalServerError)
+			httpError(w, "setup.CreateDataDirs", err, http.StatusInternalServerError)
 			return
 		}
 	}

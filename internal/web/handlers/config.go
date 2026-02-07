@@ -59,10 +59,7 @@ func (h *ConfigHandler) HandleGetConfig(w http.ResponseWriter, r *http.Request) 
 
 	content, err := os.ReadFile(configPath)
 	if err != nil {
-		h.respondJSON(w, http.StatusInternalServerError, ConfigResponse{
-			Success: false,
-			Message: fmt.Sprintf("Failed to read config: %v", err),
-		})
+		jsonError(w, "Failed to read config", "config.ReadFile", err, http.StatusInternalServerError)
 		return
 	}
 
@@ -176,10 +173,7 @@ func (h *ConfigHandler) HandleSaveConfig(w http.ResponseWriter, r *http.Request)
 
 	if _, err := os.Stat(configPath); err == nil {
 		if err := os.Rename(configPath, backupPath); err != nil {
-			h.respondJSON(w, http.StatusInternalServerError, ConfigResponse{
-				Success: false,
-				Message: fmt.Sprintf("Failed to backup config: %v", err),
-			})
+			jsonError(w, "Failed to backup config", "config.Rename", err, http.StatusInternalServerError)
 			return
 		}
 	}
@@ -189,10 +183,7 @@ func (h *ConfigHandler) HandleSaveConfig(w http.ResponseWriter, r *http.Request)
 		// Try to restore backup
 		os.Rename(backupPath, configPath)
 
-		h.respondJSON(w, http.StatusInternalServerError, ConfigResponse{
-			Success: false,
-			Message: fmt.Sprintf("Failed to save config: %v", err),
-		})
+		jsonError(w, "Failed to save config", "config.WriteFile", err, http.StatusInternalServerError)
 		return
 	}
 

@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"net/url"
 	"sync"
@@ -115,31 +116,35 @@ func (h *LogsHandler) HandleLogStream(w http.ResponseWriter, r *http.Request) {
 	// Start streaming logs
 	cmd, err := h.compose.LogsStream(ctx, serviceName, 100)
 	if err != nil {
+		log.Printf("Error [logs.LogsStream]: %v", err)
 		writeJSON(map[string]string{
-			"error": fmt.Sprintf("Failed to start log stream: %v", err),
+			"error": "Failed to start log stream",
 		})
 		return
 	}
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
+		log.Printf("Error [logs.StdoutPipe]: %v", err)
 		writeJSON(map[string]string{
-			"error": fmt.Sprintf("Failed to get stdout pipe: %v", err),
+			"error": "Failed to get stdout pipe",
 		})
 		return
 	}
 
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
+		log.Printf("Error [logs.StderrPipe]: %v", err)
 		writeJSON(map[string]string{
-			"error": fmt.Sprintf("Failed to get stderr pipe: %v", err),
+			"error": "Failed to get stderr pipe",
 		})
 		return
 	}
 
 	if err := cmd.Start(); err != nil {
+		log.Printf("Error [logs.Start]: %v", err)
 		writeJSON(map[string]string{
-			"error": fmt.Sprintf("Failed to start command: %v", err),
+			"error": "Failed to start command",
 		})
 		return
 	}
@@ -234,7 +239,7 @@ func (h *LogsHandler) HandleGetLogs(w http.ResponseWriter, r *http.Request) {
 	// Get last 100 lines
 	logs, err := h.compose.Logs(ctx, serviceName, 100, false)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to get logs: %v", err), http.StatusInternalServerError)
+		httpError(w, "logs.GetLogs", err, http.StatusInternalServerError)
 		return
 	}
 
