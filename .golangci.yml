@@ -31,12 +31,12 @@ linters:
     - dogsled
     - dupl
     - errcheck
-    # - goconst  # TODO: Fix string literals to use existing constants
-    # - gocritic  # TODO: Fix style issues (ifElseChain, hugeParam, etc.)
+    - goconst
+    - gocritic
     - gocyclo
     - gofmt
     - goimports
-    # - revive  # TODO: Fix unused parameters and naming conventions
+    - revive
     - gosec
     - gosimple
     - govet
@@ -44,7 +44,7 @@ linters:
     - lll
     - misspell
     - nakedret
-    # - prealloc  # TODO: Fix slice preallocation (low priority optimization)
+    - prealloc
     - staticcheck
     - stylecheck
     - typecheck
@@ -71,7 +71,7 @@ issues:
     - docs
 
   exclude-rules:
-    # Exclude some linters from running on tests files.
+    # Exclude noisy linters from running on test files.
     - path: _test\.go
       linters:
         - gocyclo
@@ -81,6 +81,9 @@ issues:
         - govet
         - lll
         - revive
+        - goconst
+        - gocritic
+        - prealloc
 
     # Registry package has ctx parameters for interface compliance
     - path: internal/registry/
@@ -116,10 +119,12 @@ issues:
 
     # Web handlers have similar request/response patterns
     # errcheck excluded: HTTP response writes rarely need error handling
+    # goconst excluded: status messages are clearer inline
     - path: internal/web/handlers/
       linters:
         - dupl
         - errcheck
+        - goconst
 
     # Web middleware and tests have common patterns
     - path: internal/web/middleware/
