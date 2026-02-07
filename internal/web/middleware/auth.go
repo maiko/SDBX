@@ -71,34 +71,50 @@ func (a *Auth) Middleware(next http.Handler) http.Handler {
 	})
 }
 
-// validateSetupToken validates the setup token from query param or cookie
+// validateSetupToken validates the setup token from query param or cookie.
+// Returns true if the request should proceed, false if the response has been
+// written (either a redirect or an error).
 func (a *Auth) validateSetupToken(w http.ResponseWriter, r *http.Request) bool {
 	// Check query parameter first
-	token := r.URL.Query().Get("token")
-	if token == "" {
-		// Check cookie
-		cookie, err := r.Cookie("setup_token")
-		if err == nil {
-			token = cookie.Value
+	queryToken := r.URL.Query().Get("token")
+	if queryToken != "" {
+		// Validate query token
+		if subtle.ConstantTimeCompare([]byte(queryToken), []byte(a.setupToken)) != 1 {
+			http.Error(w, "Invalid or missing setup token", http.StatusUnauthorized)
+			return false
 		}
-	}
 
-	// Validate token using constant-time comparison to prevent timing attacks
-	if subtle.ConstantTimeCompare([]byte(token), []byte(a.setupToken)) != 1 {
-		http.Error(w, "Invalid or missing setup token", http.StatusUnauthorized)
-		return false
-	}
-
-	// Set cookie if not already set (from query param)
-	if token == r.URL.Query().Get("token") {
+		// Set cookie and redirect to strip token from URL (prevents exposure
+		// in browser history, bookmarks, referrer headers, and server logs)
 		http.SetCookie(w, &http.Cookie{
 			Name:     "setup_token",
-			Value:    token,
+			Value:    queryToken,
 			Path:     "/",
 			HttpOnly: true,
 			SameSite: http.SameSiteStrictMode,
 			MaxAge:   3600, // 1 hour
 		})
+
+		// Build redirect URL without the token parameter
+		cleanURL := *r.URL
+		q := cleanURL.Query()
+		q.Del("token")
+		cleanURL.RawQuery = q.Encode()
+		http.Redirect(w, r, cleanURL.String(), http.StatusFound)
+		return false // Response written (redirect)
+	}
+
+	// Check cookie
+	cookie, err := r.Cookie("setup_token")
+	if err != nil || cookie.Value == "" {
+		http.Error(w, "Invalid or missing setup token", http.StatusUnauthorized)
+		return false
+	}
+
+	// Validate cookie token
+	if subtle.ConstantTimeCompare([]byte(cookie.Value), []byte(a.setupToken)) != 1 {
+		http.Error(w, "Invalid or missing setup token", http.StatusUnauthorized)
+		return false
 	}
 
 	return true

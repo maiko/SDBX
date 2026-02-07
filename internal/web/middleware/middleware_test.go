@@ -11,8 +11,9 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// TestAuthPreInitValidToken verifies pre-init auth with valid token
-func TestAuthPreInitValidToken(t *testing.T) {
+// TestAuthPreInitValidTokenRedirects verifies that a valid token in query param
+// sets a cookie and redirects to strip the token from the URL.
+func TestAuthPreInitValidTokenRedirects(t *testing.T) {
 	auth := NewAuth(false, false, "test-token-123")
 
 	handler := auth.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -20,14 +21,20 @@ func TestAuthPreInitValidToken(t *testing.T) {
 		w.Write([]byte("OK"))
 	}))
 
-	// Test with query parameter
+	// Test with query parameter — should redirect, not pass through
 	req := httptest.NewRequest(http.MethodGet, "/?token=test-token-123", nil)
 	w := httptest.NewRecorder()
 
 	handler.ServeHTTP(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Errorf("expected status 200, got %d", w.Code)
+	if w.Code != http.StatusFound {
+		t.Errorf("expected redirect 302, got %d", w.Code)
+	}
+
+	// Redirect location should not contain the token
+	location := w.Header().Get("Location")
+	if strings.Contains(location, "token=") {
+		t.Errorf("redirect URL should not contain token, got: %s", location)
 	}
 
 	// Check that cookie was set
@@ -41,6 +48,36 @@ func TestAuthPreInitValidToken(t *testing.T) {
 	}
 	if !found {
 		t.Error("expected setup_token cookie to be set")
+	}
+}
+
+// TestAuthPreInitTokenRedirectPreservesPath verifies the redirect preserves
+// the original path and other query parameters.
+func TestAuthPreInitTokenRedirectPreservesPath(t *testing.T) {
+	auth := NewAuth(false, false, "test-token-123")
+
+	handler := auth.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/setup/domain?token=test-token-123&step=2", nil)
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusFound {
+		t.Errorf("expected redirect 302, got %d", w.Code)
+	}
+
+	location := w.Header().Get("Location")
+	if !strings.Contains(location, "/setup/domain") {
+		t.Errorf("redirect should preserve path, got: %s", location)
+	}
+	if !strings.Contains(location, "step=2") {
+		t.Errorf("redirect should preserve other query params, got: %s", location)
+	}
+	if strings.Contains(location, "token=") {
+		t.Errorf("redirect should not contain token, got: %s", location)
 	}
 }
 
