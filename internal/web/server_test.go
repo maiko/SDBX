@@ -328,6 +328,70 @@ func TestFormatServerMessagePostInit(t *testing.T) {
 	}
 }
 
+// TestShutdownNilServer verifies shutdown handles nil httpServer gracefully
+func TestShutdownNilServer(t *testing.T) {
+	server := NewServer(&ServerConfig{
+		Host:       "localhost",
+		Port:       3000,
+		ProjectDir: t.TempDir(),
+	})
+
+	// httpServer is nil (never started)
+	err := server.Shutdown(shutdownTimeout)
+	if err != nil {
+		t.Errorf("Shutdown with nil httpServer should not error, got: %v", err)
+	}
+}
+
+// TestFormatServerMessagePreInitSpecificHost verifies pre-init message with specific host
+func TestFormatServerMessagePreInitSpecificHost(t *testing.T) {
+	server := NewServer(&ServerConfig{
+		Host:       "192.168.1.100",
+		Port:       3000,
+		ProjectDir: t.TempDir(),
+	})
+
+	server.initialized = false
+	server.setupToken = "abc123"
+
+	msg := server.formatServerMessage()
+
+	if !strings.Contains(msg, "Setup wizard") {
+		t.Error("pre-init message should mention setup wizard")
+	}
+
+	if !strings.Contains(msg, "192.168.1.100") {
+		t.Error("message should use the specific host, not local IP")
+	}
+
+	if !strings.Contains(msg, "abc123") {
+		t.Error("message should contain setup token")
+	}
+}
+
+// TestLoadTemplatesIntegration verifies the server's loadTemplates method
+func TestLoadTemplatesIntegration(t *testing.T) {
+	server := NewServer(&ServerConfig{
+		Host:       "localhost",
+		Port:       3000,
+		ProjectDir: t.TempDir(),
+	})
+
+	err := server.loadTemplates()
+	if err != nil {
+		t.Fatalf("loadTemplates failed: %v", err)
+	}
+
+	if server.templates == nil {
+		t.Error("templates should be set after loadTemplates")
+	}
+
+	// Verify a known template exists
+	if server.templates.Lookup("layouts/base.html") == nil {
+		t.Error("layouts/base.html template should exist")
+	}
+}
+
 // TestTemplateFuncMap verifies template functions work
 func TestTemplateFuncMap(t *testing.T) {
 	funcMap := template.FuncMap{

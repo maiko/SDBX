@@ -229,6 +229,52 @@ func TestBackupDisplayStruct(t *testing.T) {
 	}
 }
 
+// TestBackupHandlerDeleteInvalidName verifies path traversal rejection in delete
+func TestBackupHandlerDeleteInvalidName(t *testing.T) {
+	handler := NewBackupHandler(t.TempDir(), nil)
+
+	invalidNames := []string{"../../../etc/passwd", "/absolute/path", "with/../traversal"}
+	for _, name := range invalidNames {
+		req := httptest.NewRequest(http.MethodDelete, "/api/backup/delete/{name}", nil)
+		req.SetPathValue("name", name)
+		w := httptest.NewRecorder()
+
+		handler.HandleDeleteBackup(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("name %q: expected status 400, got %d", name, w.Code)
+		}
+
+		body := w.Body.String()
+		if !strings.Contains(body, "Invalid backup name") {
+			t.Errorf("name %q: expected 'Invalid backup name' in body, got %s", name, body)
+		}
+	}
+}
+
+// TestBackupHandlerRestoreInvalidName verifies path traversal rejection in restore
+func TestBackupHandlerRestoreInvalidName(t *testing.T) {
+	handler := NewBackupHandler(t.TempDir(), nil)
+
+	invalidNames := []string{"../../../etc/passwd", "/absolute/path", "with/../traversal"}
+	for _, name := range invalidNames {
+		req := httptest.NewRequest(http.MethodPost, "/api/backup/restore/{name}", nil)
+		req.SetPathValue("name", name)
+		w := httptest.NewRecorder()
+
+		handler.HandleRestoreBackup(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("name %q: expected status 400, got %d", name, w.Code)
+		}
+
+		body := w.Body.String()
+		if !strings.Contains(body, "Invalid backup name") {
+			t.Errorf("name %q: expected 'Invalid backup name' in body, got %s", name, body)
+		}
+	}
+}
+
 // TestBackupResponseStruct verifies backup response struct
 func TestBackupResponseStruct(t *testing.T) {
 	resp := BackupResponse{
