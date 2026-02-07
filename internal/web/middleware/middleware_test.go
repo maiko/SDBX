@@ -149,6 +149,7 @@ func TestAuthPostInitDockerMode(t *testing.T) {
 	}))
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.RemoteAddr = "172.17.0.2:12345" // Docker network IP
 	req.Header.Set("Remote-User", "testuser")
 	w := httptest.NewRecorder()
 
@@ -159,7 +160,7 @@ func TestAuthPostInitDockerMode(t *testing.T) {
 	}
 }
 
-// TestAuthPostInitDockerModeNoHeader verifies Docker mode rejects missing header
+// TestAuthPostInitDockerModeNoHeader verifies Docker mode rejects missing header from private IP
 func TestAuthPostInitDockerModeNoHeader(t *testing.T) {
 	auth := NewAuth(true, true, "")
 
@@ -168,6 +169,7 @@ func TestAuthPostInitDockerModeNoHeader(t *testing.T) {
 	}))
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.RemoteAddr = "172.17.0.2:12345" // Private IP but no Remote-User header
 	w := httptest.NewRecorder()
 
 	handler.ServeHTTP(w, req)
@@ -376,6 +378,94 @@ func TestNewAuth(t *testing.T) {
 
 	if auth.setupToken != "token123" {
 		t.Errorf("expected setupToken='token123', got %q", auth.setupToken)
+	}
+}
+
+// TestIsPrivateIP verifies private IP detection
+func TestIsPrivateIP(t *testing.T) {
+	tests := []struct {
+		addr     string
+		expected bool
+	}{
+		{"127.0.0.1:8080", true},
+		{"10.0.0.1:8080", true},
+		{"172.17.0.2:8080", true},      // Docker default bridge
+		{"172.20.0.5:8080", true},       // Docker custom network
+		{"192.168.1.100:8080", true},
+		{"8.8.8.8:8080", false},         // Google DNS - public
+		{"1.1.1.1:8080", false},         // Cloudflare DNS - public
+		{"203.0.113.1:8080", false},     // TEST-NET - public
+		{"[::1]:8080", true},            // IPv6 loopback
+		{"[fd00::1]:8080", true},        // IPv6 unique local
+		{"[2001:db8::1]:8080", false},   // IPv6 documentation - public
+		{"invalid", false},              // Unparseable
+	}
+
+	for _, tt := range tests {
+		result := isPrivateIP(tt.addr)
+		if result != tt.expected {
+			t.Errorf("isPrivateIP(%q) = %v, expected %v", tt.addr, result, tt.expected)
+		}
+	}
+}
+
+// TestAuthDockerModeRejectsPublicIP verifies Docker mode rejects non-private IPs
+func TestAuthDockerModeRejectsPublicIP(t *testing.T) {
+	auth := NewAuth(true, true, "")
+
+	handler := auth.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.RemoteAddr = "8.8.8.8:12345"
+	req.Header.Set("Remote-User", "attacker")
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("expected status 403 for public IP, got %d", w.Code)
+	}
+}
+
+// TestAuthDockerModeAllowsPrivateIP verifies Docker mode accepts private IPs with header
+func TestAuthDockerModeAllowsPrivateIP(t *testing.T) {
+	auth := NewAuth(true, true, "")
+
+	handler := auth.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.RemoteAddr = "172.17.0.2:12345"
+	req.Header.Set("Remote-User", "admin")
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200 for private IP with header, got %d", w.Code)
+	}
+}
+
+// TestAuthDockerModeLoopback verifies Docker mode accepts loopback
+func TestAuthDockerModeLoopback(t *testing.T) {
+	auth := NewAuth(true, true, "")
+
+	handler := auth.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.RemoteAddr = "127.0.0.1:12345"
+	req.Header.Set("Remote-User", "admin")
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200 for loopback, got %d", w.Code)
 	}
 }
 

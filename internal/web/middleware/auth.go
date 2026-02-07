@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"crypto/subtle"
+	"net"
 	"net/http"
 )
 
@@ -49,7 +50,12 @@ func (a *Auth) Middleware(next http.Handler) http.Handler {
 				return
 			}
 		} else if a.dockerMode {
-			// Post-init Docker: Trust Authelia Remote-User header
+			// Post-init Docker: Trust Authelia Remote-User header only from
+			// private/Docker network IPs to prevent spoofing via direct access.
+			if !isPrivateIP(r.RemoteAddr) {
+				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
+			}
 			username := r.Header.Get("Remote-User")
 			if username == "" {
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -96,4 +102,50 @@ func (a *Auth) validateSetupToken(w http.ResponseWriter, r *http.Request) bool {
 	}
 
 	return true
+}
+
+// isPrivateIP checks whether a request originates from a private/Docker network address.
+// This is used to ensure the Remote-User header is only trusted from the reverse proxy,
+// not from direct public access.
+func isPrivateIP(remoteAddr string) bool {
+	host, _, err := net.SplitHostPort(remoteAddr)
+	if err != nil {
+		host = remoteAddr
+	}
+
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return false
+	}
+
+	// Loopback (127.0.0.0/8, ::1)
+	if ip.IsLoopback() {
+		return true
+	}
+
+	// RFC 1918 and Docker default networks
+	privateRanges := []struct {
+		network *net.IPNet
+	}{
+		{mustParseCIDR("10.0.0.0/8")},
+		{mustParseCIDR("172.16.0.0/12")},
+		{mustParseCIDR("192.168.0.0/16")},
+		{mustParseCIDR("fc00::/7")}, // IPv6 unique local
+	}
+
+	for _, r := range privateRanges {
+		if r.network.Contains(ip) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func mustParseCIDR(s string) *net.IPNet {
+	_, network, err := net.ParseCIDR(s)
+	if err != nil {
+		panic("invalid CIDR: " + s)
+	}
+	return network
 }
