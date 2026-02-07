@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 
@@ -32,10 +33,7 @@ func NewLogsHandler(compose *docker.Compose, reg *registry.Registry, tmpl *templ
 		upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,
-			CheckOrigin: func(r *http.Request) bool {
-				// Allow all origins for now (same-origin in production)
-				return true
-			},
+			CheckOrigin:     checkWebSocketOrigin,
 		},
 	}
 }
@@ -243,6 +241,23 @@ func (h *LogsHandler) HandleGetLogs(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(logs))
+}
+
+// checkWebSocketOrigin validates the Origin header to prevent cross-site WebSocket hijacking.
+// It allows connections with no Origin (non-browser clients) or where the Origin host matches
+// the request Host header.
+func checkWebSocketOrigin(r *http.Request) bool {
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		return true
+	}
+
+	u, err := url.Parse(origin)
+	if err != nil {
+		return false
+	}
+
+	return u.Host == r.Host
 }
 
 // renderTemplate renders a template with data

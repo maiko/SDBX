@@ -165,3 +165,68 @@ func TestSetupHandlerConstruction(t *testing.T) {
 		t.Error("NewSetupHandler should return non-nil handler")
 	}
 }
+
+// TestCheckWebSocketOriginSameOrigin verifies same-origin connections are allowed
+func TestCheckWebSocketOriginSameOrigin(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/api/logs/plex/stream", nil)
+	req.Host = "localhost:3000"
+	req.Header.Set("Origin", "http://localhost:3000")
+
+	if !checkWebSocketOrigin(req) {
+		t.Error("same-origin request should be allowed")
+	}
+}
+
+// TestCheckWebSocketOriginNoOrigin verifies requests without Origin are allowed (non-browser)
+func TestCheckWebSocketOriginNoOrigin(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/api/logs/plex/stream", nil)
+	req.Host = "localhost:3000"
+
+	if !checkWebSocketOrigin(req) {
+		t.Error("request without Origin header should be allowed")
+	}
+}
+
+// TestCheckWebSocketOriginCrossOriginRejected verifies cross-origin connections are blocked
+func TestCheckWebSocketOriginCrossOriginRejected(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/api/logs/plex/stream", nil)
+	req.Host = "localhost:3000"
+	req.Header.Set("Origin", "http://evil.com")
+
+	if checkWebSocketOrigin(req) {
+		t.Error("cross-origin request should be rejected")
+	}
+}
+
+// TestCheckWebSocketOriginDifferentPort verifies different port is rejected
+func TestCheckWebSocketOriginDifferentPort(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/api/logs/plex/stream", nil)
+	req.Host = "localhost:3000"
+	req.Header.Set("Origin", "http://localhost:4000")
+
+	if checkWebSocketOrigin(req) {
+		t.Error("different port in origin should be rejected")
+	}
+}
+
+// TestCheckWebSocketOriginHTTPSMatch verifies HTTPS same-host matching works
+func TestCheckWebSocketOriginHTTPSMatch(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/api/logs/plex/stream", nil)
+	req.Host = "sdbx.example.com"
+	req.Header.Set("Origin", "https://sdbx.example.com")
+
+	if !checkWebSocketOrigin(req) {
+		t.Error("same-host HTTPS origin should be allowed")
+	}
+}
+
+// TestCheckWebSocketOriginInvalidURL verifies malformed origin is rejected
+func TestCheckWebSocketOriginInvalidURL(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/api/logs/plex/stream", nil)
+	req.Host = "localhost:3000"
+	req.Header.Set("Origin", "://invalid")
+
+	if checkWebSocketOrigin(req) {
+		t.Error("malformed origin should be rejected")
+	}
+}
