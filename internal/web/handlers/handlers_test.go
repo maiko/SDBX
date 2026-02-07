@@ -166,6 +166,36 @@ func TestSetupHandlerConstruction(t *testing.T) {
 	}
 }
 
+// TestGenerateSessionIDReturnsUniqueValues verifies session IDs are unique
+func TestGenerateSessionIDReturnsUniqueValues(t *testing.T) {
+	ids := make(map[string]bool)
+	for i := 0; i < 100; i++ {
+		id, err := generateSessionID()
+		if err != nil {
+			t.Fatalf("generateSessionID failed: %v", err)
+		}
+		if id == "" {
+			t.Fatal("session ID should not be empty")
+		}
+		if ids[id] {
+			t.Fatalf("duplicate session ID generated: %s", id)
+		}
+		ids[id] = true
+	}
+}
+
+// TestGenerateSessionIDLength verifies session IDs have expected length
+func TestGenerateSessionIDLength(t *testing.T) {
+	id, err := generateSessionID()
+	if err != nil {
+		t.Fatalf("generateSessionID failed: %v", err)
+	}
+	// 16 bytes base64url encoded = 22 chars (no padding with RawURLEncoding)
+	if len(id) != 22 {
+		t.Errorf("expected session ID length 22, got %d", len(id))
+	}
+}
+
 // TestCheckWebSocketOriginSameOrigin verifies same-origin connections are allowed
 func TestCheckWebSocketOriginSameOrigin(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/api/logs/plex/stream", nil)
