@@ -317,6 +317,9 @@ func (s *Server) applyMiddleware(handler http.Handler) http.Handler {
 	// Logging middleware
 	handler = middleware.Logging(handler)
 
+	// Security headers (CSP, X-Frame-Options, etc.)
+	handler = middleware.SecurityHeaders(handler)
+
 	// Auth middleware (based on phase)
 	authMiddleware := middleware.NewAuth(s.initialized, s.dockerMode, s.setupToken)
 	handler = authMiddleware.Middleware(handler)

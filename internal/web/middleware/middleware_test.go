@@ -793,6 +793,78 @@ func TestCSRFCookieNotHttpOnly(t *testing.T) {
 }
 
 // TestExtractIP verifies IP extraction from requests
+func TestSecurityHeadersCSP(t *testing.T) {
+	handler := SecurityHeaders(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	csp := w.Header().Get("Content-Security-Policy")
+	if csp == "" {
+		t.Error("Content-Security-Policy header should be set")
+	}
+	if !strings.Contains(csp, "default-src 'self'") {
+		t.Errorf("CSP should contain default-src 'self', got: %s", csp)
+	}
+	if !strings.Contains(csp, "frame-ancestors 'none'") {
+		t.Errorf("CSP should contain frame-ancestors 'none', got: %s", csp)
+	}
+}
+
+func TestSecurityHeadersPresent(t *testing.T) {
+	handler := SecurityHeaders(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	expectedHeaders := map[string]string{
+		"X-Content-Type-Options": "nosniff",
+		"X-Frame-Options":       "DENY",
+		"Referrer-Policy":       "strict-origin-when-cross-origin",
+	}
+
+	for header, expected := range expectedHeaders {
+		actual := w.Header().Get(header)
+		if actual != expected {
+			t.Errorf("%s: expected %q, got %q", header, expected, actual)
+		}
+	}
+
+	// Permissions-Policy should be present
+	pp := w.Header().Get("Permissions-Policy")
+	if pp == "" {
+		t.Error("Permissions-Policy header should be set")
+	}
+}
+
+func TestSecurityHeadersDoNotBreakHandler(t *testing.T) {
+	handler := SecurityHeaders(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Custom", "test")
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte("hello"))
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Errorf("expected status 201, got %d", w.Code)
+	}
+	if w.Body.String() != "hello" {
+		t.Errorf("expected body 'hello', got %q", w.Body.String())
+	}
+	if w.Header().Get("X-Custom") != "test" {
+		t.Error("handler's custom header should still be present")
+	}
+}
+
 func TestExtractIP(t *testing.T) {
 	tests := []struct {
 		remoteAddr string
