@@ -256,8 +256,8 @@ func (h *SetupHandler) HandleAdmin(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Username is required", http.StatusBadRequest)
 			return
 		}
-		if len(password) < 4 {
-			http.Error(w, "Password must be at least 4 characters", http.StatusBadRequest)
+		if len(password) < 8 {
+			http.Error(w, "Password must be at least 8 characters", http.StatusBadRequest)
 			return
 		}
 		if password != confirmPassword {

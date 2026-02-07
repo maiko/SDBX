@@ -166,6 +166,56 @@ func TestSetupHandlerConstruction(t *testing.T) {
 	}
 }
 
+// TestSetupAdminRejectsShortPassword verifies password minimum length is enforced
+func TestSetupAdminRejectsShortPassword(t *testing.T) {
+	handler := NewSetupHandler(nil, t.TempDir(), nil)
+
+	// Create a session first by calling getSession through requireSession
+	// We'll test the password validation directly by simulating a POST
+
+	// We need templates for the handler to work, but since we're testing
+	// a POST that returns an error before rendering, nil templates are fine
+	// for the error path.
+
+	shortPasswords := []string{"", "a", "1234", "short", "1234567"}
+	for _, pw := range shortPasswords {
+		form := strings.NewReader("username=admin&password=" + pw + "&confirm_password=" + pw)
+		req := httptest.NewRequest(http.MethodPost, "/setup/admin", form)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		// Add a fake session cookie so getSession returns one
+		req.AddCookie(&http.Cookie{Name: "wizard_session", Value: "test-session"})
+		w := httptest.NewRecorder()
+
+		handler.HandleAdmin(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("password %q (len %d): expected status 400, got %d", pw, len(pw), w.Code)
+		}
+	}
+}
+
+// TestSetupAdminAcceptsValidPassword verifies valid passwords are accepted
+func TestSetupAdminAcceptsValidPassword(t *testing.T) {
+	handler := NewSetupHandler(nil, t.TempDir(), nil)
+
+	validPasswords := []string{"12345678", "MyP@ssw0rd!", "a-very-long-and-secure-password"}
+	for _, pw := range validPasswords {
+		form := strings.NewReader("username=admin&password=" + pw + "&confirm_password=" + pw)
+		req := httptest.NewRequest(http.MethodPost, "/setup/admin", form)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.AddCookie(&http.Cookie{Name: "wizard_session", Value: "test-valid-pw"})
+		w := httptest.NewRecorder()
+
+		handler.HandleAdmin(w, req)
+
+		// Should NOT be 400 - it may be 200 (redirect) or 500 (template nil)
+		// but critically it must not be 400 (validation rejection)
+		if w.Code == http.StatusBadRequest {
+			t.Errorf("password %q (len %d): should be accepted, got 400", pw, len(pw))
+		}
+	}
+}
+
 // TestGenerateSessionIDReturnsUniqueValues verifies session IDs are unique
 func TestGenerateSessionIDReturnsUniqueValues(t *testing.T) {
 	ids := make(map[string]bool)
