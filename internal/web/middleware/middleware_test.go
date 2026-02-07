@@ -324,6 +324,42 @@ func TestRecoveryMiddlewareNoPanic(t *testing.T) {
 	}
 }
 
+// TestAuthPreInitPartialTokenRejected verifies that a token sharing a prefix is still rejected
+func TestAuthPreInitPartialTokenRejected(t *testing.T) {
+	auth := NewAuth(false, false, "test-token-123")
+
+	handler := auth.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	// Try a token that shares a prefix
+	req := httptest.NewRequest(http.MethodGet, "/?token=test-token-124", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("expected status 401 for partial match, got %d", w.Code)
+	}
+}
+
+// TestAuthPreInitEmptyTokenRejected verifies empty token against non-empty setup token is rejected
+func TestAuthPreInitEmptyTokenRejected(t *testing.T) {
+	auth := NewAuth(false, false, "test-token-123")
+
+	handler := auth.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	// Empty token via query param
+	req := httptest.NewRequest(http.MethodGet, "/?token=", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("expected status 401 for empty token, got %d", w.Code)
+	}
+}
+
 // TestNewAuth verifies auth constructor
 func TestNewAuth(t *testing.T) {
 	auth := NewAuth(true, true, "token123")

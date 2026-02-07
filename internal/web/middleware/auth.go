@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"crypto/subtle"
 	"net/http"
 )
 
@@ -76,8 +77,8 @@ func (a *Auth) validateSetupToken(w http.ResponseWriter, r *http.Request) bool {
 		}
 	}
 
-	// Validate token
-	if token != a.setupToken {
+	// Validate token using constant-time comparison to prevent timing attacks
+	if subtle.ConstantTimeCompare([]byte(token), []byte(a.setupToken)) != 1 {
 		http.Error(w, "Invalid or missing setup token", http.StatusUnauthorized)
 		return false
 	}
