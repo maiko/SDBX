@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"golang.org/x/time/rate"
 )
 
 // TestAuthPreInitValidToken verifies pre-init auth with valid token
@@ -374,5 +376,174 @@ func TestNewAuth(t *testing.T) {
 
 	if auth.setupToken != "token123" {
 		t.Errorf("expected setupToken='token123', got %q", auth.setupToken)
+	}
+}
+
+// TestRateLimiterAllowsNormalTraffic verifies requests within limits pass through
+func TestRateLimiterAllowsNormalTraffic(t *testing.T) {
+	rl := NewRateLimiter(10, 20)
+
+	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	}))
+
+	// First request should pass
+	req := httptest.NewRequest(http.MethodGet, "/api/services", nil)
+	req.RemoteAddr = "192.168.1.1:12345"
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d", w.Code)
+	}
+}
+
+// TestRateLimiterBlocksExcessiveTraffic verifies requests over limit are rejected
+func TestRateLimiterBlocksExcessiveTraffic(t *testing.T) {
+	// Very restrictive: 1 req/sec, burst of 2
+	rl := NewRateLimiter(1, 2)
+
+	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	blocked := 0
+	for i := 0; i < 10; i++ {
+		req := httptest.NewRequest(http.MethodGet, "/api/services", nil)
+		req.RemoteAddr = "10.0.0.1:12345"
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+
+		if w.Code == http.StatusTooManyRequests {
+			blocked++
+		}
+	}
+
+	if blocked == 0 {
+		t.Error("rate limiter should have blocked some requests")
+	}
+}
+
+// TestRateLimiterPerIP verifies different IPs have separate limits
+func TestRateLimiterPerIP(t *testing.T) {
+	// Very restrictive: 1 req/sec, burst of 1
+	rl := NewRateLimiter(1, 1)
+
+	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	// Exhaust limit for IP1
+	for i := 0; i < 5; i++ {
+		req := httptest.NewRequest(http.MethodGet, "/api/services", nil)
+		req.RemoteAddr = "10.0.0.1:12345"
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+	}
+
+	// IP2 should still be allowed
+	req := httptest.NewRequest(http.MethodGet, "/api/services", nil)
+	req.RemoteAddr = "10.0.0.2:12345"
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("different IP should not be rate limited, got status %d", w.Code)
+	}
+}
+
+// TestRateLimiterHealthBypass verifies health endpoint bypasses rate limiting
+func TestRateLimiterHealthBypass(t *testing.T) {
+	// Very restrictive
+	rl := NewRateLimiter(1, 1)
+
+	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	// Exhaust limit
+	for i := 0; i < 5; i++ {
+		req := httptest.NewRequest(http.MethodGet, "/some-path", nil)
+		req.RemoteAddr = "10.0.0.3:12345"
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+	}
+
+	// Health check should still pass
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	req.RemoteAddr = "10.0.0.3:12345"
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("health endpoint should bypass rate limiting, got status %d", w.Code)
+	}
+}
+
+// TestRateLimiterStaticBypass verifies static assets bypass rate limiting
+func TestRateLimiterStaticBypass(t *testing.T) {
+	rl := NewRateLimiter(1, 1)
+
+	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	// Exhaust limit
+	for i := 0; i < 5; i++ {
+		req := httptest.NewRequest(http.MethodGet, "/api/config", nil)
+		req.RemoteAddr = "10.0.0.4:12345"
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+	}
+
+	// Static file should still pass
+	req := httptest.NewRequest(http.MethodGet, "/static/css/main.css", nil)
+	req.RemoteAddr = "10.0.0.4:12345"
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("static endpoint should bypass rate limiting, got status %d", w.Code)
+	}
+}
+
+// TestNewRateLimiter verifies constructor
+func TestNewRateLimiter(t *testing.T) {
+	rl := NewRateLimiter(rate.Limit(5), 10)
+
+	if rl == nil {
+		t.Fatal("NewRateLimiter should return non-nil")
+	}
+
+	if rl.rate != rate.Limit(5) {
+		t.Errorf("expected rate 5, got %v", rl.rate)
+	}
+
+	if rl.burst != 10 {
+		t.Errorf("expected burst 10, got %d", rl.burst)
+	}
+}
+
+// TestExtractIP verifies IP extraction from requests
+func TestExtractIP(t *testing.T) {
+	tests := []struct {
+		remoteAddr string
+		expected   string
+	}{
+		{"192.168.1.1:12345", "192.168.1.1"},
+		{"10.0.0.1:80", "10.0.0.1"},
+		{"[::1]:8080", "::1"},
+		{"invalid-no-port", "invalid-no-port"},
+	}
+
+	for _, tt := range tests {
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.RemoteAddr = tt.remoteAddr
+		ip := extractIP(req)
+		if ip != tt.expected {
+			t.Errorf("extractIP(%q) = %q, expected %q", tt.remoteAddr, ip, tt.expected)
+		}
 	}
 }

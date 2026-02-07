@@ -321,6 +321,11 @@ func (s *Server) applyMiddleware(handler http.Handler) http.Handler {
 	authMiddleware := middleware.NewAuth(s.initialized, s.dockerMode, s.setupToken)
 	handler = authMiddleware.Middleware(handler)
 
+	// Rate limiting middleware (innermost, applied first)
+	// Allow 10 requests/second with burst of 20 per IP
+	rateLimiter := middleware.NewRateLimiter(10, 20)
+	handler = rateLimiter.Middleware(handler)
+
 	return handler
 }
 
