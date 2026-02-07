@@ -1,9 +1,12 @@
 package backup
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -389,6 +392,198 @@ func TestListEmptyBackupDir(t *testing.T) {
 
 	if len(backups) != 0 {
 		t.Errorf("expected 0 backups, got %d", len(backups))
+	}
+}
+
+// TestValidateBackupName verifies backup name validation
+func TestValidateBackupName(t *testing.T) {
+	tests := []struct {
+		name    string
+		wantErr bool
+	}{
+		{"sdbx-backup-2026-01-01-120000.tar.gz", false},
+		{"my-backup.tar.gz", false},
+		{"", true},
+		{"..", true},
+		{"../etc/passwd", true},
+		{"foo/../bar", true},
+		{"/etc/passwd", true},
+		{"subdir/backup.tar.gz", true},
+		{"back\\slash.tar.gz", true},
+	}
+
+	for _, tt := range tests {
+		err := ValidateBackupName(tt.name)
+		if (err != nil) != tt.wantErr {
+			t.Errorf("ValidateBackupName(%q) error = %v, wantErr %v", tt.name, err, tt.wantErr)
+		}
+	}
+}
+
+// TestRestoreRejectsPathTraversalInTar verifies that tar entries with .. are rejected
+func TestRestoreRejectsPathTraversalInTar(t *testing.T) {
+	tmpDir := t.TempDir()
+	manager := NewManager(tmpDir)
+	ctx := context.Background()
+
+	// Create a malicious tar.gz with a path traversal entry
+	backupDir := filepath.Join(tmpDir, "backups")
+	if err := os.MkdirAll(backupDir, 0755); err != nil {
+		t.Fatalf("failed to create backup dir: %v", err)
+	}
+
+	archivePath := filepath.Join(backupDir, "malicious.tar.gz")
+	createMaliciousTar(t, archivePath, "../../../etc/evil", "pwned")
+
+	err := manager.Restore(ctx, "malicious.tar.gz")
+	if err == nil {
+		t.Fatal("Restore should reject tar entries with path traversal")
+	}
+
+	if !strings.Contains(err.Error(), "unsafe path") {
+		t.Errorf("error should mention unsafe path, got: %v", err)
+	}
+
+	// Verify the evil file was NOT created
+	if _, err := os.Stat(filepath.Join(tmpDir, "..", "..", "..", "etc", "evil")); err == nil {
+		t.Fatal("path traversal file should not have been created")
+	}
+}
+
+// TestRestoreRejectsAbsolutePathInTar verifies that absolute paths in tar entries are rejected
+func TestRestoreRejectsAbsolutePathInTar(t *testing.T) {
+	tmpDir := t.TempDir()
+	manager := NewManager(tmpDir)
+	ctx := context.Background()
+
+	backupDir := filepath.Join(tmpDir, "backups")
+	if err := os.MkdirAll(backupDir, 0755); err != nil {
+		t.Fatalf("failed to create backup dir: %v", err)
+	}
+
+	archivePath := filepath.Join(backupDir, "abs-path.tar.gz")
+	createMaliciousTar(t, archivePath, "/tmp/evil", "pwned")
+
+	err := manager.Restore(ctx, "abs-path.tar.gz")
+	if err == nil {
+		t.Fatal("Restore should reject tar entries with absolute paths")
+	}
+
+	if !strings.Contains(err.Error(), "unsafe path") {
+		t.Errorf("error should mention unsafe path, got: %v", err)
+	}
+}
+
+// TestRestoreRejectsTraversalBackupName verifies that backup names with traversal are rejected
+func TestRestoreRejectsTraversalBackupName(t *testing.T) {
+	tmpDir := t.TempDir()
+	manager := NewManager(tmpDir)
+	ctx := context.Background()
+
+	err := manager.Restore(ctx, "../../../etc/passwd")
+	if err == nil {
+		t.Fatal("Restore should reject backup names with path traversal")
+	}
+
+	if !strings.Contains(err.Error(), "invalid backup name") {
+		t.Errorf("error should mention invalid backup name, got: %v", err)
+	}
+}
+
+// TestDeleteRejectsTraversalBackupName verifies that delete rejects traversal names
+func TestDeleteRejectsTraversalBackupName(t *testing.T) {
+	tmpDir := t.TempDir()
+	manager := NewManager(tmpDir)
+	ctx := context.Background()
+
+	err := manager.Delete(ctx, "../../../etc/important")
+	if err == nil {
+		t.Fatal("Delete should reject backup names with path traversal")
+	}
+
+	if !strings.Contains(err.Error(), "invalid backup name") {
+		t.Errorf("error should mention invalid backup name, got: %v", err)
+	}
+}
+
+// TestRestoreSafeEntriesStillWork verifies that legitimate tar entries are still extracted
+func TestRestoreSafeEntriesStillWork(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create test file
+	if err := os.WriteFile(filepath.Join(tmpDir, ".sdbx.yaml"), []byte("domain: safe.local"), 0644); err != nil {
+		t.Fatalf("failed to create test file: %v", err)
+	}
+
+	manager := NewManager(tmpDir)
+	ctx := context.Background()
+
+	// Create a legitimate backup
+	backup, err := manager.Create(ctx)
+	if err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+
+	// Modify the file
+	if err := os.WriteFile(filepath.Join(tmpDir, ".sdbx.yaml"), []byte("domain: changed.local"), 0644); err != nil {
+		t.Fatalf("failed to modify file: %v", err)
+	}
+
+	// Restore should work with clean tar entries
+	if err := manager.Restore(ctx, backup.Name); err != nil {
+		t.Fatalf("Restore of clean backup failed: %v", err)
+	}
+
+	// Verify file was restored
+	content, err := os.ReadFile(filepath.Join(tmpDir, ".sdbx.yaml"))
+	if err != nil {
+		t.Fatalf("failed to read restored file: %v", err)
+	}
+
+	if string(content) != "domain: safe.local" {
+		t.Errorf("expected 'domain: safe.local', got %q", string(content))
+	}
+}
+
+// createMaliciousTar creates a tar.gz archive with a specific entry name (for testing)
+func createMaliciousTar(t *testing.T, archivePath, entryName, content string) {
+	t.Helper()
+
+	f, err := os.Create(archivePath)
+	if err != nil {
+		t.Fatalf("failed to create archive: %v", err)
+	}
+	defer f.Close()
+
+	gzWriter := gzip.NewWriter(f)
+	defer gzWriter.Close()
+
+	tarWriter := tar.NewWriter(gzWriter)
+	defer tarWriter.Close()
+
+	// Write metadata.json first (required by Restore)
+	metadataContent := `{"version":"1.0.0","timestamp":"2026-01-01T00:00:00Z"}`
+	if err := tarWriter.WriteHeader(&tar.Header{
+		Name: "metadata.json",
+		Mode: 0644,
+		Size: int64(len(metadataContent)),
+	}); err != nil {
+		t.Fatalf("failed to write metadata header: %v", err)
+	}
+	if _, err := tarWriter.Write([]byte(metadataContent)); err != nil {
+		t.Fatalf("failed to write metadata: %v", err)
+	}
+
+	// Write malicious entry
+	if err := tarWriter.WriteHeader(&tar.Header{
+		Name: entryName,
+		Mode: 0644,
+		Size: int64(len(content)),
+	}); err != nil {
+		t.Fatalf("failed to write malicious header: %v", err)
+	}
+	if _, err := tarWriter.Write([]byte(content)); err != nil {
+		t.Fatalf("failed to write malicious content: %v", err)
 	}
 }
 

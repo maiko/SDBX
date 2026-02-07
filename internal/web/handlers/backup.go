@@ -134,6 +134,14 @@ func (h *BackupHandler) HandleRestoreBackup(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	if err := backup.ValidateBackupName(backupName); err != nil {
+		h.respondJSON(w, http.StatusBadRequest, BackupResponse{
+			Success: false,
+			Message: "Invalid backup name",
+		})
+		return
+	}
+
 	manager := backup.NewManager(h.projectDir)
 
 	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Minute)
@@ -160,6 +168,14 @@ func (h *BackupHandler) HandleDeleteBackup(w http.ResponseWriter, r *http.Reques
 		h.respondJSON(w, http.StatusBadRequest, BackupResponse{
 			Success: false,
 			Message: "Backup name is required",
+		})
+		return
+	}
+
+	if err := backup.ValidateBackupName(backupName); err != nil {
+		h.respondJSON(w, http.StatusBadRequest, BackupResponse{
+			Success: false,
+			Message: "Invalid backup name",
 		})
 		return
 	}

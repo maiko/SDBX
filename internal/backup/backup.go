@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -322,8 +323,29 @@ func (m *Manager) readMetadata(archivePath string) (Metadata, error) {
 	return metadata, nil
 }
 
+// ValidateBackupName checks that a backup name is safe (no path traversal).
+func ValidateBackupName(name string) error {
+	if name == "" {
+		return fmt.Errorf("backup name is empty")
+	}
+	if strings.Contains(name, "..") {
+		return fmt.Errorf("backup name contains path traversal")
+	}
+	if filepath.IsAbs(name) {
+		return fmt.Errorf("backup name must not be an absolute path")
+	}
+	if strings.ContainsAny(name, `/\`) {
+		return fmt.Errorf("backup name must not contain path separators")
+	}
+	return nil
+}
+
 // Restore restores a backup
 func (m *Manager) Restore(ctx context.Context, backupName string) error {
+	if err := ValidateBackupName(backupName); err != nil {
+		return fmt.Errorf("invalid backup name: %w", err)
+	}
+
 	backupPath := filepath.Join(m.backupDir, backupName)
 
 	// Check if backup exists
@@ -348,6 +370,12 @@ func (m *Manager) Restore(ctx context.Context, backupName string) error {
 	// Create tar reader
 	tarReader := tar.NewReader(gzReader)
 
+	// Resolve the project directory to an absolute path for comparison
+	absProjectDir, err := filepath.Abs(m.projectDir)
+	if err != nil {
+		return fmt.Errorf("failed to resolve project directory: %w", err)
+	}
+
 	// Extract all files
 	for {
 		header, err := tarReader.Next()
@@ -363,8 +391,18 @@ func (m *Manager) Restore(ctx context.Context, backupName string) error {
 			continue
 		}
 
+		// Reject entries with path traversal sequences or absolute paths
+		if strings.Contains(header.Name, "..") || filepath.IsAbs(header.Name) {
+			return fmt.Errorf("tar entry contains unsafe path: %s", header.Name)
+		}
+
 		// Target path
-		targetPath := filepath.Join(m.projectDir, header.Name)
+		targetPath := filepath.Join(absProjectDir, filepath.Clean(header.Name))
+
+		// Verify the resolved path stays within the project directory
+		if !strings.HasPrefix(targetPath, absProjectDir+string(filepath.Separator)) && targetPath != absProjectDir {
+			return fmt.Errorf("tar entry escapes project directory: %s", header.Name)
+		}
 
 		// Ensure parent directory exists
 		if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
@@ -395,6 +433,10 @@ func (m *Manager) Restore(ctx context.Context, backupName string) error {
 
 // Delete deletes a backup
 func (m *Manager) Delete(ctx context.Context, backupName string) error {
+	if err := ValidateBackupName(backupName); err != nil {
+		return fmt.Errorf("invalid backup name: %w", err)
+	}
+
 	backupPath := filepath.Join(m.backupDir, backupName)
 
 	// Check if backup exists
