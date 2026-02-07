@@ -616,6 +616,182 @@ func TestNewRateLimiter(t *testing.T) {
 	}
 }
 
+// TestCSRFAllowsGETWithoutToken verifies GET requests pass without CSRF token
+func TestCSRFAllowsGETWithoutToken(t *testing.T) {
+	csrf := NewCSRF()
+
+	handler := csrf.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("GET without CSRF token should pass, got %d", w.Code)
+	}
+
+	// Should set a CSRF cookie
+	cookies := w.Result().Cookies()
+	found := false
+	for _, c := range cookies {
+		if c.Name == "csrf_token" && c.Value != "" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("GET response should set csrf_token cookie")
+	}
+}
+
+// TestCSRFBlocksPOSTWithoutToken verifies POST requests are blocked without CSRF token
+func TestCSRFBlocksPOSTWithoutToken(t *testing.T) {
+	csrf := NewCSRF()
+
+	handler := csrf.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodPost, "/api/config/save", nil)
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("POST without CSRF token should be 403, got %d", w.Code)
+	}
+}
+
+// TestCSRFBlocksPOSTWithMismatchedToken verifies mismatched tokens are rejected
+func TestCSRFBlocksPOSTWithMismatchedToken(t *testing.T) {
+	csrf := NewCSRF()
+
+	handler := csrf.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodPost, "/api/config/save", nil)
+	req.AddCookie(&http.Cookie{Name: "csrf_token", Value: "token-a"})
+	req.Header.Set("X-CSRF-Token", "token-b")
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("POST with mismatched CSRF tokens should be 403, got %d", w.Code)
+	}
+}
+
+// TestCSRFAllowsPOSTWithMatchingToken verifies matching tokens pass
+func TestCSRFAllowsPOSTWithMatchingToken(t *testing.T) {
+	csrf := NewCSRF()
+
+	handler := csrf.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	token := "my-csrf-token-value"
+	req := httptest.NewRequest(http.MethodPost, "/api/config/save", nil)
+	req.AddCookie(&http.Cookie{Name: "csrf_token", Value: token})
+	req.Header.Set("X-CSRF-Token", token)
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("POST with matching CSRF token should be 200, got %d", w.Code)
+	}
+}
+
+// TestCSRFAllowsHealthEndpoint verifies health bypasses CSRF
+func TestCSRFAllowsHealthEndpoint(t *testing.T) {
+	csrf := NewCSRF()
+
+	handler := csrf.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodPost, "/health", nil)
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("health endpoint POST should bypass CSRF, got %d", w.Code)
+	}
+}
+
+// TestCSRFBlocksDELETEWithoutToken verifies DELETE is also protected
+func TestCSRFBlocksDELETEWithoutToken(t *testing.T) {
+	csrf := NewCSRF()
+
+	handler := csrf.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/backup/delete/test", nil)
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("DELETE without CSRF token should be 403, got %d", w.Code)
+	}
+}
+
+// TestCSRFFormValueFallback verifies CSRF token can come from form field
+func TestCSRFFormValueFallback(t *testing.T) {
+	csrf := NewCSRF()
+
+	handler := csrf.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	token := "form-csrf-token"
+	form := strings.NewReader("csrf_token=" + token + "&name=test")
+	req := httptest.NewRequest(http.MethodPost, "/setup/domain", form)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(&http.Cookie{Name: "csrf_token", Value: token})
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("POST with CSRF token in form field should be 200, got %d", w.Code)
+	}
+}
+
+// TestCSRFCookieNotHttpOnly verifies CSRF cookie is readable by JavaScript
+func TestCSRFCookieNotHttpOnly(t *testing.T) {
+	csrf := NewCSRF()
+
+	handler := csrf.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	cookies := w.Result().Cookies()
+	for _, c := range cookies {
+		if c.Name == "csrf_token" {
+			if c.HttpOnly {
+				t.Error("CSRF cookie must NOT be HttpOnly (must be readable by JavaScript)")
+			}
+			if c.SameSite != http.SameSiteStrictMode {
+				t.Error("CSRF cookie should have SameSite=Strict")
+			}
+			return
+		}
+	}
+	t.Error("csrf_token cookie not found")
+}
+
 // TestExtractIP verifies IP extraction from requests
 func TestExtractIP(t *testing.T) {
 	tests := []struct {

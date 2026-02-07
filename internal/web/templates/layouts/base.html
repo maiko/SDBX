@@ -239,6 +239,12 @@
     </style>
 </head>
 <body>
+    <script>
+        document.addEventListener('htmx:configRequest', function(event) {
+            var match = document.cookie.match('(^|;)\\s*csrf_token=([^;]+)');
+            if (match) event.detail.headers['X-CSRF-Token'] = match[2];
+        });
+    </script>
     <nav class="navbar">
         <div class="navbar-brand">SDBX</div>
         <ul class="navbar-nav">
