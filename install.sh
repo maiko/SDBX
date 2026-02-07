@@ -75,6 +75,51 @@ get_latest_version() {
     echo "$version"
 }
 
+# Compute SHA256 checksum (portable: Linux sha256sum or macOS shasum)
+compute_sha256() {
+    if command -v sha256sum &> /dev/null; then
+        sha256sum "$1"
+    else
+        shasum -a 256 "$1"
+    fi
+}
+
+# Verify archive checksum against checksums.txt from the release
+verify_checksum() {
+    local tmp_dir="$1" archive_name="$2" version="$3"
+    local checksums_url="https://github.com/$REPO/releases/download/$version/checksums.txt"
+
+    log_info "Verifying checksum..."
+
+    if ! curl -fsSL "$checksums_url" -o "$tmp_dir/checksums.txt"; then
+        log_error "Failed to download checksums.txt"
+        log_info "URL: $checksums_url"
+        exit 1
+    fi
+
+    # Extract expected hash for our archive
+    local expected_hash
+    expected_hash=$(grep "$archive_name" "$tmp_dir/checksums.txt" | awk '{print $1}')
+
+    if [ -z "$expected_hash" ]; then
+        log_error "Archive $archive_name not found in checksums.txt"
+        exit 1
+    fi
+
+    # Compute actual hash
+    local actual_hash
+    actual_hash=$(compute_sha256 "$tmp_dir/$archive_name" | awk '{print $1}')
+
+    if [ "$expected_hash" != "$actual_hash" ]; then
+        log_error "Checksum verification failed!"
+        log_error "Expected: $expected_hash"
+        log_error "Actual:   $actual_hash"
+        exit 1
+    fi
+
+    log_success "Checksum verified"
+}
+
 # Download and install
 install_sdbx() {
     local os arch version archive_name download_url tmp_dir
@@ -114,6 +159,9 @@ install_sdbx() {
     fi
 
     log_success "Download complete"
+
+    # Verify checksum
+    verify_checksum "$tmp_dir" "$archive_name" "$version"
 
     # Extract archive
     log_info "Extracting archive..."
@@ -179,8 +227,12 @@ main() {
     echo ""
 
     # Check requirements
-    for cmd in curl tar; do
+    for cmd in curl tar sha256sum; do
         if ! command -v "$cmd" &> /dev/null; then
+            # On macOS, sha256sum is available as shasum -a 256
+            if [ "$cmd" = "sha256sum" ] && command -v shasum &> /dev/null; then
+                continue
+            fi
             log_error "Required command not found: $cmd"
             exit 1
         fi
