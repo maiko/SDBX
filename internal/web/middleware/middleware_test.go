@@ -902,6 +902,123 @@ func TestSecurityHeadersDoNotBreakHandler(t *testing.T) {
 	}
 }
 
+func TestIsHTTPS(t *testing.T) {
+	tests := []struct {
+		name     string
+		setup    func(r *http.Request)
+		expected bool
+	}{
+		{
+			name:     "plain HTTP",
+			setup:    func(r *http.Request) {},
+			expected: false,
+		},
+		{
+			name: "X-Forwarded-Proto https",
+			setup: func(r *http.Request) {
+				r.Header.Set("X-Forwarded-Proto", "https")
+			},
+			expected: true,
+		},
+		{
+			name: "X-Forwarded-Proto http",
+			setup: func(r *http.Request) {
+				r.Header.Set("X-Forwarded-Proto", "http")
+			},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			tt.setup(req)
+			if got := isHTTPS(req); got != tt.expected {
+				t.Errorf("isHTTPS() = %v, expected %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestSetupCookieSecureFlagHTTP(t *testing.T) {
+	auth := NewAuth(false, false, "test-token-123")
+
+	handler := auth.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	// Plain HTTP — Secure should be false
+	req := httptest.NewRequest(http.MethodGet, "/?token=test-token-123", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	for _, c := range w.Result().Cookies() {
+		if c.Name == "setup_token" && c.Secure {
+			t.Error("setup_token cookie should NOT have Secure flag on HTTP")
+		}
+	}
+}
+
+func TestSetupCookieSecureFlagHTTPS(t *testing.T) {
+	auth := NewAuth(false, false, "test-token-123")
+
+	handler := auth.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	// Behind HTTPS proxy — Secure should be true
+	req := httptest.NewRequest(http.MethodGet, "/?token=test-token-123", nil)
+	req.Header.Set("X-Forwarded-Proto", "https")
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	found := false
+	for _, c := range w.Result().Cookies() {
+		if c.Name == "setup_token" {
+			found = true
+			if !c.Secure {
+				t.Error("setup_token cookie should have Secure flag when behind HTTPS proxy")
+			}
+		}
+	}
+	if !found {
+		t.Error("setup_token cookie should be set")
+	}
+}
+
+func TestCSRFCookieSecureFlag(t *testing.T) {
+	csrf := NewCSRF()
+
+	handler := csrf.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	// Test HTTP - Secure should be false
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	for _, c := range w.Result().Cookies() {
+		if c.Name == "csrf_token" && c.Secure {
+			t.Error("csrf_token should NOT have Secure flag on HTTP")
+		}
+	}
+
+	// Test HTTPS - Secure should be true
+	req2 := httptest.NewRequest(http.MethodGet, "/", nil)
+	req2.Header.Set("X-Forwarded-Proto", "https")
+	w2 := httptest.NewRecorder()
+	handler.ServeHTTP(w2, req2)
+
+	for _, c := range w2.Result().Cookies() {
+		if c.Name == "csrf_token" {
+			if !c.Secure {
+				t.Error("csrf_token should have Secure flag behind HTTPS proxy")
+			}
+		}
+	}
+}
+
 func TestExtractIP(t *testing.T) {
 	tests := []struct {
 		remoteAddr string

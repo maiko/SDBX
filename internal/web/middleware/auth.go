@@ -91,6 +91,7 @@ func (a *Auth) validateSetupToken(w http.ResponseWriter, r *http.Request) bool {
 			Value:    queryToken,
 			Path:     "/",
 			HttpOnly: true,
+			Secure:   isHTTPS(r),
 			SameSite: http.SameSiteStrictMode,
 			MaxAge:   3600, // 1 hour
 		})
@@ -118,6 +119,15 @@ func (a *Auth) validateSetupToken(w http.ResponseWriter, r *http.Request) bool {
 	}
 
 	return true
+}
+
+// isHTTPS returns true if the request was made over HTTPS, either directly
+// (r.TLS != nil) or via a reverse proxy (X-Forwarded-Proto header).
+func isHTTPS(r *http.Request) bool {
+	if r.TLS != nil {
+		return true
+	}
+	return r.Header.Get("X-Forwarded-Proto") == "https"
 }
 
 // isPrivateIP checks whether a request originates from a private/Docker network address.

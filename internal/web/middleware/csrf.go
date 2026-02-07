@@ -83,6 +83,7 @@ func (c *CSRF) ensureToken(w http.ResponseWriter, r *http.Request) {
 		Value:    token,
 		Path:     "/",
 		HttpOnly: false, // Must be readable by JavaScript to send in header
+		Secure:   isHTTPS(r),
 		SameSite: http.SameSiteStrictMode,
 		MaxAge:   3600,
 	})
