@@ -47,7 +47,7 @@ func NewManager(projectDir string) *Manager {
 // Create creates a new backup
 func (m *Manager) Create(ctx context.Context) (*Backup, error) {
 	// Ensure backup directory exists
-	if err := os.MkdirAll(m.backupDir, 0755); err != nil {
+	if err := os.MkdirAll(m.backupDir, 0750); err != nil {
 		return nil, fmt.Errorf("failed to create backup directory: %w", err)
 	}
 
@@ -92,7 +92,7 @@ func (m *Manager) Create(ctx context.Context) (*Backup, error) {
 // createArchive creates a tar.gz archive
 func (m *Manager) createArchive(ctx context.Context, archivePath string, files []string, metadata Metadata) error {
 	// Create archive file
-	f, err := os.Create(archivePath)
+	f, err := os.Create(archivePath) //nolint:gosec // G304 - archivePath built from trusted backupDir + timestamp
 	if err != nil {
 		return err
 	}
@@ -174,7 +174,7 @@ func (m *Manager) addToArchive(_ context.Context, tw *tar.Writer, fullPath, arch
 			}
 
 			// Write file content
-			file, err := os.Open(path)
+			file, err := os.Open(path) //nolint:gosec // G304 - path from filepath.Walk within projectDir
 			if err != nil {
 				return err
 			}
@@ -199,7 +199,7 @@ func (m *Manager) addToArchive(_ context.Context, tw *tar.Writer, fullPath, arch
 		return err
 	}
 
-	file, err := os.Open(fullPath)
+	file, err := os.Open(fullPath) //nolint:gosec // G304 - fullPath from trusted projectDir + archivePath
 	if err != nil {
 		return err
 	}
@@ -283,7 +283,7 @@ func (m *Manager) readMetadata(archivePath string) (Metadata, error) {
 	var metadata Metadata
 
 	// Open archive
-	f, err := os.Open(archivePath)
+	f, err := os.Open(archivePath) //nolint:gosec // G304 - archivePath from trusted backupDir
 	if err != nil {
 		return metadata, err
 	}
@@ -354,7 +354,7 @@ func (m *Manager) Restore(ctx context.Context, backupName string) error {
 	}
 
 	// Open archive
-	f, err := os.Open(backupPath)
+	f, err := os.Open(backupPath) //nolint:gosec // G304 - backupPath from validated backupName within backupDir
 	if err != nil {
 		return fmt.Errorf("failed to open backup: %w", err)
 	}
@@ -405,25 +405,28 @@ func (m *Manager) Restore(ctx context.Context, backupName string) error {
 		}
 
 		// Ensure parent directory exists
-		if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(targetPath), 0750); err != nil {
 			return fmt.Errorf("failed to create directory: %w", err)
 		}
 
-		// Extract file
-		outFile, err := os.Create(targetPath)
+		// Extract file with size limit (100MB per file to prevent decompression bombs)
+		const maxFileSize = 100 << 20 // 100 MiB
+		outFile, err := os.Create(targetPath) //nolint:gosec // G304 - targetPath validated to stay within projectDir
 		if err != nil {
 			return fmt.Errorf("failed to create file: %w", err)
 		}
 
-		if _, err := io.Copy(outFile, tarReader); err != nil {
-			outFile.Close()
+		if _, err := io.Copy(outFile, io.LimitReader(tarReader, maxFileSize)); err != nil {
+			_ = outFile.Close()
 			return fmt.Errorf("failed to write file: %w", err)
 		}
 
-		outFile.Close()
+		if err := outFile.Close(); err != nil {
+			return fmt.Errorf("failed to close file: %w", err)
+		}
 
-		// Set permissions
-		if err := os.Chmod(targetPath, os.FileMode(header.Mode)); err != nil {
+		// Set permissions (mask int64 before converting to uint32 to prevent overflow)
+		if err := os.Chmod(targetPath, os.FileMode(header.Mode&0777)); err != nil {
 			return fmt.Errorf("failed to set permissions: %w", err)
 		}
 	}

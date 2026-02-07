@@ -103,10 +103,9 @@ issues:
       linters:
         - gosec
 
-    # Backup code operates on trusted internal data
+    # Backup code: keep revive/gocritic exclusions for standard patterns
     - path: internal/backup/
       linters:
-        - gosec
         - revive
         - gocritic
 
