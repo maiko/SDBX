@@ -1,6 +1,6 @@
 # Multi-stage Dockerfile for SDBX Web UI
 # Stage 1: Build the Go binary
-FROM golang:1.25-alpine AS builder
+FROM golang:1.25-alpine@sha256:f6751d823c26342f9506c03797d2527668d095b0a15f1862cddb4d927a7a4ced AS builder
 
 # Install build dependencies
 RUN apk add --no-cache git
@@ -25,7 +25,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
     ./cmd/sdbx
 
 # Stage 2: Runtime image
-FROM alpine:latest
+FROM alpine:3.21@sha256:c3f8e73fdb79deaebaa2037150150191b9dcbfba68b4a46d70103204c53f4709
 
 # Install runtime dependencies
 RUN apk --no-cache add \
