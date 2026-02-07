@@ -356,24 +356,7 @@ func (g *IntegrationsGenerator) getServiceURL(def *registry.ServiceDefinition) s
 
 // evaluateConditions checks if conditions are met
 func (g *IntegrationsGenerator) evaluateConditions(cond registry.Conditions) bool {
-	if cond.Always {
-		return true
-	}
-
-	if cond.RequireConfig != "" {
-		switch cond.RequireConfig {
-		case "vpn_enabled":
-			if !g.Config.VPNEnabled {
-				return false
-			}
-		case "cloudflared":
-			if g.Config.Expose.Mode != config.ExposeModeCloudflared {
-				return false
-			}
-		}
-	}
-
-	return true
+	return registry.EvaluateConditions(cond, g.Config)
 }
 
 // GenerateEnvFile generates the .env file content
