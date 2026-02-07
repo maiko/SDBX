@@ -264,16 +264,10 @@ func countEnabledAddons(addons []AddonDisplay) int {
 	return count
 }
 
-// respondJSON sends a JSON response
 func (h *AddonsHandler) respondJSON(w http.ResponseWriter, statusCode int, data interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(data)
+	respondJSON(w, statusCode, data)
 }
 
-// renderTemplate renders a template with data
 func (h *AddonsHandler) renderTemplate(w http.ResponseWriter, name string, data interface{}) {
-	if err := h.templates.ExecuteTemplate(w, name, data); err != nil {
-		httpError(w, "addons template render", err, http.StatusInternalServerError)
-	}
+	renderTemplate(h.templates, w, name, "addons", data)
 }

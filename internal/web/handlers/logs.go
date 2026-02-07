@@ -265,9 +265,6 @@ func checkWebSocketOrigin(r *http.Request) bool {
 	return u.Host == r.Host
 }
 
-// renderTemplate renders a template with data
 func (h *LogsHandler) renderTemplate(w http.ResponseWriter, name string, data interface{}) {
-	if err := h.templates.ExecuteTemplate(w, name, data); err != nil {
-		httpError(w, "logs template render", err, http.StatusInternalServerError)
-	}
+	renderTemplate(h.templates, w, name, "logs", data)
 }

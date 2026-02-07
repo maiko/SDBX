@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"html/template"
 	"log"
 	"net/http"
 	"strings"
@@ -35,4 +36,18 @@ func jsonError(w http.ResponseWriter, userMessage string, context string, err er
 		"success": false,
 		"message": userMessage,
 	})
+}
+
+// respondJSON sends a JSON response with the given status code and data.
+func respondJSON(w http.ResponseWriter, statusCode int, data interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	json.NewEncoder(w).Encode(data)
+}
+
+// renderTemplate renders a named template with the given data.
+func renderTemplate(tmpl *template.Template, w http.ResponseWriter, name string, context string, data interface{}) {
+	if err := tmpl.ExecuteTemplate(w, name, data); err != nil {
+		httpError(w, context+" template render", err, http.StatusInternalServerError)
+	}
 }
