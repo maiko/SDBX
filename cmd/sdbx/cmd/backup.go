@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"text/tabwriter"
-	"time"
 
 	"github.com/spf13/cobra"
 
@@ -119,7 +118,7 @@ func runBackupCreate(_ *cobra.Command, _ []string) error {
 	fmt.Println()
 	fmt.Printf("%s  %s\n", tui.MutedStyle.Render("Name:"), b.Name)
 	fmt.Printf("%s  %s\n", tui.MutedStyle.Render("Path:"), b.Path)
-	fmt.Printf("%s  %s\n", tui.MutedStyle.Render("Size:"), formatBytes(size))
+	fmt.Printf("%s  %s\n", tui.MutedStyle.Render("Size:"), backup.FormatBytes(size))
 	fmt.Printf("%s  %s\n", tui.MutedStyle.Render("Time:"), b.Metadata.Timestamp.Format("2006-01-02 15:04:05"))
 	fmt.Println()
 
@@ -178,12 +177,12 @@ func runBackupList(_ *cobra.Command, _ []string) error {
 
 	for _, b := range backups {
 		size, _ := b.GetSize()
-		age := formatAge(b.Metadata.Timestamp)
+		age := backup.FormatAge(b.Metadata.Timestamp)
 
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
 			b.Name,
 			age,
-			formatBytes(size),
+			backup.FormatBytes(size),
 			b.Metadata.Hostname,
 		)
 	}
@@ -272,49 +271,3 @@ func runBackupDelete(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-// formatBytes formats bytes to human-readable format
-func formatBytes(bytes int64) string {
-	const unit = 1024
-	if bytes < unit {
-		return fmt.Sprintf("%d B", bytes)
-	}
-	div, exp := int64(unit), 0
-	for n := bytes / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
-	}
-	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
-}
-
-// formatAge formats a timestamp as a relative time
-func formatAge(t time.Time) string {
-	duration := time.Since(t)
-
-	if duration < time.Minute {
-		return "just now"
-	}
-	if duration < time.Hour {
-		mins := int(duration.Minutes())
-		if mins == 1 {
-			return "1 minute ago"
-		}
-		return fmt.Sprintf("%d minutes ago", mins)
-	}
-	if duration < 24*time.Hour {
-		hours := int(duration.Hours())
-		if hours == 1 {
-			return "1 hour ago"
-		}
-		return fmt.Sprintf("%d hours ago", hours)
-	}
-	days := int(duration.Hours() / 24)
-	if days == 1 {
-		return "1 day ago"
-	}
-	if days < 30 {
-		return fmt.Sprintf("%d days ago", days)
-	}
-
-	// For older backups, show full date
-	return t.Format("2006-01-02 15:04")
-}

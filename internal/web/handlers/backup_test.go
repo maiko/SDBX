@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/maiko/sdbx/internal/backup"
 )
 
 // TestFormatBytes verifies byte formatting
@@ -27,7 +29,7 @@ func TestFormatBytes(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		result := formatBytes(tt.bytes)
+		result := backup.FormatBytes(tt.bytes)
 		if result != tt.expected {
 			t.Errorf("formatBytes(%d) = %q, want %q", tt.bytes, result, tt.expected)
 		}
@@ -55,7 +57,7 @@ func TestFormatAge(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := formatAge(tt.time)
+			result := backup.FormatAge(tt.time)
 			if !strings.Contains(result, tt.contains) {
 				t.Errorf("formatAge() = %q, want to contain %q", result, tt.contains)
 			}

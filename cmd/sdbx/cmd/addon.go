@@ -244,7 +244,7 @@ func runAddonSearch(_ *cobra.Command, args []string) error {
 			addon.Name,
 			tui.RenderCategory(string(addon.Category)),
 			addon.Source,
-			truncateDesc(addon.Description, 40),
+			truncate(addon.Description, 40),
 		)
 	}
 
@@ -441,10 +441,3 @@ func getRegistry() (*registry.Registry, error) {
 	return registry.NewWithDefaults()
 }
 
-// truncateDesc truncates a description string
-func truncateDesc(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	return s[:maxLen-3] + "..."
-}

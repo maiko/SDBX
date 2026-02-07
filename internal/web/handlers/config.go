@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"gopkg.in/yaml.v3"
 
@@ -211,27 +212,13 @@ func (h *ConfigHandler) validateConfig(cfg *config.Config) []string {
 
 	// Expose mode validation
 	validExposeModes := []string{"lan", "direct", "cloudflared"}
-	isValidExposeMode := false
-	for _, mode := range validExposeModes {
-		if cfg.Expose.Mode == mode {
-			isValidExposeMode = true
-			break
-		}
-	}
-	if !isValidExposeMode {
+	if !slices.Contains(validExposeModes, cfg.Expose.Mode) {
 		errors = append(errors, fmt.Sprintf("expose.mode must be one of: %v", validExposeModes))
 	}
 
 	// Routing strategy validation
 	validStrategies := []string{"subdomain", "path"}
-	isValidStrategy := false
-	for _, strategy := range validStrategies {
-		if cfg.Routing.Strategy == strategy {
-			isValidStrategy = true
-			break
-		}
-	}
-	if !isValidStrategy {
+	if !slices.Contains(validStrategies, cfg.Routing.Strategy) {
 		errors = append(errors, fmt.Sprintf("routing.strategy must be one of: %v", validStrategies))
 	}
 
