@@ -8,9 +8,10 @@ import (
 )
 
 const (
-	csrfCookieName = "csrf_token"
-	csrfHeaderName = "X-CSRF-Token"
-	csrfTokenBytes = 32
+	csrfCookieName   = "csrf_token"
+	csrfHeaderName   = "X-CSRF-Token"
+	csrfTokenBytes   = 32
+	csrfCookieMaxAge = 3600 // 1 hour
 )
 
 // CSRF provides double-submit cookie CSRF protection.
@@ -85,7 +86,7 @@ func (c *CSRF) ensureToken(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: false, // Must be readable by JavaScript to send in header
 		Secure:   isHTTPS(r),
 		SameSite: http.SameSiteStrictMode,
-		MaxAge:   3600,
+		MaxAge:   csrfCookieMaxAge,
 	})
 }
 

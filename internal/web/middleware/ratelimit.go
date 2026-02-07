@@ -9,6 +9,15 @@ import (
 	"golang.org/x/time/rate"
 )
 
+const (
+	// visitorCleanupInterval is how often stale rate limiter entries are purged.
+	visitorCleanupInterval = time.Minute
+	// visitorStaleThreshold is how long a visitor must be inactive before removal.
+	visitorStaleThreshold = 3 * time.Minute
+	// staticPathPrefix is the URL prefix for static assets (skipped by rate limiter).
+	staticPathPrefix = "/static/"
+)
+
 // RateLimiter provides per-IP rate limiting for HTTP requests.
 type RateLimiter struct {
 	visitors map[string]*visitor
@@ -55,10 +64,10 @@ func (rl *RateLimiter) getVisitor(ip string) *rate.Limiter {
 // cleanupLoop removes stale visitor entries every minute.
 func (rl *RateLimiter) cleanupLoop() {
 	for {
-		time.Sleep(time.Minute)
+		time.Sleep(visitorCleanupInterval)
 		rl.mu.Lock()
 		for ip, v := range rl.visitors {
-			if time.Since(v.lastSeen) > 3*time.Minute {
+			if time.Since(v.lastSeen) > visitorStaleThreshold {
 				delete(rl.visitors, ip)
 			}
 		}
@@ -75,7 +84,7 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 			return
 		}
 
-		if len(r.URL.Path) >= 8 && r.URL.Path[:8] == "/static/" {
+		if len(r.URL.Path) >= len(staticPathPrefix) && r.URL.Path[:len(staticPathPrefix)] == staticPathPrefix {
 			next.ServeHTTP(w, r)
 			return
 		}

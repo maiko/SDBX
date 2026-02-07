@@ -17,6 +17,20 @@ import (
 	"github.com/maiko/sdbx/internal/registry"
 )
 
+const (
+	// sessionIDBytes is the number of random bytes for wizard session IDs.
+	sessionIDBytes = 16
+	// wizardSessionMaxAge is the cookie lifetime for wizard sessions (30 minutes).
+	wizardSessionMaxAge = 1800
+
+	// Argon2 password hashing parameters
+	argon2Time    = 3
+	argon2Memory  = 64 * 1024 // 64 MB
+	argon2Threads = 4
+	argon2KeyLen  = 32
+	argon2SaltLen = 16
+)
+
 // SetupHandler handles the setup wizard
 type SetupHandler struct {
 	registry   *registry.Registry
@@ -93,7 +107,7 @@ func (h *SetupHandler) deleteSession(sessionID string) {
 // generateSessionID generates a cryptographically random session ID.
 // Returns an error if the system's random source is unavailable.
 func generateSessionID() (string, error) {
-	b := make([]byte, 16)
+	b := make([]byte, sessionIDBytes)
 	if _, err := rand.Read(b); err != nil {
 		return "", fmt.Errorf("failed to generate session ID: %w", err)
 	}
@@ -108,7 +122,7 @@ func setSessionCookie(w http.ResponseWriter, sessionID string) {
 		Path:     "/",
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
-		MaxAge:   1800, // 30 minutes
+		MaxAge:   wizardSessionMaxAge,
 	})
 }
 
@@ -524,21 +538,15 @@ func (h *SetupHandler) renderTemplate(w http.ResponseWriter, name string, data i
 
 // generateArgon2Hash generates an Argon2id hash compatible with Authelia
 func generateArgon2Hash(password string) (string, error) {
-	salt := make([]byte, 16)
+	salt := make([]byte, argon2SaltLen)
 	if _, err := rand.Read(salt); err != nil {
 		return "", err
 	}
 
-	// Authelia defaults: time=3, memory=64MB, threads=4, keyLen=32
-	time := uint32(3)
-	memory := uint32(64 * 1024)
-	threads := uint8(4)
-	keyLen := uint32(32)
-
-	hash := argon2.IDKey([]byte(password), salt, time, memory, threads, keyLen)
+	hash := argon2.IDKey([]byte(password), salt, argon2Time, argon2Memory, argon2Threads, argon2KeyLen)
 
 	b64Salt := base64.RawStdEncoding.EncodeToString(salt)
 	b64Hash := base64.RawStdEncoding.EncodeToString(hash)
 
-	return fmt.Sprintf("$argon2id$v=19$m=%d,t=%d,p=%d$%s$%s", memory, time, threads, b64Salt, b64Hash), nil
+	return fmt.Sprintf("$argon2id$v=19$m=%d,t=%d,p=%d$%s$%s", argon2Memory, argon2Time, argon2Threads, b64Salt, b64Hash), nil
 }

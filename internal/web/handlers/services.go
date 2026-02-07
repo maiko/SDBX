@@ -13,6 +13,13 @@ import (
 	"github.com/maiko/sdbx/internal/registry"
 )
 
+const (
+	serviceQueryTimeout   = 10 * time.Second
+	serviceStartTimeout   = 30 * time.Second
+	serviceStopTimeout    = 30 * time.Second
+	serviceRestartTimeout = 60 * time.Second
+)
+
 // ServicesHandler handles service management routes
 type ServicesHandler struct {
 	compose   *docker.Compose
@@ -96,7 +103,7 @@ func (h *ServicesHandler) HandleServicesPage(w http.ResponseWriter, r *http.Requ
 
 // HandleGetServices handles GET /api/services - returns service list as JSON
 func (h *ServicesHandler) HandleGetServices(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), serviceQueryTimeout)
 	defer cancel()
 
 	// Get service status from Docker
@@ -161,7 +168,7 @@ func (h *ServicesHandler) HandleStartService(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), serviceStartTimeout)
 	defer cancel()
 
 	// Start the service
@@ -189,7 +196,7 @@ func (h *ServicesHandler) HandleStopService(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), serviceStopTimeout)
 	defer cancel()
 
 	// Stop the service
@@ -217,7 +224,7 @@ func (h *ServicesHandler) HandleRestartService(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), serviceRestartTimeout)
 	defer cancel()
 
 	// Restart the service

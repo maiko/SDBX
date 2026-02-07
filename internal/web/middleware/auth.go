@@ -7,6 +7,11 @@ import (
 	"net/http"
 )
 
+const (
+	// setupTokenCookieMaxAge is how long the setup token cookie lasts (1 hour).
+	setupTokenCookieMaxAge = 3600
+)
+
 // contextKey is a custom type for context keys to avoid collisions
 type contextKey string
 
@@ -93,7 +98,7 @@ func (a *Auth) validateSetupToken(w http.ResponseWriter, r *http.Request) bool {
 			HttpOnly: true,
 			Secure:   isHTTPS(r),
 			SameSite: http.SameSiteStrictMode,
-			MaxAge:   3600, // 1 hour
+			MaxAge:   setupTokenCookieMaxAge,
 		})
 
 		// Build redirect URL without the token parameter

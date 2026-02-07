@@ -9,6 +9,13 @@ import (
 	"github.com/maiko/sdbx/internal/backup"
 )
 
+const (
+	backupListTimeout    = 30 * time.Second
+	backupCreateTimeout  = 2 * time.Minute
+	backupRestoreTimeout = 2 * time.Minute
+	backupDeleteTimeout  = 30 * time.Second
+)
+
 // BackupHandler handles backup and restore operations
 type BackupHandler struct {
 	projectDir string
@@ -55,7 +62,7 @@ func (h *BackupHandler) HandleBackupPage(w http.ResponseWriter, r *http.Request)
 func (h *BackupHandler) HandleListBackups(w http.ResponseWriter, r *http.Request) {
 	manager := backup.NewManager(h.projectDir)
 
-	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), backupListTimeout)
 	defer cancel()
 
 	backups, err := manager.List(ctx)
@@ -89,7 +96,7 @@ func (h *BackupHandler) HandleListBackups(w http.ResponseWriter, r *http.Request
 func (h *BackupHandler) HandleCreateBackup(w http.ResponseWriter, r *http.Request) {
 	manager := backup.NewManager(h.projectDir)
 
-	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(r.Context(), backupCreateTimeout)
 	defer cancel()
 
 	b, err := manager.Create(ctx)
@@ -136,7 +143,7 @@ func (h *BackupHandler) HandleRestoreBackup(w http.ResponseWriter, r *http.Reque
 
 	manager := backup.NewManager(h.projectDir)
 
-	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(r.Context(), backupRestoreTimeout)
 	defer cancel()
 
 	if err := manager.Restore(ctx, backupName); err != nil {
@@ -171,7 +178,7 @@ func (h *BackupHandler) HandleDeleteBackup(w http.ResponseWriter, r *http.Reques
 
 	manager := backup.NewManager(h.projectDir)
 
-	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), backupDeleteTimeout)
 	defer cancel()
 
 	if err := manager.Delete(ctx, backupName); err != nil {

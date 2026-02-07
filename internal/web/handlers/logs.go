@@ -17,6 +17,15 @@ import (
 	"github.com/maiko/sdbx/internal/registry"
 )
 
+const (
+	// WebSocket buffer sizes
+	wsReadBufferSize  = 1024
+	wsWriteBufferSize = 1024
+
+	// logStreamTimeout is the timeout for log streaming requests.
+	logStreamTimeout = 10 * time.Second
+)
+
 // LogsHandler handles log viewing routes
 type LogsHandler struct {
 	compose   *docker.Compose
@@ -32,8 +41,8 @@ func NewLogsHandler(compose *docker.Compose, reg *registry.Registry, tmpl *templ
 		registry:  reg,
 		templates: tmpl,
 		upgrader: websocket.Upgrader{
-			ReadBufferSize:  1024,
-			WriteBufferSize: 1024,
+			ReadBufferSize:  wsReadBufferSize,
+			WriteBufferSize: wsWriteBufferSize,
 			CheckOrigin:     checkWebSocketOrigin,
 		},
 	}
@@ -233,7 +242,7 @@ func (h *LogsHandler) HandleGetLogs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Use request context as parent for proper cancellation
-	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), logStreamTimeout)
 	defer cancel()
 
 	// Get last 100 lines
