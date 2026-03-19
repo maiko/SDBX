@@ -1,32 +1,5 @@
 version: "2"
 
-linters-settings:
-  govet:
-    enable-all: true
-    disable:
-      - shadow         # Variable shadowing is common in Go error handling
-      - fieldalignment # Struct field reordering is a micro-optimization
-  gocyclo:
-    min-complexity: 30
-  dupl:
-    threshold: 100
-  goconst:
-    min-len: 5
-    min-occurrences: 5
-  misspell:
-    locale: US
-  lll:
-    line-length: 140
-  goimports:
-    local-prefixes: github.com/maiko/sdbx
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - experimental
-      - opinionated
-      - performance
-      - style
-
 linters:
   enable:
     - bodyclose
@@ -36,14 +9,14 @@ linters:
     - goconst
     - gocritic
     - gocyclo
-    - revive
-    - gosec
     - govet
     - ineffassign
     - lll
     - misspell
     - nakedret
     - prealloc
+    - revive
+    - gosec
     - staticcheck
     - unconvert
     - unparam
@@ -57,92 +30,122 @@ linters:
     - godox
     - wsl
 
+  settings:
+    govet:
+      enable-all: true
+      disable:
+        - shadow         # Variable shadowing is common in Go error handling
+        - fieldalignment # Struct field reordering is a micro-optimization
+    gocyclo:
+      min-complexity: 30
+    dupl:
+      threshold: 100
+    goconst:
+      min-len: 5
+      min-occurrences: 5
+    misspell:
+      locale: US
+    lll:
+      line-length: 140
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - experimental
+        - opinionated
+        - performance
+        - style
+
+  exclusions:
+    rules:
+      # Exclude noisy linters from running on test files
+      - path: _test\.go
+        linters:
+          - gocyclo
+          - errcheck
+          - dupl
+          - gosec
+          - govet
+          - lll
+          - revive
+          - goconst
+          - gocritic
+          - prealloc
+
+      # Registry package has ctx parameters for interface compliance
+      - path: internal/registry/
+        linters:
+          - revive
+
+      # Exclude known false positives
+      - path: cmd/sdbx/cmd/
+        text: "G204: Subprocess launched with variable"
+        linters:
+          - gosec
+
+      # CLI commands have style patterns that gocritic flags
+      - path: cmd/sdbx/cmd/
+        linters:
+          - gocritic
+
+      # G306: Config files need 0644 for Docker/other services to read them
+      - text: "G306:"
+        linters:
+          - gosec
+
+      # Backup code: keep revive/gocritic exclusions for standard patterns
+      - path: internal/backup/
+        linters:
+          - revive
+          - gocritic
+
+      # Integrate package has similar API clients with naturally similar patterns
+      - path: internal/integrate/
+        linters:
+          - dupl
+
+      # Web handlers have similar request/response patterns
+      # errcheck excluded: HTTP response writes rarely need error handling
+      # goconst excluded: status messages are clearer inline
+      - path: internal/web/handlers/
+        linters:
+          - dupl
+          - errcheck
+          - goconst
+
+      # Web middleware and tests have common patterns
+      - path: internal/web/middleware/
+        linters:
+          - revive
+
+      # Doctor package has standard check patterns
+      - path: internal/doctor/
+        linters:
+          - gocritic
+
+    paths:
+      - vendor
+      - .github
+      - docs
+
+    max-issues-per-linter: 0
+    max-same-issues: 0
+
 formatters:
   enable:
     - gofmt
     - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/maiko/sdbx
 
 run:
   timeout: 5m
   tests: true
 
-issues:
-  exclude-dirs:
-    - vendor
-    - .github
-    - docs
-
-  exclude-rules:
-    # Exclude noisy linters from running on test files.
-    - path: _test\.go
-      linters:
-        - gocyclo
-        - errcheck
-        - dupl
-        - gosec
-        - govet
-        - lll
-        - revive
-        - goconst
-        - gocritic
-        - prealloc
-
-    # Registry package has ctx parameters for interface compliance
-    - path: internal/registry/
-      linters:
-        - revive
-
-    # Exclude known false positives
-    - path: cmd/sdbx/cmd/
-      text: "G204: Subprocess launched with variable"
-      linters:
-        - gosec
-
-    # CLI commands have style patterns that gocritic flags
-    - path: cmd/sdbx/cmd/
-      linters:
-        - gocritic
-
-    # G306: Config files need 0644 for Docker/other services to read them
-    - text: "G306:"
-      linters:
-        - gosec
-
-    # Backup code: keep revive/gocritic exclusions for standard patterns
-    - path: internal/backup/
-      linters:
-        - revive
-        - gocritic
-
-    # Integrate package has similar API clients with naturally similar patterns
-    - path: internal/integrate/
-      linters:
-        - dupl
-
-    # Web handlers have similar request/response patterns
-    # errcheck excluded: HTTP response writes rarely need error handling
-    # goconst excluded: status messages are clearer inline
-    - path: internal/web/handlers/
-      linters:
-        - dupl
-        - errcheck
-        - goconst
-
-    # Web middleware and tests have common patterns
-    - path: internal/web/middleware/
-      linters:
-        - revive
-
-    # Doctor package has standard check patterns
-    - path: internal/doctor/
-      linters:
-        - gocritic
-
-  max-issues-per-linter: 0
-  max-same-issues: 0
-
 output:
   formats:
-    colored-line-number: {}
+    text:
+      path: stdout
   print-issued-lines: true
   print-linter-name: true

@@ -61,10 +61,10 @@ func (h *VPNHandler) HandleVPNPage(w http.ResponseWriter, r *http.Request) {
 
 	data := map[string]interface{}{
 		"VPNEnabled":      cfg.VPNEnabled,
-		"CurrentProvider":  cfg.VPNProvider,
-		"CurrentType":      cfg.VPNType,
-		"CurrentCountry":   cfg.VPNCountry,
-		"Providers":        providers,
+		"CurrentProvider": cfg.VPNProvider,
+		"CurrentType":     cfg.VPNType,
+		"CurrentCountry":  cfg.VPNCountry,
+		"Providers":       providers,
 	}
 
 	h.renderTemplate(w, "pages/vpn.html", data)

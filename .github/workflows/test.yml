@@ -151,6 +151,7 @@ jobs:
         with:
           version: v2.11.3
           args: --timeout=5m
+          only-new-issues: true
 
   build:
     name: Build

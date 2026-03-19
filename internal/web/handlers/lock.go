@@ -36,8 +36,8 @@ type LockedServiceInfo struct {
 
 // LockVerifyResponse represents the JSON response for lock verification
 type LockVerifyResponse struct {
-	Success bool                            `json:"success"`
-	Message string                          `json:"message"`
+	Success bool                              `json:"success"`
+	Message string                            `json:"message"`
 	Results []registry.LockVerificationResult `json:"results,omitempty"`
 }
 
