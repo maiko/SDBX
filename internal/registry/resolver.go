@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"text/template"
 
 	"gopkg.in/yaml.v3"
 
@@ -193,29 +195,29 @@ func (r *Resolver) collectDependencies(def *ServiceDefinition, cfg *config.Confi
 	return result
 }
 
-// evaluateConditionString evaluates a condition template string
+// evaluateConditionString evaluates a condition template string using text/template.
+// This supports all Go template expressions dynamically, matching the compose generator's behavior.
 func (r *Resolver) evaluateConditionString(condition string, cfg *config.Config) bool {
 	if condition == "" {
 		return true
 	}
 
-	// Simple condition evaluation
-	// In a real implementation, this would use text/template
-	switch condition {
-	case "{{ .Config.VPNEnabled }}":
-		return cfg.VPNEnabled
-	case "{{ not .Config.VPNEnabled }}":
-		return !cfg.VPNEnabled
-	case "{{ eq .Config.Expose.Mode \"cloudflared\" }}":
-		return cfg.Expose.Mode == config.ExposeModeCloudflared
-	case "{{ eq .Config.Routing.Strategy \"path\" }}":
-		return cfg.Routing.Strategy == config.RoutingStrategyPath
-	default:
-		// Log warning for unknown conditions and default to false
-		// This prevents unrecognized conditions from silently enabling features
-		log.Printf("Warning: unknown condition '%s', defaulting to false", condition)
+	tmpl, err := template.New("cond").Parse(condition)
+	if err != nil {
+		log.Printf("Warning: invalid condition template %q: %v", condition, err)
 		return false
 	}
+
+	var buf bytes.Buffer
+	data := map[string]interface{}{
+		"Config": cfg,
+	}
+	if err := tmpl.Execute(&buf, data); err != nil {
+		log.Printf("Warning: condition evaluation failed for %q: %v", condition, err)
+		return false
+	}
+
+	return strings.TrimSpace(buf.String()) == "true"
 }
 
 // loadOverrides loads all overrides for a service
