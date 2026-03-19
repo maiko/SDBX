@@ -881,3 +881,44 @@ conditions:
 		t.Error("addon should be resolved when enabled")
 	}
 }
+
+func TestEvaluateConditionStringTemplate(t *testing.T) {
+	reg := newTestRegistry(t)
+	resolver := NewResolver(reg)
+
+	tests := []struct {
+		name      string
+		condition string
+		vpn       bool
+		mode      string
+		strategy  string
+		want      bool
+	}{
+		{"empty condition", "", false, "lan", "subdomain", true},
+		{"VPN enabled true", "{{ .Config.VPNEnabled }}", true, "lan", "subdomain", true},
+		{"VPN enabled false", "{{ .Config.VPNEnabled }}", false, "lan", "subdomain", false},
+		{"VPN not enabled", "{{ not .Config.VPNEnabled }}", false, "lan", "subdomain", true},
+		{"cloudflared mode match", `{{ eq .Config.Expose.Mode "cloudflared" }}`, false, "cloudflared", "subdomain", true},
+		{"cloudflared mode no match", `{{ eq .Config.Expose.Mode "cloudflared" }}`, false, "direct", "subdomain", false},
+		{"path strategy match", `{{ eq .Config.Routing.Strategy "path" }}`, false, "lan", "path", true},
+		{"subdomain strategy match", `{{ eq .Config.Routing.Strategy "subdomain" }}`, false, "lan", "subdomain", true},
+		{"direct mode", `{{ eq .Config.Expose.Mode "direct" }}`, false, "direct", "subdomain", true},
+		{"or condition", `{{ or (eq .Config.Expose.Mode "lan") (eq .Config.Expose.Mode "direct") }}`, false, "lan", "subdomain", true},
+		{"ne condition", `{{ ne .Config.Expose.Mode "lan" }}`, false, "direct", "subdomain", true},
+		{"invalid template", "{{ .Invalid.Field }}", false, "lan", "subdomain", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := config.DefaultConfig()
+			cfg.VPNEnabled = tt.vpn
+			cfg.Expose.Mode = tt.mode
+			cfg.Routing.Strategy = tt.strategy
+
+			got := resolver.evaluateConditionString(tt.condition, cfg)
+			if got != tt.want {
+				t.Errorf("evaluateConditionString(%q) = %v, want %v", tt.condition, got, tt.want)
+			}
+		})
+	}
+}
