@@ -83,14 +83,10 @@ type ComposeSecretDef struct {
 	File string `yaml:"file"`
 }
 
-// initFuncMap initializes template functions
+// initFuncMap initializes custom template functions.
+// Go's built-in template functions (eq, ne, not, or, and, etc.) are available by default.
 func (g *ComposeGenerator) initFuncMap() {
 	g.funcMap = template.FuncMap{
-		"eq":        func(a, b interface{}) bool { return fmt.Sprintf("%v", a) == fmt.Sprintf("%v", b) },
-		"ne":        func(a, b interface{}) bool { return fmt.Sprintf("%v", a) != fmt.Sprintf("%v", b) },
-		"not":       func(b bool) bool { return !b },
-		"or":        func(a, b bool) bool { return a || b },
-		"and":       func(a, b bool) bool { return a && b },
 		"lower":     strings.ToLower,
 		"upper":     strings.ToUpper,
 		"trim":      strings.TrimSpace,
@@ -196,10 +192,11 @@ func (g *ComposeGenerator) generateService(def *registry.ServiceDefinition) Comp
 	// Health check
 	if def.Spec.HealthCheck != nil {
 		svc.HealthCheck = &ComposeHealthCheck{
-			Test:     def.Spec.HealthCheck.Test,
-			Interval: def.Spec.HealthCheck.Interval,
-			Timeout:  def.Spec.HealthCheck.Timeout,
-			Retries:  def.Spec.HealthCheck.Retries,
+			Test:        def.Spec.HealthCheck.Test,
+			Interval:    def.Spec.HealthCheck.Interval,
+			Timeout:     def.Spec.HealthCheck.Timeout,
+			Retries:     def.Spec.HealthCheck.Retries,
+			StartPeriod: def.Spec.HealthCheck.StartPeriod,
 		}
 	}
 

@@ -91,7 +91,7 @@ func (g *IntegrationsGenerator) GenerateHomepageServices(graph *registry.Resolut
 	var result []map[string][]map[string]interface{}
 
 	// Define group order
-	groupOrder := []string{"Media", "Downloads", "Management", "Services"}
+	groupOrder := []string{"Media", "Downloads", "Management", "Utilities", "Services"}
 
 	for _, groupName := range groupOrder {
 		services, ok := groups[groupName]
@@ -180,7 +180,7 @@ func (g *IntegrationsGenerator) GenerateCloudflaredConfig(graph *registry.Resolu
 
 		cfg.Ingress = append(cfg.Ingress, CloudflaredRule{
 			Hostname: hostname,
-			Service:  "http://traefik:80",
+			Service:  "http://sdbx-traefik:80",
 		})
 	}
 
@@ -231,10 +231,10 @@ func (g *IntegrationsGenerator) GenerateTraefikDynamic(graph *registry.Resolutio
 	// Add Authelia forward auth middleware
 	var authAddr string
 	if g.Config.Routing.Strategy == config.RoutingStrategyPath {
-		authAddr = fmt.Sprintf("http://authelia:9091/api/verify?rd=https://%s.%s/auth/",
+		authAddr = fmt.Sprintf("http://sdbx-authelia:9091/api/verify?rd=https://%s.%s/auth/",
 			g.Config.Routing.BaseDomain, g.Config.Domain)
 	} else {
-		authAddr = fmt.Sprintf("http://authelia:9091/api/verify?rd=https://auth.%s/",
+		authAddr = fmt.Sprintf("http://sdbx-authelia:9091/api/verify?rd=https://auth.%s/",
 			g.Config.Domain)
 	}
 

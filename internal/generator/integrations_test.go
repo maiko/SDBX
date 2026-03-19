@@ -354,8 +354,8 @@ func TestGenerateCloudflaredConfigWithServices(t *testing.T) {
 	if parsed.Ingress[0].Hostname != "sonarr.example.com" {
 		t.Errorf("hostname = %q, want sonarr.example.com", parsed.Ingress[0].Hostname)
 	}
-	if parsed.Ingress[0].Service != "http://traefik:80" {
-		t.Errorf("service = %q, want http://traefik:80", parsed.Ingress[0].Service)
+	if parsed.Ingress[0].Service != "http://sdbx-traefik:80" {
+		t.Errorf("service = %q, want http://sdbx-traefik:80", parsed.Ingress[0].Service)
 	}
 }
 
