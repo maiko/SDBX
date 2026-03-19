@@ -56,6 +56,10 @@ linters:
         - style
 
   exclusions:
+    generated: lax
+    presets:
+      - comments
+      - std-error-handling
     rules:
       # Exclude noisy linters from running on test files
       - path: _test\.go
@@ -127,9 +131,6 @@ linters:
       - .github
       - docs
 
-    max-issues-per-linter: 0
-    max-same-issues: 0
-
 formatters:
   enable:
     - gofmt
@@ -147,5 +148,3 @@ output:
   formats:
     text:
       path: stdout
-  print-issued-lines: true
-  print-linter-name: true
