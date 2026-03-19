@@ -156,8 +156,8 @@ func (m *Manager) addToArchive(_ context.Context, tw *tar.Writer, fullPath, arch
 				return err
 			}
 
-			// Skip directories themselves (only files)
-			if info.IsDir() {
+			// Skip directories and non-regular files (sockets, pipes, devices)
+			if !info.Mode().IsRegular() {
 				return nil
 			}
 
