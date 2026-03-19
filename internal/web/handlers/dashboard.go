@@ -117,9 +117,6 @@ func countRunningServices(services map[string]ServiceInfo) int {
 	return count
 }
 
-// renderTemplate renders a template with data
 func (h *DashboardHandler) renderTemplate(w http.ResponseWriter, name string, data interface{}) {
-	if err := h.templates.ExecuteTemplate(w, name, data); err != nil {
-		httpError(w, "dashboard template render", err, http.StatusInternalServerError)
-	}
+	renderTemplate(h.templates, w, name, "dashboard", data)
 }

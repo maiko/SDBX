@@ -477,24 +477,7 @@ func (g *ComposeGenerator) transferLabelsForNetworkSharing(compose *ComposeFile)
 
 // evaluateConditions checks if a service's conditions are met
 func (g *ComposeGenerator) evaluateConditions(cond registry.Conditions) bool {
-	if cond.Always {
-		return true
-	}
-
-	if cond.RequireConfig != "" {
-		switch cond.RequireConfig {
-		case "vpn_enabled":
-			if !g.Config.VPNEnabled {
-				return false
-			}
-		case "cloudflared":
-			if g.Config.Expose.Mode != config.ExposeModeCloudflared {
-				return false
-			}
-		}
-	}
-
-	return true
+	return registry.EvaluateConditions(cond, g.Config)
 }
 
 // evalTemplate evaluates a Go template string

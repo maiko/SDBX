@@ -17,6 +17,20 @@ import (
 	"github.com/maiko/sdbx/internal/registry"
 )
 
+const (
+	// sessionIDBytes is the number of random bytes for wizard session IDs.
+	sessionIDBytes = 16
+	// wizardSessionMaxAge is the cookie lifetime for wizard sessions (30 minutes).
+	wizardSessionMaxAge = 1800
+
+	// Argon2 password hashing parameters
+	argon2Time    = 3
+	argon2Memory  = 64 * 1024 // 64 MB
+	argon2Threads = 4
+	argon2KeyLen  = 32
+	argon2SaltLen = 16
+)
+
 // SetupHandler handles the setup wizard
 type SetupHandler struct {
 	registry   *registry.Registry
@@ -43,8 +57,9 @@ func NewSetupHandler(reg *registry.Registry, projectDir string, tmpl *template.T
 	}
 }
 
-// getSession retrieves or creates a session for the given session ID (from cookie)
-func (h *SetupHandler) getSession(r *http.Request) (*WizardSession, string) {
+// getSession retrieves or creates a session for the given session ID (from cookie).
+// Returns an error if a new session cannot be created due to random source failure.
+func (h *SetupHandler) getSession(r *http.Request) (*WizardSession, string, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -54,17 +69,31 @@ func (h *SetupHandler) getSession(r *http.Request) (*WizardSession, string) {
 	if err == nil {
 		sessionID = cookie.Value
 		if session, exists := h.sessions[sessionID]; exists {
-			return session, sessionID
+			return session, sessionID, nil
 		}
 	}
 
 	// Create new session
-	sessionID = generateSessionID()
+	sessionID, err = generateSessionID()
+	if err != nil {
+		return nil, "", err
+	}
 	session := &WizardSession{
 		Config: config.DefaultConfig(),
 	}
 	h.sessions[sessionID] = session
 
+	return session, sessionID, nil
+}
+
+// requireSession retrieves or creates a session, sending a 500 error if it fails.
+// Returns nil session if an error was sent to the client.
+func (h *SetupHandler) requireSession(w http.ResponseWriter, r *http.Request) (*WizardSession, string) {
+	session, sessionID, err := h.getSession(r)
+	if err != nil {
+		httpError(w, "session creation", err, http.StatusInternalServerError)
+		return nil, ""
+	}
 	return session, sessionID
 }
 
@@ -75,11 +104,14 @@ func (h *SetupHandler) deleteSession(sessionID string) {
 	delete(h.sessions, sessionID)
 }
 
-// generateSessionID generates a random session ID
-func generateSessionID() string {
-	b := make([]byte, 16)
-	rand.Read(b)
-	return base64.RawURLEncoding.EncodeToString(b)
+// generateSessionID generates a cryptographically random session ID.
+// Returns an error if the system's random source is unavailable.
+func generateSessionID() (string, error) {
+	b := make([]byte, sessionIDBytes)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("failed to generate session ID: %w", err)
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
 // setSessionCookie sets the session cookie
@@ -90,13 +122,16 @@ func setSessionCookie(w http.ResponseWriter, sessionID string) {
 		Path:     "/",
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
-		MaxAge:   1800, // 30 minutes
+		MaxAge:   wizardSessionMaxAge,
 	})
 }
 
 // HandleWelcome handles the welcome page (step 0)
 func (h *SetupHandler) HandleWelcome(w http.ResponseWriter, r *http.Request) {
-	_, sessionID := h.getSession(r)
+	_, sessionID := h.requireSession(w, r)
+	if sessionID == "" {
+		return
+	}
 	setSessionCookie(w, sessionID)
 
 	if r.Method == http.MethodGet {
@@ -121,7 +156,10 @@ func (h *SetupHandler) HandleWelcome(w http.ResponseWriter, r *http.Request) {
 
 // HandleDomain handles domain configuration (step 1)
 func (h *SetupHandler) HandleDomain(w http.ResponseWriter, r *http.Request) {
-	session, sessionID := h.getSession(r)
+	session, sessionID := h.requireSession(w, r)
+	if session == nil {
+		return
+	}
 	setSessionCookie(w, sessionID)
 
 	if r.Method == http.MethodPost {
@@ -165,7 +203,10 @@ func (h *SetupHandler) HandleDomain(w http.ResponseWriter, r *http.Request) {
 
 // HandleCloudflareTokenForm handles Cloudflare token collection (conditional step)
 func (h *SetupHandler) HandleCloudflareTokenForm(w http.ResponseWriter, r *http.Request) {
-	session, sessionID := h.getSession(r)
+	session, sessionID := h.requireSession(w, r)
+	if session == nil {
+		return
+	}
 	setSessionCookie(w, sessionID)
 
 	// Only show if cloudflared mode is selected
@@ -208,7 +249,10 @@ func (h *SetupHandler) HandleCloudflareTokenForm(w http.ResponseWriter, r *http.
 
 // HandleAdmin handles admin credentials (step 2)
 func (h *SetupHandler) HandleAdmin(w http.ResponseWriter, r *http.Request) {
-	session, sessionID := h.getSession(r)
+	session, sessionID := h.requireSession(w, r)
+	if session == nil {
+		return
+	}
 	setSessionCookie(w, sessionID)
 
 	if r.Method == http.MethodPost {
@@ -226,8 +270,8 @@ func (h *SetupHandler) HandleAdmin(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Username is required", http.StatusBadRequest)
 			return
 		}
-		if len(password) < 4 {
-			http.Error(w, "Password must be at least 4 characters", http.StatusBadRequest)
+		if len(password) < 8 {
+			http.Error(w, "Password must be at least 8 characters", http.StatusBadRequest)
 			return
 		}
 		if password != confirmPassword {
@@ -261,7 +305,10 @@ func (h *SetupHandler) HandleAdmin(w http.ResponseWriter, r *http.Request) {
 
 // HandleStorage handles storage paths configuration (step 3)
 func (h *SetupHandler) HandleStorage(w http.ResponseWriter, r *http.Request) {
-	session, sessionID := h.getSession(r)
+	session, sessionID := h.requireSession(w, r)
+	if session == nil {
+		return
+	}
 	setSessionCookie(w, sessionID)
 
 	if r.Method == http.MethodPost {
@@ -302,7 +349,10 @@ func (h *SetupHandler) HandleStorage(w http.ResponseWriter, r *http.Request) {
 
 // HandleVPN handles VPN configuration (step 4)
 func (h *SetupHandler) HandleVPN(w http.ResponseWriter, r *http.Request) {
-	session, sessionID := h.getSession(r)
+	session, sessionID := h.requireSession(w, r)
+	if session == nil {
+		return
+	}
 	setSessionCookie(w, sessionID)
 
 	if r.Method == http.MethodPost {
@@ -343,7 +393,10 @@ func (h *SetupHandler) HandleVPN(w http.ResponseWriter, r *http.Request) {
 
 // HandleAddons handles addon selection (step 5)
 func (h *SetupHandler) HandleAddons(w http.ResponseWriter, r *http.Request) {
-	session, sessionID := h.getSession(r)
+	session, sessionID := h.requireSession(w, r)
+	if session == nil {
+		return
+	}
 	setSessionCookie(w, sessionID)
 
 	if r.Method == http.MethodPost {
@@ -398,7 +451,10 @@ type AddonInfo struct {
 
 // HandleSummary handles the configuration summary (step 6)
 func (h *SetupHandler) HandleSummary(w http.ResponseWriter, r *http.Request) {
-	session, sessionID := h.getSession(r)
+	session, sessionID := h.requireSession(w, r)
+	if session == nil {
+		return
+	}
 	setSessionCookie(w, sessionID)
 
 	if r.Method == http.MethodPost {
@@ -417,7 +473,10 @@ func (h *SetupHandler) HandleSummary(w http.ResponseWriter, r *http.Request) {
 
 // HandleComplete handles project generation (final step)
 func (h *SetupHandler) HandleComplete(w http.ResponseWriter, r *http.Request) {
-	session, sessionID := h.getSession(r)
+	session, sessionID := h.requireSession(w, r)
+	if session == nil {
+		return
+	}
 	setSessionCookie(w, sessionID)
 
 	if r.Method != http.MethodPost {
@@ -432,14 +491,14 @@ func (h *SetupHandler) HandleComplete(w http.ResponseWriter, r *http.Request) {
 	// POST: Generate project
 	gen := generator.NewGeneratorWithRegistry(session.Config, h.projectDir, h.registry)
 	if err := gen.Generate(); err != nil {
-		http.Error(w, fmt.Sprintf("Failed to generate project: %v", err), http.StatusInternalServerError)
+		httpError(w, "setup.Generate", err, http.StatusInternalServerError)
 		return
 	}
 
 	// Create data directories if paths are relative
 	if !filepath.IsAbs(session.Config.MediaPath) {
 		if err := gen.CreateDataDirs(); err != nil {
-			http.Error(w, fmt.Sprintf("Failed to create directories: %v", err), http.StatusInternalServerError)
+			httpError(w, "setup.CreateDataDirs", err, http.StatusInternalServerError)
 			return
 		}
 	}
@@ -479,21 +538,15 @@ func (h *SetupHandler) renderTemplate(w http.ResponseWriter, name string, data i
 
 // generateArgon2Hash generates an Argon2id hash compatible with Authelia
 func generateArgon2Hash(password string) (string, error) {
-	salt := make([]byte, 16)
+	salt := make([]byte, argon2SaltLen)
 	if _, err := rand.Read(salt); err != nil {
 		return "", err
 	}
 
-	// Authelia defaults: time=3, memory=64MB, threads=4, keyLen=32
-	time := uint32(3)
-	memory := uint32(64 * 1024)
-	threads := uint8(4)
-	keyLen := uint32(32)
-
-	hash := argon2.IDKey([]byte(password), salt, time, memory, threads, keyLen)
+	hash := argon2.IDKey([]byte(password), salt, argon2Time, argon2Memory, argon2Threads, argon2KeyLen)
 
 	b64Salt := base64.RawStdEncoding.EncodeToString(salt)
 	b64Hash := base64.RawStdEncoding.EncodeToString(hash)
 
-	return fmt.Sprintf("$argon2id$v=19$m=%d,t=%d,p=%d$%s$%s", memory, time, threads, b64Salt, b64Hash), nil
+	return fmt.Sprintf("$argon2id$v=19$m=%d,t=%d,p=%d$%s$%s", argon2Memory, argon2Time, argon2Threads, b64Salt, b64Hash), nil
 }

@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -46,7 +47,7 @@ func NewManager(projectDir string) *Manager {
 // Create creates a new backup
 func (m *Manager) Create(ctx context.Context) (*Backup, error) {
 	// Ensure backup directory exists
-	if err := os.MkdirAll(m.backupDir, 0755); err != nil {
+	if err := os.MkdirAll(m.backupDir, 0750); err != nil {
 		return nil, fmt.Errorf("failed to create backup directory: %w", err)
 	}
 
@@ -91,7 +92,7 @@ func (m *Manager) Create(ctx context.Context) (*Backup, error) {
 // createArchive creates a tar.gz archive
 func (m *Manager) createArchive(ctx context.Context, archivePath string, files []string, metadata Metadata) error {
 	// Create archive file
-	f, err := os.Create(archivePath)
+	f, err := os.Create(archivePath) //nolint:gosec // G304 - archivePath built from trusted backupDir + timestamp
 	if err != nil {
 		return err
 	}
@@ -173,7 +174,7 @@ func (m *Manager) addToArchive(_ context.Context, tw *tar.Writer, fullPath, arch
 			}
 
 			// Write file content
-			file, err := os.Open(path)
+			file, err := os.Open(path) //nolint:gosec // G304 - path from filepath.Walk within projectDir
 			if err != nil {
 				return err
 			}
@@ -198,7 +199,7 @@ func (m *Manager) addToArchive(_ context.Context, tw *tar.Writer, fullPath, arch
 		return err
 	}
 
-	file, err := os.Open(fullPath)
+	file, err := os.Open(fullPath) //nolint:gosec // G304 - fullPath from trusted projectDir + archivePath
 	if err != nil {
 		return err
 	}
@@ -282,7 +283,7 @@ func (m *Manager) readMetadata(archivePath string) (Metadata, error) {
 	var metadata Metadata
 
 	// Open archive
-	f, err := os.Open(archivePath)
+	f, err := os.Open(archivePath) //nolint:gosec // G304 - archivePath from trusted backupDir
 	if err != nil {
 		return metadata, err
 	}
@@ -322,8 +323,29 @@ func (m *Manager) readMetadata(archivePath string) (Metadata, error) {
 	return metadata, nil
 }
 
+// ValidateBackupName checks that a backup name is safe (no path traversal).
+func ValidateBackupName(name string) error {
+	if name == "" {
+		return fmt.Errorf("backup name is empty")
+	}
+	if strings.Contains(name, "..") {
+		return fmt.Errorf("backup name contains path traversal")
+	}
+	if filepath.IsAbs(name) {
+		return fmt.Errorf("backup name must not be an absolute path")
+	}
+	if strings.ContainsAny(name, `/\`) {
+		return fmt.Errorf("backup name must not contain path separators")
+	}
+	return nil
+}
+
 // Restore restores a backup
 func (m *Manager) Restore(ctx context.Context, backupName string) error {
+	if err := ValidateBackupName(backupName); err != nil {
+		return fmt.Errorf("invalid backup name: %w", err)
+	}
+
 	backupPath := filepath.Join(m.backupDir, backupName)
 
 	// Check if backup exists
@@ -332,7 +354,7 @@ func (m *Manager) Restore(ctx context.Context, backupName string) error {
 	}
 
 	// Open archive
-	f, err := os.Open(backupPath)
+	f, err := os.Open(backupPath) //nolint:gosec // G304 - backupPath from validated backupName within backupDir
 	if err != nil {
 		return fmt.Errorf("failed to open backup: %w", err)
 	}
@@ -347,6 +369,12 @@ func (m *Manager) Restore(ctx context.Context, backupName string) error {
 
 	// Create tar reader
 	tarReader := tar.NewReader(gzReader)
+
+	// Resolve the project directory to an absolute path for comparison
+	absProjectDir, err := filepath.Abs(m.projectDir)
+	if err != nil {
+		return fmt.Errorf("failed to resolve project directory: %w", err)
+	}
 
 	// Extract all files
 	for {
@@ -363,29 +391,42 @@ func (m *Manager) Restore(ctx context.Context, backupName string) error {
 			continue
 		}
 
+		// Reject entries with path traversal sequences or absolute paths
+		if strings.Contains(header.Name, "..") || filepath.IsAbs(header.Name) {
+			return fmt.Errorf("tar entry contains unsafe path: %s", header.Name)
+		}
+
 		// Target path
-		targetPath := filepath.Join(m.projectDir, header.Name)
+		targetPath := filepath.Join(absProjectDir, filepath.Clean(header.Name))
+
+		// Verify the resolved path stays within the project directory
+		if !strings.HasPrefix(targetPath, absProjectDir+string(filepath.Separator)) && targetPath != absProjectDir {
+			return fmt.Errorf("tar entry escapes project directory: %s", header.Name)
+		}
 
 		// Ensure parent directory exists
-		if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(targetPath), 0750); err != nil {
 			return fmt.Errorf("failed to create directory: %w", err)
 		}
 
-		// Extract file
-		outFile, err := os.Create(targetPath)
+		// Extract file with size limit (100MB per file to prevent decompression bombs)
+		const maxFileSize = 100 << 20 // 100 MiB
+		outFile, err := os.Create(targetPath) //nolint:gosec // G304 - targetPath validated to stay within projectDir
 		if err != nil {
 			return fmt.Errorf("failed to create file: %w", err)
 		}
 
-		if _, err := io.Copy(outFile, tarReader); err != nil {
-			outFile.Close()
+		if _, err := io.Copy(outFile, io.LimitReader(tarReader, maxFileSize)); err != nil {
+			_ = outFile.Close()
 			return fmt.Errorf("failed to write file: %w", err)
 		}
 
-		outFile.Close()
+		if err := outFile.Close(); err != nil {
+			return fmt.Errorf("failed to close file: %w", err)
+		}
 
-		// Set permissions
-		if err := os.Chmod(targetPath, os.FileMode(header.Mode)); err != nil {
+		// Set permissions (mask int64 before converting to uint32 to prevent overflow)
+		if err := os.Chmod(targetPath, os.FileMode(header.Mode&0777)); err != nil {
 			return fmt.Errorf("failed to set permissions: %w", err)
 		}
 	}
@@ -395,6 +436,10 @@ func (m *Manager) Restore(ctx context.Context, backupName string) error {
 
 // Delete deletes a backup
 func (m *Manager) Delete(ctx context.Context, backupName string) error {
+	if err := ValidateBackupName(backupName); err != nil {
+		return fmt.Errorf("invalid backup name: %w", err)
+	}
+
 	backupPath := filepath.Join(m.backupDir, backupName)
 
 	// Check if backup exists
@@ -417,4 +462,50 @@ func (b *Backup) GetSize() (int64, error) {
 		return 0, err
 	}
 	return info.Size(), nil
+}
+
+// FormatBytes formats bytes to human-readable format (e.g. "1.5 MB")
+func FormatBytes(bytes int64) string {
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%d B", bytes)
+	}
+	div, exp := int64(unit), 0
+	for n := bytes / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
+}
+
+// FormatAge formats a timestamp as a relative time string (e.g. "5 minutes ago")
+func FormatAge(t time.Time) string {
+	duration := time.Since(t)
+
+	if duration < time.Minute {
+		return "just now"
+	}
+	if duration < time.Hour {
+		mins := int(duration.Minutes())
+		if mins == 1 {
+			return "1 minute ago"
+		}
+		return fmt.Sprintf("%d minutes ago", mins)
+	}
+	if duration < 24*time.Hour {
+		hours := int(duration.Hours())
+		if hours == 1 {
+			return "1 hour ago"
+		}
+		return fmt.Sprintf("%d hours ago", hours)
+	}
+	days := int(duration.Hours() / 24)
+	if days == 1 {
+		return "1 day ago"
+	}
+	if days < 30 {
+		return fmt.Sprintf("%d days ago", days)
+	}
+
+	return t.Format("2006-01-02 15:04")
 }

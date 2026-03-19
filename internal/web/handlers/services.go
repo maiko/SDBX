@@ -13,6 +13,13 @@ import (
 	"github.com/maiko/sdbx/internal/registry"
 )
 
+const (
+	serviceQueryTimeout   = 10 * time.Second
+	serviceStartTimeout   = 30 * time.Second
+	serviceStopTimeout    = 30 * time.Second
+	serviceRestartTimeout = 60 * time.Second
+)
+
 // ServicesHandler handles service management routes
 type ServicesHandler struct {
 	compose   *docker.Compose
@@ -96,26 +103,20 @@ func (h *ServicesHandler) HandleServicesPage(w http.ResponseWriter, r *http.Requ
 
 // HandleGetServices handles GET /api/services - returns service list as JSON
 func (h *ServicesHandler) HandleGetServices(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), serviceQueryTimeout)
 	defer cancel()
 
 	// Get service status from Docker
 	dockerServices, err := h.compose.PS(ctx)
 	if err != nil {
-		h.respondJSON(w, http.StatusInternalServerError, ServiceResponse{
-			Success: false,
-			Message: fmt.Sprintf("Failed to get services: %v", err),
-		})
+		jsonError(w, "Failed to get services", "services.PS", err, http.StatusInternalServerError)
 		return
 	}
 
 	// Get service definitions from registry
 	registryServices, err := h.registry.ListServices(ctx)
 	if err != nil {
-		h.respondJSON(w, http.StatusInternalServerError, ServiceResponse{
-			Success: false,
-			Message: fmt.Sprintf("Failed to load service definitions: %v", err),
-		})
+		jsonError(w, "Failed to load service definitions", "services.ListServices", err, http.StatusInternalServerError)
 		return
 	}
 
@@ -167,16 +168,12 @@ func (h *ServicesHandler) HandleStartService(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), serviceStartTimeout)
 	defer cancel()
 
 	// Start the service
 	if err := h.compose.Start(ctx, serviceName); err != nil {
-		h.respondJSON(w, http.StatusInternalServerError, ServiceResponse{
-			Success: false,
-			Message: fmt.Sprintf("Failed to start service: %v", err),
-			Service: serviceName,
-		})
+		jsonError(w, "Failed to start service", "services.Start", err, http.StatusInternalServerError)
 		return
 	}
 
@@ -199,16 +196,12 @@ func (h *ServicesHandler) HandleStopService(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), serviceStopTimeout)
 	defer cancel()
 
 	// Stop the service
 	if err := h.compose.Stop(ctx, serviceName); err != nil {
-		h.respondJSON(w, http.StatusInternalServerError, ServiceResponse{
-			Success: false,
-			Message: fmt.Sprintf("Failed to stop service: %v", err),
-			Service: serviceName,
-		})
+		jsonError(w, "Failed to stop service", "services.Stop", err, http.StatusInternalServerError)
 		return
 	}
 
@@ -231,16 +224,12 @@ func (h *ServicesHandler) HandleRestartService(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), serviceRestartTimeout)
 	defer cancel()
 
 	// Restart the service
 	if err := h.compose.Restart(ctx, serviceName); err != nil {
-		h.respondJSON(w, http.StatusInternalServerError, ServiceResponse{
-			Success: false,
-			Message: fmt.Sprintf("Failed to restart service: %v", err),
-			Service: serviceName,
-		})
+		jsonError(w, "Failed to restart service", "services.Restart", err, http.StatusInternalServerError)
 		return
 	}
 
@@ -252,16 +241,10 @@ func (h *ServicesHandler) HandleRestartService(w http.ResponseWriter, r *http.Re
 	})
 }
 
-// respondJSON sends a JSON response
 func (h *ServicesHandler) respondJSON(w http.ResponseWriter, statusCode int, data interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(data)
+	respondJSON(w, statusCode, data)
 }
 
-// renderTemplate renders a template with data
 func (h *ServicesHandler) renderTemplate(w http.ResponseWriter, name string, data interface{}) {
-	if err := h.templates.ExecuteTemplate(w, name, data); err != nil {
-		httpError(w, "services template render", err, http.StatusInternalServerError)
-	}
+	renderTemplate(h.templates, w, name, "services", data)
 }

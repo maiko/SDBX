@@ -165,28 +165,7 @@ func (r *Resolver) resolveService(ctx context.Context, cfg *config.Config, graph
 
 // evaluateConditions checks if a service's conditions are met
 func (r *Resolver) evaluateConditions(cond Conditions, cfg *config.Config) bool {
-	// Always-on services
-	if cond.Always {
-		return true
-	}
-
-	// Config-based conditions
-	if cond.RequireConfig != "" {
-		switch cond.RequireConfig {
-		case "vpn_enabled":
-			if !cfg.VPNEnabled {
-				return false
-			}
-		case "cloudflared":
-			if cfg.Expose.Mode != config.ExposeModeCloudflared {
-				return false
-			}
-		}
-	}
-
-	// Addon-based conditions are handled separately in determineEnabledServices
-
-	return true
+	return EvaluateConditions(cond, cfg)
 }
 
 // collectDependencies collects all dependencies for a service

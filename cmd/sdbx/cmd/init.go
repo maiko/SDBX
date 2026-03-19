@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/charmbracelet/huh"
@@ -715,7 +716,7 @@ func printSuccessMessage(cfg *config.Config) {
 	}
 
 	// Always mention Plex claiming happens during sdbx up
-	if containsAddon(cfg.Addons, "plex") {
+	if slices.Contains(cfg.Addons, "plex") {
 		steps = append(steps, fmt.Sprintf("%d. Run %s - you'll be prompted for Plex claim token before containers start", step, tui.CommandStyle.Render("sdbx up")))
 	} else {
 		steps = append(steps, fmt.Sprintf("%d. Run %s to start services", step, tui.CommandStyle.Render("sdbx up")))
@@ -891,12 +892,3 @@ func collectCloudflareToken(cfg *config.Config) error {
 	return form.Run()
 }
 
-// containsAddon checks if an addon is in the list
-func containsAddon(addons []string, name string) bool {
-	for _, addon := range addons {
-		if addon == name {
-			return true
-		}
-	}
-	return false
-}

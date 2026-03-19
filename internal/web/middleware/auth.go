@@ -2,7 +2,14 @@ package middleware
 
 import (
 	"context"
+	"crypto/subtle"
+	"net"
 	"net/http"
+)
+
+const (
+	// setupTokenCookieMaxAge is how long the setup token cookie lasts (1 hour).
+	setupTokenCookieMaxAge = 3600
 )
 
 // contextKey is a custom type for context keys to avoid collisions
@@ -48,7 +55,12 @@ func (a *Auth) Middleware(next http.Handler) http.Handler {
 				return
 			}
 		} else if a.dockerMode {
-			// Post-init Docker: Trust Authelia Remote-User header
+			// Post-init Docker: Trust Authelia Remote-User header only from
+			// private/Docker network IPs to prevent spoofing via direct access.
+			if !isPrivateIP(r.RemoteAddr) {
+				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
+			}
 			username := r.Header.Get("Remote-User")
 			if username == "" {
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -64,35 +76,107 @@ func (a *Auth) Middleware(next http.Handler) http.Handler {
 	})
 }
 
-// validateSetupToken validates the setup token from query param or cookie
+// validateSetupToken validates the setup token from query param or cookie.
+// Returns true if the request should proceed, false if the response has been
+// written (either a redirect or an error).
 func (a *Auth) validateSetupToken(w http.ResponseWriter, r *http.Request) bool {
 	// Check query parameter first
-	token := r.URL.Query().Get("token")
-	if token == "" {
-		// Check cookie
-		cookie, err := r.Cookie("setup_token")
-		if err == nil {
-			token = cookie.Value
+	queryToken := r.URL.Query().Get("token")
+	if queryToken != "" {
+		// Validate query token
+		if subtle.ConstantTimeCompare([]byte(queryToken), []byte(a.setupToken)) != 1 {
+			http.Error(w, "Invalid or missing setup token", http.StatusUnauthorized)
+			return false
 		}
+
+		// Set cookie and redirect to strip token from URL (prevents exposure
+		// in browser history, bookmarks, referrer headers, and server logs)
+		http.SetCookie(w, &http.Cookie{
+			Name:     "setup_token",
+			Value:    queryToken,
+			Path:     "/",
+			HttpOnly: true,
+			Secure:   isHTTPS(r),
+			SameSite: http.SameSiteStrictMode,
+			MaxAge:   setupTokenCookieMaxAge,
+		})
+
+		// Build redirect URL without the token parameter
+		cleanURL := *r.URL
+		q := cleanURL.Query()
+		q.Del("token")
+		cleanURL.RawQuery = q.Encode()
+		http.Redirect(w, r, cleanURL.String(), http.StatusFound)
+		return false // Response written (redirect)
 	}
 
-	// Validate token
-	if token != a.setupToken {
+	// Check cookie
+	cookie, err := r.Cookie("setup_token")
+	if err != nil || cookie.Value == "" {
 		http.Error(w, "Invalid or missing setup token", http.StatusUnauthorized)
 		return false
 	}
 
-	// Set cookie if not already set (from query param)
-	if token == r.URL.Query().Get("token") {
-		http.SetCookie(w, &http.Cookie{
-			Name:     "setup_token",
-			Value:    token,
-			Path:     "/",
-			HttpOnly: true,
-			SameSite: http.SameSiteStrictMode,
-			MaxAge:   3600, // 1 hour
-		})
+	// Validate cookie token
+	if subtle.ConstantTimeCompare([]byte(cookie.Value), []byte(a.setupToken)) != 1 {
+		http.Error(w, "Invalid or missing setup token", http.StatusUnauthorized)
+		return false
 	}
 
 	return true
+}
+
+// isHTTPS returns true if the request was made over HTTPS, either directly
+// (r.TLS != nil) or via a reverse proxy (X-Forwarded-Proto header).
+func isHTTPS(r *http.Request) bool {
+	if r.TLS != nil {
+		return true
+	}
+	return r.Header.Get("X-Forwarded-Proto") == "https"
+}
+
+// isPrivateIP checks whether a request originates from a private/Docker network address.
+// This is used to ensure the Remote-User header is only trusted from the reverse proxy,
+// not from direct public access.
+func isPrivateIP(remoteAddr string) bool {
+	host, _, err := net.SplitHostPort(remoteAddr)
+	if err != nil {
+		host = remoteAddr
+	}
+
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return false
+	}
+
+	// Loopback (127.0.0.0/8, ::1)
+	if ip.IsLoopback() {
+		return true
+	}
+
+	// RFC 1918 and Docker default networks
+	privateRanges := []struct {
+		network *net.IPNet
+	}{
+		{mustParseCIDR("10.0.0.0/8")},
+		{mustParseCIDR("172.16.0.0/12")},
+		{mustParseCIDR("192.168.0.0/16")},
+		{mustParseCIDR("fc00::/7")}, // IPv6 unique local
+	}
+
+	for _, r := range privateRanges {
+		if r.network.Contains(ip) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func mustParseCIDR(s string) *net.IPNet {
+	_, network, err := net.ParseCIDR(s)
+	if err != nil {
+		panic("invalid CIDR: " + s)
+	}
+	return network
 }

@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -360,14 +362,14 @@ func matchesQuery(svc ServiceInfo, query string) bool {
 	}
 
 	// Simple case-insensitive substring match
-	query = toLower(query)
-	if contains(toLower(svc.Name), query) {
+	query = strings.ToLower(query)
+	if strings.Contains(strings.ToLower(svc.Name), query) {
 		return true
 	}
-	if contains(toLower(svc.Description), query) {
+	if strings.Contains(strings.ToLower(svc.Description), query) {
 		return true
 	}
-	if contains(toLower(string(svc.Category)), query) {
+	if strings.Contains(strings.ToLower(string(svc.Category)), query) {
 		return true
 	}
 
@@ -528,7 +530,7 @@ func (r *Registry) UpdateLockFile(
 
 	// Copy existing services, update only specified ones
 	for name, svc := range existing.Services {
-		if containsString(servicesToUpdate, name) {
+		if slices.Contains(servicesToUpdate, name) {
 			if newSvc, exists := current.Services[name]; exists {
 				updated.Services[name] = newSvc
 			} else {
@@ -558,40 +560,3 @@ func truncateCommit(commit string) string {
 	return commit
 }
 
-// containsString checks if slice contains string
-func containsString(slice []string, s string) bool {
-	for _, item := range slice {
-		if item == s {
-			return true
-		}
-	}
-	return false
-}
-
-// toLower converts string to lowercase
-func toLower(s string) string {
-	result := make([]byte, len(s))
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		if 'A' <= c && c <= 'Z' {
-			c += 'a' - 'A'
-		}
-		result[i] = c
-	}
-	return string(result)
-}
-
-// contains checks if s contains substr
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(substr) == 0 || findSubstring(s, substr) >= 0)
-}
-
-// findSubstring finds substr in s
-func findSubstring(s, substr string) int {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return i
-		}
-	}
-	return -1
-}

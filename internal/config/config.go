@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -164,14 +165,14 @@ func (c *Config) Validate() error {
 
 	// Expose mode validation
 	validExposeModes := []string{"lan", "direct", "cloudflared"}
-	if !contains(validExposeModes, c.Expose.Mode) {
+	if !slices.Contains(validExposeModes, c.Expose.Mode) {
 		return NewValidationError("expose.mode",
 			fmt.Sprintf("must be one of: %s", strings.Join(validExposeModes, ", ")))
 	}
 
 	// Routing strategy validation
 	validRoutingStrategies := []string{"subdomain", "path"}
-	if !contains(validRoutingStrategies, c.Routing.Strategy) {
+	if !slices.Contains(validRoutingStrategies, c.Routing.Strategy) {
 		return NewValidationError("routing.strategy",
 			fmt.Sprintf("must be one of: %s", strings.Join(validRoutingStrategies, ", ")))
 	}
@@ -210,15 +211,6 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-// contains checks if a string slice contains a value
-func contains(slice []string, val string) bool {
-	for _, item := range slice {
-		if item == val {
-			return true
-		}
-	}
-	return false
-}
 
 // Load loads configuration from file and environment
 func Load() (*Config, error) {

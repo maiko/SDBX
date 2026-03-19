@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/maiko/sdbx/internal/backup"
 )
 
 // TestFormatBytes verifies byte formatting
@@ -27,7 +29,7 @@ func TestFormatBytes(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		result := formatBytes(tt.bytes)
+		result := backup.FormatBytes(tt.bytes)
 		if result != tt.expected {
 			t.Errorf("formatBytes(%d) = %q, want %q", tt.bytes, result, tt.expected)
 		}
@@ -55,7 +57,7 @@ func TestFormatAge(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := formatAge(tt.time)
+			result := backup.FormatAge(tt.time)
 			if !strings.Contains(result, tt.contains) {
 				t.Errorf("formatAge() = %q, want to contain %q", result, tt.contains)
 			}
@@ -224,6 +226,52 @@ func TestBackupDisplayStruct(t *testing.T) {
 	}
 	if display.Hostname != "testhost" {
 		t.Error("Hostname not set correctly")
+	}
+}
+
+// TestBackupHandlerDeleteInvalidName verifies path traversal rejection in delete
+func TestBackupHandlerDeleteInvalidName(t *testing.T) {
+	handler := NewBackupHandler(t.TempDir(), nil)
+
+	invalidNames := []string{"../../../etc/passwd", "/absolute/path", "with/../traversal"}
+	for _, name := range invalidNames {
+		req := httptest.NewRequest(http.MethodDelete, "/api/backup/delete/{name}", nil)
+		req.SetPathValue("name", name)
+		w := httptest.NewRecorder()
+
+		handler.HandleDeleteBackup(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("name %q: expected status 400, got %d", name, w.Code)
+		}
+
+		body := w.Body.String()
+		if !strings.Contains(body, "Invalid backup name") {
+			t.Errorf("name %q: expected 'Invalid backup name' in body, got %s", name, body)
+		}
+	}
+}
+
+// TestBackupHandlerRestoreInvalidName verifies path traversal rejection in restore
+func TestBackupHandlerRestoreInvalidName(t *testing.T) {
+	handler := NewBackupHandler(t.TempDir(), nil)
+
+	invalidNames := []string{"../../../etc/passwd", "/absolute/path", "with/../traversal"}
+	for _, name := range invalidNames {
+		req := httptest.NewRequest(http.MethodPost, "/api/backup/restore/{name}", nil)
+		req.SetPathValue("name", name)
+		w := httptest.NewRecorder()
+
+		handler.HandleRestoreBackup(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("name %q: expected status 400, got %d", name, w.Code)
+		}
+
+		body := w.Body.String()
+		if !strings.Contains(body, "Invalid backup name") {
+			t.Errorf("name %q: expected 'Invalid backup name' in body, got %s", name, body)
+		}
 	}
 }
 

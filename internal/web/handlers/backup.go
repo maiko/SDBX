@@ -2,13 +2,18 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"html/template"
 	"net/http"
 	"time"
 
 	"github.com/maiko/sdbx/internal/backup"
+)
+
+const (
+	backupListTimeout    = 30 * time.Second
+	backupCreateTimeout  = 2 * time.Minute
+	backupRestoreTimeout = 2 * time.Minute
+	backupDeleteTimeout  = 30 * time.Second
 )
 
 // BackupHandler handles backup and restore operations
@@ -57,15 +62,12 @@ func (h *BackupHandler) HandleBackupPage(w http.ResponseWriter, r *http.Request)
 func (h *BackupHandler) HandleListBackups(w http.ResponseWriter, r *http.Request) {
 	manager := backup.NewManager(h.projectDir)
 
-	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), backupListTimeout)
 	defer cancel()
 
 	backups, err := manager.List(ctx)
 	if err != nil {
-		h.respondJSON(w, http.StatusInternalServerError, BackupResponse{
-			Success: false,
-			Message: fmt.Sprintf("Failed to list backups: %v", err),
-		})
+		jsonError(w, "Failed to list backups", "backup.List", err, http.StatusInternalServerError)
 		return
 	}
 
@@ -77,9 +79,9 @@ func (h *BackupHandler) HandleListBackups(w http.ResponseWriter, r *http.Request
 			Name:      b.Name,
 			Path:      b.Path,
 			Size:      size,
-			SizeHuman: formatBytes(size),
+			SizeHuman: backup.FormatBytes(size),
 			Timestamp: b.Metadata.Timestamp,
-			Age:       formatAge(b.Metadata.Timestamp),
+			Age:       backup.FormatAge(b.Metadata.Timestamp),
 			Hostname:  b.Metadata.Hostname,
 		})
 	}
@@ -94,15 +96,12 @@ func (h *BackupHandler) HandleListBackups(w http.ResponseWriter, r *http.Request
 func (h *BackupHandler) HandleCreateBackup(w http.ResponseWriter, r *http.Request) {
 	manager := backup.NewManager(h.projectDir)
 
-	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(r.Context(), backupCreateTimeout)
 	defer cancel()
 
 	b, err := manager.Create(ctx)
 	if err != nil {
-		h.respondJSON(w, http.StatusInternalServerError, BackupResponse{
-			Success: false,
-			Message: fmt.Sprintf("Failed to create backup: %v", err),
-		})
+		jsonError(w, "Failed to create backup", "backup.Create", err, http.StatusInternalServerError)
 		return
 	}
 
@@ -115,9 +114,9 @@ func (h *BackupHandler) HandleCreateBackup(w http.ResponseWriter, r *http.Reques
 			Name:      b.Name,
 			Path:      b.Path,
 			Size:      size,
-			SizeHuman: formatBytes(size),
+			SizeHuman: backup.FormatBytes(size),
 			Timestamp: b.Metadata.Timestamp,
-			Age:       formatAge(b.Metadata.Timestamp),
+			Age:       backup.FormatAge(b.Metadata.Timestamp),
 			Hostname:  b.Metadata.Hostname,
 		},
 	})
@@ -134,16 +133,21 @@ func (h *BackupHandler) HandleRestoreBackup(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	if err := backup.ValidateBackupName(backupName); err != nil {
+		h.respondJSON(w, http.StatusBadRequest, BackupResponse{
+			Success: false,
+			Message: "Invalid backup name",
+		})
+		return
+	}
+
 	manager := backup.NewManager(h.projectDir)
 
-	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(r.Context(), backupRestoreTimeout)
 	defer cancel()
 
 	if err := manager.Restore(ctx, backupName); err != nil {
-		h.respondJSON(w, http.StatusInternalServerError, BackupResponse{
-			Success: false,
-			Message: fmt.Sprintf("Failed to restore backup: %v", err),
-		})
+		jsonError(w, "Failed to restore backup", "backup.Restore", err, http.StatusInternalServerError)
 		return
 	}
 
@@ -164,16 +168,21 @@ func (h *BackupHandler) HandleDeleteBackup(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	if err := backup.ValidateBackupName(backupName); err != nil {
+		h.respondJSON(w, http.StatusBadRequest, BackupResponse{
+			Success: false,
+			Message: "Invalid backup name",
+		})
+		return
+	}
+
 	manager := backup.NewManager(h.projectDir)
 
-	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), backupDeleteTimeout)
 	defer cancel()
 
 	if err := manager.Delete(ctx, backupName); err != nil {
-		h.respondJSON(w, http.StatusInternalServerError, BackupResponse{
-			Success: false,
-			Message: fmt.Sprintf("Failed to delete backup: %v", err),
-		})
+		jsonError(w, "Failed to delete backup", "backup.Delete", err, http.StatusInternalServerError)
 		return
 	}
 
@@ -183,63 +192,11 @@ func (h *BackupHandler) HandleDeleteBackup(w http.ResponseWriter, r *http.Reques
 	})
 }
 
-// formatBytes formats bytes to human-readable format
-func formatBytes(bytes int64) string {
-	const unit = 1024
-	if bytes < unit {
-		return fmt.Sprintf("%d B", bytes)
-	}
-	div, exp := int64(unit), 0
-	for n := bytes / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
-	}
-	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
-}
 
-// formatAge formats a timestamp as a relative time
-func formatAge(t time.Time) string {
-	duration := time.Since(t)
-
-	if duration < time.Minute {
-		return "just now"
-	}
-	if duration < time.Hour {
-		mins := int(duration.Minutes())
-		if mins == 1 {
-			return "1 minute ago"
-		}
-		return fmt.Sprintf("%d minutes ago", mins)
-	}
-	if duration < 24*time.Hour {
-		hours := int(duration.Hours())
-		if hours == 1 {
-			return "1 hour ago"
-		}
-		return fmt.Sprintf("%d hours ago", hours)
-	}
-	days := int(duration.Hours() / 24)
-	if days == 1 {
-		return "1 day ago"
-	}
-	if days < 30 {
-		return fmt.Sprintf("%d days ago", days)
-	}
-
-	// For older backups, show full date
-	return t.Format("2006-01-02 15:04")
-}
-
-// respondJSON sends a JSON response
 func (h *BackupHandler) respondJSON(w http.ResponseWriter, statusCode int, data interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(data)
+	respondJSON(w, statusCode, data)
 }
 
-// renderTemplate renders a template with data
 func (h *BackupHandler) renderTemplate(w http.ResponseWriter, name string, data interface{}) {
-	if err := h.templates.ExecuteTemplate(w, name, data); err != nil {
-		httpError(w, "backup template render", err, http.StatusInternalServerError)
-	}
+	renderTemplate(h.templates, w, name, "backup", data)
 }

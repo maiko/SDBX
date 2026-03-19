@@ -5,7 +5,9 @@ import (
 	"context"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 
@@ -13,6 +15,15 @@ import (
 
 	"github.com/maiko/sdbx/internal/docker"
 	"github.com/maiko/sdbx/internal/registry"
+)
+
+const (
+	// WebSocket buffer sizes
+	wsReadBufferSize  = 1024
+	wsWriteBufferSize = 1024
+
+	// logStreamTimeout is the timeout for log streaming requests.
+	logStreamTimeout = 10 * time.Second
 )
 
 // LogsHandler handles log viewing routes
@@ -30,12 +41,9 @@ func NewLogsHandler(compose *docker.Compose, reg *registry.Registry, tmpl *templ
 		registry:  reg,
 		templates: tmpl,
 		upgrader: websocket.Upgrader{
-			ReadBufferSize:  1024,
-			WriteBufferSize: 1024,
-			CheckOrigin: func(r *http.Request) bool {
-				// Allow all origins for now (same-origin in production)
-				return true
-			},
+			ReadBufferSize:  wsReadBufferSize,
+			WriteBufferSize: wsWriteBufferSize,
+			CheckOrigin:     checkWebSocketOrigin,
 		},
 	}
 }
@@ -117,31 +125,35 @@ func (h *LogsHandler) HandleLogStream(w http.ResponseWriter, r *http.Request) {
 	// Start streaming logs
 	cmd, err := h.compose.LogsStream(ctx, serviceName, 100)
 	if err != nil {
+		log.Printf("Error [logs.LogsStream]: %v", err)
 		writeJSON(map[string]string{
-			"error": fmt.Sprintf("Failed to start log stream: %v", err),
+			"error": "Failed to start log stream",
 		})
 		return
 	}
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
+		log.Printf("Error [logs.StdoutPipe]: %v", err)
 		writeJSON(map[string]string{
-			"error": fmt.Sprintf("Failed to get stdout pipe: %v", err),
+			"error": "Failed to get stdout pipe",
 		})
 		return
 	}
 
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
+		log.Printf("Error [logs.StderrPipe]: %v", err)
 		writeJSON(map[string]string{
-			"error": fmt.Sprintf("Failed to get stderr pipe: %v", err),
+			"error": "Failed to get stderr pipe",
 		})
 		return
 	}
 
 	if err := cmd.Start(); err != nil {
+		log.Printf("Error [logs.Start]: %v", err)
 		writeJSON(map[string]string{
-			"error": fmt.Sprintf("Failed to start command: %v", err),
+			"error": "Failed to start command",
 		})
 		return
 	}
@@ -230,13 +242,13 @@ func (h *LogsHandler) HandleGetLogs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Use request context as parent for proper cancellation
-	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), logStreamTimeout)
 	defer cancel()
 
 	// Get last 100 lines
 	logs, err := h.compose.Logs(ctx, serviceName, 100, false)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to get logs: %v", err), http.StatusInternalServerError)
+		httpError(w, "logs.GetLogs", err, http.StatusInternalServerError)
 		return
 	}
 
@@ -245,9 +257,23 @@ func (h *LogsHandler) HandleGetLogs(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(logs))
 }
 
-// renderTemplate renders a template with data
-func (h *LogsHandler) renderTemplate(w http.ResponseWriter, name string, data interface{}) {
-	if err := h.templates.ExecuteTemplate(w, name, data); err != nil {
-		httpError(w, "logs template render", err, http.StatusInternalServerError)
+// checkWebSocketOrigin validates the Origin header to prevent cross-site WebSocket hijacking.
+// It allows connections with no Origin (non-browser clients) or where the Origin host matches
+// the request Host header.
+func checkWebSocketOrigin(r *http.Request) bool {
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		return true
 	}
+
+	u, err := url.Parse(origin)
+	if err != nil {
+		return false
+	}
+
+	return u.Host == r.Host
+}
+
+func (h *LogsHandler) renderTemplate(w http.ResponseWriter, name string, data interface{}) {
+	renderTemplate(h.templates, w, name, "logs", data)
 }

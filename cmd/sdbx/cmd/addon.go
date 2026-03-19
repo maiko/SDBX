@@ -244,7 +244,7 @@ func runAddonSearch(_ *cobra.Command, args []string) error {
 			addon.Name,
 			tui.RenderCategory(string(addon.Category)),
 			addon.Source,
-			truncateDesc(addon.Description, 40),
+			truncate(addon.Description, 40),
 		)
 	}
 
@@ -435,16 +435,14 @@ func runAddonDisable(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-// getRegistry returns a registry instance
-func getRegistry() (*registry.Registry, error) {
-	// Use registry with default sources (embedded + configured sources)
+// registryProvider returns a registry instance.
+// It can be overridden in tests to provide a mock/test registry.
+var registryProvider = func() (*registry.Registry, error) {
 	return registry.NewWithDefaults()
 }
 
-// truncateDesc truncates a description string
-func truncateDesc(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	return s[:maxLen-3] + "..."
+// getRegistry returns a registry instance using the current provider.
+func getRegistry() (*registry.Registry, error) {
+	return registryProvider()
 }
+

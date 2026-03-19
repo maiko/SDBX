@@ -1,12 +1,12 @@
 package handlers
 
 import (
-	"encoding/json"
 	"fmt"
 	"html/template"
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"gopkg.in/yaml.v3"
 
@@ -59,10 +59,7 @@ func (h *ConfigHandler) HandleGetConfig(w http.ResponseWriter, r *http.Request) 
 
 	content, err := os.ReadFile(configPath)
 	if err != nil {
-		h.respondJSON(w, http.StatusInternalServerError, ConfigResponse{
-			Success: false,
-			Message: fmt.Sprintf("Failed to read config: %v", err),
-		})
+		jsonError(w, "Failed to read config", "config.ReadFile", err, http.StatusInternalServerError)
 		return
 	}
 
@@ -176,10 +173,7 @@ func (h *ConfigHandler) HandleSaveConfig(w http.ResponseWriter, r *http.Request)
 
 	if _, err := os.Stat(configPath); err == nil {
 		if err := os.Rename(configPath, backupPath); err != nil {
-			h.respondJSON(w, http.StatusInternalServerError, ConfigResponse{
-				Success: false,
-				Message: fmt.Sprintf("Failed to backup config: %v", err),
-			})
+			jsonError(w, "Failed to backup config", "config.Rename", err, http.StatusInternalServerError)
 			return
 		}
 	}
@@ -189,10 +183,7 @@ func (h *ConfigHandler) HandleSaveConfig(w http.ResponseWriter, r *http.Request)
 		// Try to restore backup
 		os.Rename(backupPath, configPath)
 
-		h.respondJSON(w, http.StatusInternalServerError, ConfigResponse{
-			Success: false,
-			Message: fmt.Sprintf("Failed to save config: %v", err),
-		})
+		jsonError(w, "Failed to save config", "config.WriteFile", err, http.StatusInternalServerError)
 		return
 	}
 
@@ -221,27 +212,13 @@ func (h *ConfigHandler) validateConfig(cfg *config.Config) []string {
 
 	// Expose mode validation
 	validExposeModes := []string{"lan", "direct", "cloudflared"}
-	isValidExposeMode := false
-	for _, mode := range validExposeModes {
-		if cfg.Expose.Mode == mode {
-			isValidExposeMode = true
-			break
-		}
-	}
-	if !isValidExposeMode {
+	if !slices.Contains(validExposeModes, cfg.Expose.Mode) {
 		errors = append(errors, fmt.Sprintf("expose.mode must be one of: %v", validExposeModes))
 	}
 
 	// Routing strategy validation
 	validStrategies := []string{"subdomain", "path"}
-	isValidStrategy := false
-	for _, strategy := range validStrategies {
-		if cfg.Routing.Strategy == strategy {
-			isValidStrategy = true
-			break
-		}
-	}
-	if !isValidStrategy {
+	if !slices.Contains(validStrategies, cfg.Routing.Strategy) {
 		errors = append(errors, fmt.Sprintf("routing.strategy must be one of: %v", validStrategies))
 	}
 
@@ -259,16 +236,10 @@ func (h *ConfigHandler) validateConfig(cfg *config.Config) []string {
 	return errors
 }
 
-// respondJSON sends a JSON response
 func (h *ConfigHandler) respondJSON(w http.ResponseWriter, statusCode int, data interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(data)
+	respondJSON(w, statusCode, data)
 }
 
-// renderTemplate renders a template with data
 func (h *ConfigHandler) renderTemplate(w http.ResponseWriter, name string, data interface{}) {
-	if err := h.templates.ExecuteTemplate(w, name, data); err != nil {
-		httpError(w, "config template render", err, http.StatusInternalServerError)
-	}
+	renderTemplate(h.templates, w, name, "config", data)
 }

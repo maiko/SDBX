@@ -1,6 +1,9 @@
 package handlers
 
 import (
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -77,6 +80,44 @@ func TestAddonDisplayStruct(t *testing.T) {
 
 	if !addon.HasWebUI {
 		t.Error("HasWebUI should be true")
+	}
+}
+
+// TestHandleEnableAddonMissingName verifies enable requires addon name
+func TestHandleEnableAddonMissingName(t *testing.T) {
+	handler := NewAddonsHandler(nil, "", nil)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/addons//enable", nil)
+	w := httptest.NewRecorder()
+
+	handler.HandleEnableAddon(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+
+	body := w.Body.String()
+	if !strings.Contains(body, "Addon name is required") {
+		t.Errorf("body = %q, want to contain 'Addon name is required'", body)
+	}
+}
+
+// TestHandleDisableAddonMissingName verifies disable requires addon name
+func TestHandleDisableAddonMissingName(t *testing.T) {
+	handler := NewAddonsHandler(nil, "", nil)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/addons//disable", nil)
+	w := httptest.NewRecorder()
+
+	handler.HandleDisableAddon(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+
+	body := w.Body.String()
+	if !strings.Contains(body, "Addon name is required") {
+		t.Errorf("body = %q, want to contain 'Addon name is required'", body)
 	}
 }
 

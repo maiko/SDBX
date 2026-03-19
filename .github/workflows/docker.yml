@@ -81,6 +81,24 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Scan Dockerfile for misconfigurations
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: 'config'
+          scan-ref: '.'
+          exit-code: '1'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Scan container image for vulnerabilities
+        if: github.event_name != 'pull_request'
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ format('{0}/{1}:{2}', env.REGISTRY, env.IMAGE_NAME, steps.version.outputs.commit) }}
+          format: 'table'
+          exit-code: '1'
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+
       - name: Generate SBOM
         if: github.event_name != 'pull_request'
         uses: anchore/sbom-action@v0

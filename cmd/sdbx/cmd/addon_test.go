@@ -10,19 +10,97 @@ import (
 	"testing"
 
 	"github.com/maiko/sdbx/internal/config"
+	"github.com/maiko/sdbx/internal/registry"
 )
 
+// testAddonYAML returns a minimal service YAML for a test addon
+func testAddonYAML(name, category, description string) string {
+	return `apiVersion: sdbx.io/v1
+kind: Service
+metadata:
+  name: ` + name + `
+  version: 1.0.0
+  category: ` + category + `
+  description: "` + description + `"
+spec:
+  image:
+    repository: linuxserver/` + name + `
+    tag: latest
+  container:
+    name_template: "sdbx-{{ .Name }}"
+    restart: unless-stopped
+routing:
+  enabled: true
+  port: 8080
+  subdomain: ` + name + `
+  path: /` + name + `
+  auth:
+    required: true
+conditions:
+  requireAddon: true
+`
+}
+
+// setupTestRegistry creates a temp directory with test addon definitions
+// and overrides the registryProvider to use it. Returns a cleanup function.
+func setupTestRegistry(t *testing.T, addons map[string]string) func() {
+	t.Helper()
+
+	tmpDir := t.TempDir()
+	addonsDir := filepath.Join(tmpDir, "addons")
+
+	for name, yaml := range addons {
+		dir := filepath.Join(addonsDir, name)
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			t.Fatalf("failed to create addon dir %s: %v", name, err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "service.yaml"), []byte(yaml), 0644); err != nil {
+			t.Fatalf("failed to write service.yaml for %s: %v", name, err)
+		}
+	}
+
+	oldProvider := registryProvider
+	registryProvider = func() (*registry.Registry, error) {
+		cfg := &registry.SourceConfig{
+			Sources: []registry.Source{
+				{
+					Name:     "test-addons",
+					Type:     "local",
+					Path:     tmpDir,
+					Enabled:  true,
+					Priority: 100,
+				},
+			},
+			Cache: registry.CacheConfig{
+				Directory: t.TempDir(),
+			},
+		}
+		return registry.New(cfg)
+	}
+
+	return func() {
+		registryProvider = oldProvider
+	}
+}
+
+// defaultTestAddons returns a standard set of test addon definitions
+func defaultTestAddons() map[string]string {
+	return map[string]string{
+		"overseerr": testAddonYAML("overseerr", "media", "Media request management"),
+		"tautulli":  testAddonYAML("tautulli", "media", "Plex monitoring and statistics"),
+		"lidarr":    testAddonYAML("lidarr", "media", "Music automation and management"),
+		"bazarr":    testAddonYAML("bazarr", "media", "Subtitle automation"),
+		"readarr":   testAddonYAML("readarr", "media", "Book automation"),
+		"wizarr":    testAddonYAML("wizarr", "utility", "Plex invitation management"),
+	}
+}
+
 func TestAddonList(t *testing.T) {
-	// SKIP: This test requires Git source setup (addons are no longer embedded)
-	// TODO: Refactor to use test fixtures or mock registry
-	t.Skip("Addon tests require Git source configuration - skipping for now")
+	cleanup := setupTestRegistry(t, defaultTestAddons())
+	defer cleanup()
 
 	// Create temp directory for test
-	tmpDir, err := os.MkdirTemp("", "sdbx-addon-test-*")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
+	tmpDir := t.TempDir()
 
 	// Change to temp directory
 	oldCwd, _ := os.Getwd()
@@ -47,6 +125,8 @@ func TestAddonList(t *testing.T) {
 
 	// Execute list command
 	if err := runAddonList(addonListCmd, []string{}); err != nil {
+		w.Close()
+		os.Stdout = oldStdout
 		t.Fatalf("runAddonList failed: %v", err)
 	}
 
@@ -69,16 +149,11 @@ func TestAddonList(t *testing.T) {
 }
 
 func TestAddonListJSON(t *testing.T) {
-	// SKIP: This test requires Git source setup (addons are no longer embedded)
-	// TODO: Refactor to use test fixtures or mock registry
-	t.Skip("Addon tests require Git source configuration - skipping for now")
+	cleanup := setupTestRegistry(t, defaultTestAddons())
+	defer cleanup()
 
 	// Create temp directory for test
-	tmpDir, err := os.MkdirTemp("", "sdbx-addon-test-*")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
+	tmpDir := t.TempDir()
 
 	// Change to temp directory
 	oldCwd, _ := os.Getwd()
@@ -109,6 +184,8 @@ func TestAddonListJSON(t *testing.T) {
 
 	// Execute list command
 	if err := runAddonList(addonListCmd, []string{}); err != nil {
+		w.Close()
+		os.Stdout = oldStdout
 		t.Fatalf("runAddonList failed: %v", err)
 	}
 
@@ -125,7 +202,6 @@ func TestAddonListJSON(t *testing.T) {
 	}
 
 	// Verify JSON structure - without --all flag, only enabled addons are shown
-	// In this test, only wizarr is enabled
 	if len(result) != 1 {
 		t.Errorf("JSON result length = %d, want 1 (only enabled addons)", len(result))
 	}
@@ -146,16 +222,11 @@ func TestAddonListJSON(t *testing.T) {
 }
 
 func TestAddonEnable(t *testing.T) {
-	// SKIP: This test requires Git source setup (addons are no longer embedded)
-	// TODO: Refactor to use test fixtures or mock registry
-	t.Skip("Addon tests require Git source configuration - skipping for now")
+	cleanup := setupTestRegistry(t, defaultTestAddons())
+	defer cleanup()
 
 	// Create temp directory for test
-	tmpDir, err := os.MkdirTemp("", "sdbx-addon-test-*")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
+	tmpDir := t.TempDir()
 
 	// Change to temp directory
 	oldCwd, _ := os.Getwd()
@@ -178,6 +249,8 @@ func TestAddonEnable(t *testing.T) {
 
 	// Execute enable command
 	if err := runAddonEnable(addonEnableCmd, []string{"lidarr"}); err != nil {
+		w.Close()
+		os.Stdout = oldStdout
 		t.Fatalf("runAddonEnable failed: %v", err)
 	}
 
@@ -210,11 +283,7 @@ func TestAddonEnable(t *testing.T) {
 
 func TestAddonEnableInvalid(t *testing.T) {
 	// Create temp directory for test
-	tmpDir, err := os.MkdirTemp("", "sdbx-addon-test-*")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
+	tmpDir := t.TempDir()
 
 	// Change to temp directory
 	oldCwd, _ := os.Getwd()
@@ -228,7 +297,7 @@ func TestAddonEnableInvalid(t *testing.T) {
 	}
 
 	// Try to enable invalid addon
-	err = runAddonEnable(addonEnableCmd, []string{"nonexistent"})
+	err := runAddonEnable(addonEnableCmd, []string{"nonexistent"})
 	if err == nil {
 		t.Error("runAddonEnable should fail for invalid addon")
 	}
@@ -238,16 +307,11 @@ func TestAddonEnableInvalid(t *testing.T) {
 }
 
 func TestAddonEnableAlreadyEnabled(t *testing.T) {
-	// SKIP: This test requires Git source setup (addons are no longer embedded)
-	// TODO: Refactor to use test fixtures or mock registry
-	t.Skip("Addon tests require Git source configuration - skipping for now")
+	cleanup := setupTestRegistry(t, defaultTestAddons())
+	defer cleanup()
 
 	// Create temp directory for test
-	tmpDir, err := os.MkdirTemp("", "sdbx-addon-test-*")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
+	tmpDir := t.TempDir()
 
 	// Change to temp directory
 	oldCwd, _ := os.Getwd()
@@ -271,6 +335,8 @@ func TestAddonEnableAlreadyEnabled(t *testing.T) {
 
 	// Try to enable already enabled addon
 	if err := runAddonEnable(addonEnableCmd, []string{"bazarr"}); err != nil {
+		w.Close()
+		os.Stdout = oldStdout
 		t.Fatalf("runAddonEnable should not fail for already enabled addon: %v", err)
 	}
 
@@ -287,16 +353,8 @@ func TestAddonEnableAlreadyEnabled(t *testing.T) {
 }
 
 func TestAddonDisable(t *testing.T) {
-	// SKIP: This test requires Git source setup (addons are no longer embedded)
-	// TODO: Refactor to use test fixtures or mock registry
-	t.Skip("Addon tests require Git source configuration - skipping for now")
-
-	// Create temp directory for test
-	tmpDir, err := os.MkdirTemp("", "sdbx-addon-test-*")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
+	// Disable doesn't need registry - it only modifies config
+	tmpDir := t.TempDir()
 
 	// Change to temp directory
 	oldCwd, _ := os.Getwd()
@@ -320,6 +378,8 @@ func TestAddonDisable(t *testing.T) {
 
 	// Execute disable command
 	if err := runAddonDisable(addonDisableCmd, []string{"readarr"}); err != nil {
+		w.Close()
+		os.Stdout = oldStdout
 		t.Fatalf("runAddonDisable failed: %v", err)
 	}
 
@@ -345,16 +405,8 @@ func TestAddonDisable(t *testing.T) {
 }
 
 func TestAddonDisableNotEnabled(t *testing.T) {
-	// SKIP: This test requires Git source setup (addons are no longer embedded)
-	// TODO: Refactor to use test fixtures or mock registry
-	t.Skip("Addon tests require Git source configuration - skipping for now")
-
-	// Create temp directory for test
-	tmpDir, err := os.MkdirTemp("", "sdbx-addon-test-*")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
+	// Disable doesn't need registry - it only modifies config
+	tmpDir := t.TempDir()
 
 	// Change to temp directory
 	oldCwd, _ := os.Getwd()
@@ -377,6 +429,8 @@ func TestAddonDisableNotEnabled(t *testing.T) {
 
 	// Try to disable non-enabled addon
 	if err := runAddonDisable(addonDisableCmd, []string{"flaresolverr"}); err != nil {
+		w.Close()
+		os.Stdout = oldStdout
 		t.Fatalf("runAddonDisable should not fail for non-enabled addon: %v", err)
 	}
 

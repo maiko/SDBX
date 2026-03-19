@@ -517,25 +517,6 @@ func TestTimezoneValidation(t *testing.T) {
 	}
 }
 
-func TestContainsHelper(t *testing.T) {
-	slice := []string{"a", "b", "c"}
-
-	if !contains(slice, "a") {
-		t.Error("should find 'a' in slice")
-	}
-
-	if !contains(slice, "c") {
-		t.Error("should find 'c' in slice")
-	}
-
-	if contains(slice, "d") {
-		t.Error("should not find 'd' in slice")
-	}
-
-	if contains([]string{}, "a") {
-		t.Error("should not find anything in empty slice")
-	}
-}
 
 func TestDomainValidation(t *testing.T) {
 	tests := []struct {

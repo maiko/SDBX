@@ -55,6 +55,14 @@ jobs:
           echo "Total test coverage: ${COVERAGE}%"
           echo "COVERAGE=${COVERAGE}" >> $GITHUB_ENV
 
+          # Enforce minimum coverage threshold (hard gate)
+          MIN_COVERAGE=40
+          if (( $(echo "$COVERAGE < $MIN_COVERAGE" | bc -l) )); then
+            echo "COLOR=red" >> $GITHUB_ENV
+            echo "::error::Test coverage ${COVERAGE}% is below minimum threshold of ${MIN_COVERAGE}%"
+            exit 1
+          fi
+
           # Set color based on coverage level
           if (( $(echo "$COVERAGE >= 80" | bc -l) )); then
             echo "COLOR=green" >> $GITHUB_ENV
@@ -62,12 +70,9 @@ jobs:
           elif (( $(echo "$COVERAGE >= 60" | bc -l) )); then
             echo "COLOR=yellow" >> $GITHUB_ENV
             echo "::notice::Good test coverage: ${COVERAGE}%"
-          elif (( $(echo "$COVERAGE >= 40" | bc -l) )); then
-            echo "COLOR=orange" >> $GITHUB_ENV
-            echo "::warning::Test coverage is ${COVERAGE}% - target is 80%"
           else
-            echo "COLOR=red" >> $GITHUB_ENV
-            echo "::warning::Test coverage is low: ${COVERAGE}% (target: 80%)"
+            echo "COLOR=orange" >> $GITHUB_ENV
+            echo "::warning::Test coverage is ${COVERAGE}% - target is 60%+"
           fi
 
       - name: Upload coverage report
@@ -114,9 +119,10 @@ jobs:
 
             ### Targets
             - 🎯 Project Goal: **80%**
-            - ⚠️  Minimum: **40%**
+            - ⚠️  Intermediate: **60%**
+            - 🚫 Minimum (enforced): **40%**
 
-            ${coverage >= 80 ? '✅ Excellent coverage!' : coverage >= 60 ? '✓ Good progress!' : '📈 Keep improving!'}
+            ${coverage >= 80 ? '✅ Excellent coverage!' : coverage >= 60 ? '✓ Good coverage - keep pushing toward 80%!' : coverage >= 40 ? '📈 Coverage above minimum - keep improving toward 60%' : '❌ Coverage below 40% minimum - build failed'}
             `;
 
             github.rest.issues.createComment({
@@ -137,11 +143,11 @@ jobs:
         with:
           go-version: stable
 
-      - name: Install golangci-lint
-        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-
       - name: Run golangci-lint
-        run: golangci-lint run --timeout=5m
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.64.8
+          args: --timeout=5m
 
   build:
     name: Build

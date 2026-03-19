@@ -22,6 +22,21 @@ import (
 	"github.com/maiko/sdbx/internal/web/middleware"
 )
 
+const (
+	// HTTP server timeouts
+	httpReadTimeout  = 30 * time.Second
+	httpWriteTimeout = 30 * time.Second
+	httpIdleTimeout  = 120 * time.Second
+	shutdownTimeout  = 30 * time.Second
+
+	// Setup token size in bytes (256 bits)
+	setupTokenBytes = 32
+
+	// Rate limiter defaults
+	rateLimitPerSecond = 10
+	rateLimitBurst     = 20
+)
+
 // Server represents the HTTP server
 type Server struct {
 	config      *ServerConfig
@@ -74,9 +89,9 @@ func (s *Server) Start(ctx context.Context) error {
 	s.httpServer = &http.Server{
 		Addr:         addr,
 		Handler:      s.applyMiddleware(mux),
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,
-		IdleTimeout:  120 * time.Second,
+		ReadTimeout:  httpReadTimeout,
+		WriteTimeout: httpWriteTimeout,
+		IdleTimeout:  httpIdleTimeout,
 	}
 
 	// Start server in goroutine
@@ -95,7 +110,7 @@ func (s *Server) Start(ctx context.Context) error {
 	// Wait for context cancellation or error
 	select {
 	case <-ctx.Done():
-		return s.Shutdown(30 * time.Second)
+		return s.Shutdown(shutdownTimeout)
 	case err := <-errCh:
 		return err
 	}
@@ -113,7 +128,7 @@ func (s *Server) checkPhase() error {
 
 	// Generate one-time setup token if pre-init
 	if !s.initialized {
-		token, err := generateSecureToken(32) // 32 bytes = 256 bits
+		token, err := generateSecureToken(setupTokenBytes)
 		if err != nil {
 			return fmt.Errorf("failed to generate setup token: %w", err)
 		}
@@ -317,9 +332,21 @@ func (s *Server) applyMiddleware(handler http.Handler) http.Handler {
 	// Logging middleware
 	handler = middleware.Logging(handler)
 
+	// Security headers (CSP, X-Frame-Options, etc.)
+	handler = middleware.SecurityHeaders(handler)
+
 	// Auth middleware (based on phase)
 	authMiddleware := middleware.NewAuth(s.initialized, s.dockerMode, s.setupToken)
 	handler = authMiddleware.Middleware(handler)
+
+	// CSRF middleware (after auth, before rate limiting)
+	csrfMiddleware := middleware.NewCSRF()
+	handler = csrfMiddleware.Middleware(handler)
+
+	// Rate limiting middleware (innermost, applied first)
+	// Allow 10 requests/second with burst of 20 per IP
+	rateLimiter := middleware.NewRateLimiter(rateLimitPerSecond, rateLimitBurst)
+	handler = rateLimiter.Middleware(handler)
 
 	return handler
 }
@@ -373,7 +400,7 @@ func Run(cfg *ServerConfig) error {
 	select {
 	case <-sigCh:
 		cancel()
-		return server.Shutdown(30 * time.Second)
+		return server.Shutdown(shutdownTimeout)
 	case err := <-errCh:
 		return err
 	}
