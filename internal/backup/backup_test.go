@@ -587,6 +587,90 @@ func createMaliciousTar(t *testing.T, archivePath, entryName, content string) {
 	}
 }
 
+// TestBackupSkipsLargeFiles verifies files >100MB are skipped during archive creation
+func TestBackupSkipsLargeFiles(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create .sdbx.yaml
+	if err := os.WriteFile(filepath.Join(tmpDir, ".sdbx.yaml"), []byte("domain: test.local"), 0644); err != nil {
+		t.Fatalf("failed to create test file: %v", err)
+	}
+
+	// Create a configs directory with a small file and a large file (>100MB)
+	configsDir := filepath.Join(tmpDir, "configs", "sonarr")
+	if err := os.MkdirAll(configsDir, 0755); err != nil {
+		t.Fatalf("failed to create configs dir: %v", err)
+	}
+
+	// Small file - should be included
+	smallContent := []byte("small config file")
+	if err := os.WriteFile(filepath.Join(configsDir, "config.xml"), smallContent, 0644); err != nil {
+		t.Fatalf("failed to create small file: %v", err)
+	}
+
+	// Create a file just over 100MB using a sparse file
+	largePath := filepath.Join(configsDir, "sonarr.db")
+	largeFile, err := os.Create(largePath)
+	if err != nil {
+		t.Fatalf("failed to create large file: %v", err)
+	}
+	// Seek to 101MB and write a byte to create a sparse file (fast, uses minimal disk)
+	const largeSize = 101 << 20 // 101 MiB
+	if _, err := largeFile.Seek(largeSize-1, 0); err != nil {
+		largeFile.Close()
+		t.Fatalf("failed to seek: %v", err)
+	}
+	if _, err := largeFile.Write([]byte{0}); err != nil {
+		largeFile.Close()
+		t.Fatalf("failed to write: %v", err)
+	}
+	largeFile.Close()
+
+	manager := NewManager(tmpDir)
+	ctx := context.Background()
+
+	backup, err := manager.Create(ctx)
+	if err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+
+	// Read the archive and check which files are included
+	f, err := os.Open(backup.Path)
+	if err != nil {
+		t.Fatalf("failed to open backup: %v", err)
+	}
+	defer f.Close()
+
+	gzReader, err := gzip.NewReader(f)
+	if err != nil {
+		t.Fatalf("failed to create gzip reader: %v", err)
+	}
+	defer gzReader.Close()
+
+	tarReader := tar.NewReader(gzReader)
+
+	var foundSmall, foundLarge bool
+	for {
+		header, err := tarReader.Next()
+		if err != nil {
+			break
+		}
+		if strings.Contains(header.Name, "config.xml") {
+			foundSmall = true
+		}
+		if strings.Contains(header.Name, "sonarr.db") {
+			foundLarge = true
+		}
+	}
+
+	if !foundSmall {
+		t.Error("small file (config.xml) should be included in backup")
+	}
+	if foundLarge {
+		t.Error("large file (sonarr.db >100MB) should be skipped in backup")
+	}
+}
+
 // TestBackupSkipsMissingFiles verifies backup doesn't fail on missing files
 func TestBackupSkipsMissingFiles(t *testing.T) {
 	tmpDir := t.TempDir()

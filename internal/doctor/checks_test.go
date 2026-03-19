@@ -116,6 +116,26 @@ func TestCheckSecrets(t *testing.T) {
 	}
 }
 
+func TestCheckVPNIfEnabled_Skipped(t *testing.T) {
+	// When VPN is not enabled (default config), the check should pass and report "Skipped"
+	tmpDir, err := os.MkdirTemp("", "sdbx-test-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	doc := NewDoctor(tmpDir)
+	ctx := context.Background()
+
+	passed, msg := doc.checkVPNIfEnabled(ctx)
+	if !passed {
+		t.Errorf("VPN check should pass when VPN is not enabled, got: %s", msg)
+	}
+	if msg != "Skipped (VPN not enabled)" {
+		t.Errorf("Expected 'Skipped (VPN not enabled)', got: %s", msg)
+	}
+}
+
 func TestRunAll(t *testing.T) {
 	doc := NewDoctor(".")
 	ctx := context.Background()
