@@ -1,0 +1,41 @@
+# GoReleaser Dockerfile - uses pre-built binary
+FROM alpine:3.23
+
+# Install runtime dependencies
+RUN apk --no-cache add \
+    ca-certificates \
+    docker-cli \
+    su-exec \
+    tzdata
+
+# Create non-root user
+RUN addgroup -g 1000 sdbx && \
+    adduser -D -u 1000 -G sdbx sdbx
+
+# Copy pre-built binary from GoReleaser
+COPY sdbx /usr/local/bin/sdbx
+
+# Copy entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Create directories
+RUN mkdir -p /project && \
+    chown -R sdbx:sdbx /project
+
+WORKDIR /project
+
+# Set environment variables
+ENV SDBX_MODE=server \
+    SDBX_PROJECT_DIR=/project
+
+# Expose web UI port
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+
+# Entrypoint runs as root to match Docker socket GID, then drops to sdbx user
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["sdbx", "serve", "--host", "0.0.0.0", "--port", "3000"]

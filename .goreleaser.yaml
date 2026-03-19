@@ -45,8 +45,10 @@ dockers:
     image_templates:
       - "ghcr.io/maiko/sdbx:{{ .Version }}-amd64"
       - "ghcr.io/maiko/sdbx:latest-amd64"
-    dockerfile: Dockerfile
+    dockerfile: Dockerfile.goreleaser
     use: buildx
+    extra_files:
+      - docker-entrypoint.sh
     build_flag_templates:
       - "--platform=linux/amd64"
       - "--build-arg=VERSION={{ .Version }}"
@@ -69,8 +71,10 @@ dockers:
     image_templates:
       - "ghcr.io/maiko/sdbx:{{ .Version }}-arm64"
       - "ghcr.io/maiko/sdbx:latest-arm64"
-    dockerfile: Dockerfile
+    dockerfile: Dockerfile.goreleaser
     use: buildx
+    extra_files:
+      - docker-entrypoint.sh
     build_flag_templates:
       - "--platform=linux/arm64"
       - "--build-arg=VERSION={{ .Version }}"
