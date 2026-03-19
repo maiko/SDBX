@@ -3,7 +3,7 @@ module github.com/maiko/sdbx
 go 1.25.5
 
 require (
-	github.com/charmbracelet/huh v0.8.0
+	github.com/charmbracelet/huh v1.0.0
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/spf13/cobra v1.10.2
