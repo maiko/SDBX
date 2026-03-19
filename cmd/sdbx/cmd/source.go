@@ -146,6 +146,25 @@ func runSourceAdd(_ *cobra.Command, args []string) error {
 		}
 	}
 
+	// Warn about third-party source risks
+	if name != "official" {
+		fmt.Println(tui.WarningStyle.Render("Warning: Third-party source"))
+		fmt.Println()
+		fmt.Println("Service definitions from third-party sources contain Go templates that")
+		fmt.Println("execute during generation. Only add sources you trust.")
+		fmt.Printf("Source: %s (%s)\n", name, url)
+		fmt.Println()
+
+		if IsTUIEnabled() {
+			fmt.Print("Continue? [y/N] ")
+			var response string
+			fmt.Scanln(&response)
+			if response != "y" && response != "Y" {
+				return fmt.Errorf("cancelled")
+			}
+		}
+	}
+
 	// Add new source
 	newSource := registry.Source{
 		Name:     name,
