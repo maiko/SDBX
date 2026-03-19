@@ -291,12 +291,13 @@ func (r *Registry) ListServices(ctx context.Context) ([]ServiceInfo, error) {
 			if seen[name] {
 				continue
 			}
-			seen[name] = true
 
 			def, err := src.LoadService(ctx, name)
 			if err != nil {
+				// Don't mark as seen - allow fallback sources to load this service
 				continue
 			}
+			seen[name] = true
 
 			services = append(services, ServiceInfo{
 				Name:        def.Metadata.Name,

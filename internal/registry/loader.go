@@ -141,6 +141,13 @@ func (l *Loader) LoadSourceRepository(path string) (*SourceRepository, error) {
 		return nil, fmt.Errorf("failed to parse YAML: %w", err)
 	}
 
+	if repo.APIVersion != APIVersion {
+		return nil, fmt.Errorf("unsupported API version: %s (expected %s)", repo.APIVersion, APIVersion)
+	}
+	if repo.Kind != "" && repo.Kind != KindSourceRepository {
+		return nil, fmt.Errorf("unexpected kind: %s (expected %s)", repo.Kind, KindSourceRepository)
+	}
+
 	return &repo, nil
 }
 

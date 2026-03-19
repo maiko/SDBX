@@ -3,6 +3,7 @@ package registry
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -87,8 +88,22 @@ func (s *GitSource) ListServices(ctx context.Context) ([]string, error) {
 		return nil, err
 	}
 
+	// Check minCliVersion from source metadata
+	s.checkMinCLIVersion(ctx)
+
 	servicesPath := s.getServicesPath()
 	return s.loader.DiscoverServices(servicesPath)
+}
+
+// checkMinCLIVersion warns if the source requires a newer CLI version
+func (s *GitSource) checkMinCLIVersion(ctx context.Context) {
+	meta, err := s.GetRepoMetadata(ctx)
+	if err != nil {
+		return // silently skip if metadata unavailable
+	}
+	if meta.MinCLIVersion != "" {
+		log.Printf("Source %q requires CLI version >= %s", s.name, meta.MinCLIVersion)
+	}
 }
 
 // GetServicePath returns the path to a service definition
