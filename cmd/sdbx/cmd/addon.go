@@ -3,7 +3,10 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strings"
 
+	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 
 	"github.com/maiko/sdbx/internal/config"
@@ -79,6 +82,18 @@ var (
 	addonCategory string
 )
 
+var addonBrowseCmd = &cobra.Command{
+	Use:   "browse",
+	Short: "Interactively browse and enable addons",
+	Long: `Browse available addons grouped by category and interactively enable or disable them.
+
+This opens an interactive multi-select picker where you can toggle addons.
+Currently enabled addons are pre-selected.
+
+After confirming, run 'sdbx up' to apply changes.`,
+	RunE: runAddonBrowse,
+}
+
 func init() {
 	rootCmd.AddCommand(addonCmd)
 	addonCmd.AddCommand(addonListCmd)
@@ -86,6 +101,7 @@ func init() {
 	addonCmd.AddCommand(addonInfoCmd)
 	addonCmd.AddCommand(addonEnableCmd)
 	addonCmd.AddCommand(addonDisableCmd)
+	addonCmd.AddCommand(addonBrowseCmd)
 
 	// Flags
 	addonListCmd.Flags().BoolVarP(&addonListAll, "all", "a", false, "Show all available addons")
@@ -431,6 +447,140 @@ func runAddonDisable(_ *cobra.Command, args []string) error {
 	fmt.Printf("  %s Run %s to apply changes\n",
 		tui.IconArrow,
 		tui.CommandStyle.Render("sdbx down && sdbx up"))
+
+	return nil
+}
+
+func runAddonBrowse(_ *cobra.Command, _ []string) error {
+	if !IsTUIEnabled() {
+		return fmt.Errorf("addon browse requires interactive mode (remove --no-tui flag)")
+	}
+
+	cfg, err := config.Load()
+	if err != nil {
+		cfg = config.DefaultConfig()
+	}
+
+	ctx := context.Background()
+
+	reg, err := getRegistry()
+	if err != nil {
+		return err
+	}
+
+	services, err := reg.ListServices(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to list services: %w", err)
+	}
+
+	// Group addons by category
+	type addonInfo struct {
+		name        string
+		description string
+	}
+	categories := make(map[string][]addonInfo)
+	for _, svc := range services {
+		if !svc.IsAddon {
+			continue
+		}
+		cat := string(svc.Category)
+		if cat == "" {
+			cat = "other"
+		}
+		categories[cat] = append(categories[cat], addonInfo{
+			name:        svc.Name,
+			description: svc.Description,
+		})
+	}
+
+	// Sort category keys for stable order
+	catKeys := make([]string, 0, len(categories))
+	for k := range categories {
+		catKeys = append(catKeys, k)
+	}
+	sort.Strings(catKeys)
+
+	// Build options with category labels
+	var options []huh.Option[string]
+	for _, cat := range catKeys {
+		addons := categories[cat]
+		for _, addon := range addons {
+			label := fmt.Sprintf("[%s] %s - %s", cat, capitalizeFirst(addon.name), addon.description)
+			options = append(options, huh.NewOption(label, addon.name))
+		}
+	}
+
+	if len(options) == 0 {
+		fmt.Println(tui.MutedStyle.Render("No addons available. Run 'sdbx source update' to refresh."))
+		return nil
+	}
+
+	// Pre-select currently enabled addons
+	selectedAddons := make([]string, len(cfg.Addons))
+	copy(selectedAddons, cfg.Addons)
+
+	fmt.Println()
+	fmt.Println(tui.TitleStyle.Render("Addon Browser"))
+	fmt.Println(tui.MutedStyle.Render("  Select addons to enable. Currently enabled addons are pre-selected."))
+	fmt.Println()
+
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewMultiSelect[string]().
+				Title("Available Addons").
+				Options(options...).
+				Value(&selectedAddons),
+		),
+	)
+
+	if err := form.Run(); err != nil {
+		return err
+	}
+
+	// Determine changes
+	oldSet := make(map[string]bool)
+	for _, a := range cfg.Addons {
+		oldSet[a] = true
+	}
+	newSet := make(map[string]bool)
+	for _, a := range selectedAddons {
+		newSet[a] = true
+	}
+
+	var enabled, disabled []string
+	for _, a := range selectedAddons {
+		if !oldSet[a] {
+			enabled = append(enabled, a)
+		}
+	}
+	for _, a := range cfg.Addons {
+		if !newSet[a] {
+			disabled = append(disabled, a)
+		}
+	}
+
+	if len(enabled) == 0 && len(disabled) == 0 {
+		fmt.Println(tui.MutedStyle.Render("No changes made."))
+		return nil
+	}
+
+	// Apply changes
+	cfg.Addons = selectedAddons
+	if err := cfg.Save(".sdbx.yaml"); err != nil {
+		return fmt.Errorf("failed to save config: %w", err)
+	}
+
+	// Show summary
+	fmt.Println()
+	if len(enabled) > 0 {
+		fmt.Println(tui.SuccessStyle.Render(fmt.Sprintf("  %s Enabled: %s", tui.IconSuccess, strings.Join(enabled, ", "))))
+	}
+	if len(disabled) > 0 {
+		fmt.Println(tui.WarningStyle.Render(fmt.Sprintf("  %s Disabled: %s", tui.IconWarning, strings.Join(disabled, ", "))))
+	}
+	fmt.Println()
+	fmt.Printf("  %s Run %s to apply changes\n", tui.IconArrow, tui.CommandStyle.Render("sdbx up"))
+	fmt.Println()
 
 	return nil
 }
