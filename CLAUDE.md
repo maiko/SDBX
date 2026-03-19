@@ -94,26 +94,35 @@ internal/
     server.go          # HTTP server with two-phase detection (pre-init vs post-init)
     embed.go           # go:embed directives for static assets and templates
     handlers/          # HTTP request handlers
+      common.go        # Shared types (ServiceInfo), buildServiceInfoMap(), utilities
       setup.go         # 7-step setup wizard (replaces `sdbx init`)
-      dashboard.go     # Dashboard with service status
-      services.go      # Service management (start/stop/restart)
+      dashboard.go     # Dashboard with Quick Access URLs + service grid (auto-refreshes)
+      services.go      # Service management (start/stop/restart with htmx fragment responses)
       logs.go          # WebSocket log streaming
       addons.go        # Addon catalog and management
       config.go        # YAML configuration editor
-      integration.go   # Integration center and backup management (uses internal/backup)
-      common.go        # Shared utility functions
+      backup.go        # Backup/restore management
+      doctor.go        # System diagnostics (wraps internal/doctor, 9 health checks)
+      vpn.go           # VPN status and provider configuration
+      sources.go       # Source management (Git taps CRUD)
+      lock.go          # Lock file viewer and verification
+      compose.go       # Read-only compose.yaml viewer
+      service_info.go  # Service connection info (hostnames, ports, URLs)
     middleware/        # HTTP middleware
       auth.go          # Two-phase auth (token for pre-init, Authelia for post-init)
+      csrf.go          # Double-submit cookie CSRF protection
+      ratelimit.go     # Per-IP rate limiting with cleanup
+      security_headers.go # CSP, X-Frame-Options, etc.
       logging.go       # Request logging
       recovery.go      # Panic recovery
     templates/         # Go html/template files
-      layouts/         # Base layouts (base.html, wizard.html)
-      pages/           # Page templates (dashboard, services, logs, etc.)
-      components/      # Reusable components (placeholders)
+      layouts/         # Base layout with sidebar nav (base.html) + wizard layout
+      pages/           # Page templates (12 pages: dashboard, services, logs, addons,
+                       #   config, backup, doctor, vpn, sources, lock, compose, service_info)
+      pages/setup/     # Setup wizard step templates (7 steps)
     static/            # Static assets (go:embed)
-      css/             # Stylesheets (colors.css from TUI palette, main.css)
-      js/              # JavaScript (htmx.min.js, websocket.js)
-      icons/           # SVG icons (placeholders)
+      css/             # Stylesheets (colors.css with dark mode, main.css)
+      js/              # JavaScript (htmx.min.js bundled locally, main.js shared utilities)
 ```
 
 ### Key Architectural Patterns
@@ -216,9 +225,11 @@ conditions:
   - Trusts Authelia Remote-User header for authentication
   - Replaces homepage addon as primary dashboard
   - **The web dashboard is fully functional** with dashboard, service control, live logs, addon management, config editor, integration center, and backup/restore
-- **Technology stack**: htmx (no heavy JS), Go html/template, WebSockets (logs only)
-- **Features**: Dashboard, service control, live logs, addon management, config editor, integration center, backup/restore
-- **Design**: Minimal aesthetic inspired by Charm.land, brand color neon violet (#8b5cf6), TUI color palette ported to CSS
+- **Technology stack**: htmx (bundled locally, no CDN), Go html/template, WebSockets (logs only)
+- **Navigation**: Collapsible sidebar with grouped sections (Operations, Config, System, Reference), mobile hamburger menu
+- **Pages (12 total)**: Dashboard (Quick Access + service grid), Services, Logs, Addons, Config editor, Backup, Doctor diagnostics, VPN config, Source management, Lock file viewer, Compose viewer, Service Info
+- **Design**: Minimal aesthetic inspired by Charm.land, brand color neon violet (#8b5cf6), TUI color palette ported to CSS, dark mode toggle with localStorage persistence
+- **Shared utilities**: `main.js` provides `csrfFetch()`, `showToast()`, `getCookie()`, active nav highlighting
 - **go:embed**: All templates, CSS, and JS bundled in binary
 
 ### Important Implementation Details
@@ -332,11 +343,12 @@ Backups are stored in `./backups/` as tar.gz archives containing `.sdbx.yaml`, `
 ## Testing Notes
 
 - Go 1.25.5+ required (see go.mod)
-- Tests across 10+ packages including registry, web, tui
-- Package coverage: tui (100%), generator (82%), web (80%), registry (76%), secrets (76%), doctor (71%), config (43%), cmd (34%)
-- Web tests cover template loading, phase detection, token generation, health endpoint
-- TUI tests cover table rendering, progress tracking, checklist, badges
+- Tests across 12 packages including registry, web, tui
+- Overall coverage: ~44% (40% enforced in CI, 60% target, 80% goal)
+- Web handler tests cover: shared utilities (groupByCategory, countRunningServices), doctor helpers (formatDuration, checkStatusToString, buildDoctorResults), template presence verification for all 12 pages
+- Web middleware tests cover auth, CSRF, rate limiting, security headers (92% coverage)
 - No integration tests for Docker Compose operations (would require Docker in CI)
+- CI: golangci-lint v2.11.3 via golangci-lint-action@v7, only-new-issues mode
 
 ## Common Patterns
 
