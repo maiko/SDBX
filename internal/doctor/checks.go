@@ -66,6 +66,7 @@ func (d *Doctor) RunAll(ctx context.Context) []Check {
 		{"Docker daemon", d.checkDockerDaemon},
 		{"Project files", d.checkProjectFiles},
 		{"Secrets configured", d.checkSecrets},
+		{"VPN connectivity", d.checkVPNIfEnabled},
 	}
 
 	for _, c := range checks {
@@ -303,6 +304,15 @@ func (d *Doctor) checkSecrets(_ context.Context) (bool, string) {
 	}
 
 	return true, "Configured"
+}
+
+// checkVPNIfEnabled only runs the VPN check if VPN is configured
+func (d *Doctor) checkVPNIfEnabled(ctx context.Context) (bool, string) {
+	cfg, err := config.Load()
+	if err != nil || !cfg.VPNEnabled {
+		return true, "Skipped (VPN not enabled)"
+	}
+	return d.CheckVPN(ctx)
 }
 
 // CheckVPN verifies VPN connectivity (separate as it requires running containers)
