@@ -10,7 +10,7 @@ func SecurityHeaders(next http.Handler) http.Handler {
 		// Content-Security-Policy: restrict resource loading to same origin,
 		// allow inline styles (needed for Go templates), and the htmx CDN.
 		h.Set("Content-Security-Policy",
-			"default-src 'self'; script-src 'self' https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws: wss:; frame-ancestors 'none'")
+			"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws: wss:; frame-ancestors 'none'")
 
 		// Prevent MIME type sniffing
 		h.Set("X-Content-Type-Options", "nosniff")

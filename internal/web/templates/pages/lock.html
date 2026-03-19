@@ -1,0 +1,319 @@
+{{define "title"}}SDBX - Lock File{{end}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>Lock File</h1>
+    <p>Pinned service versions for reproducible deployments (.sdbx.lock)</p>
+</div>
+
+<!-- Toast notifications -->
+<div id="toast-container" class="toast-container"></div>
+
+{{if .LockFileExists}}
+
+<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+    <div class="stat-card">
+        <div class="stat-label">Locked Services</div>
+        <div class="stat-value">{{.ServiceCount}}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">CLI Version</div>
+        <div class="stat-value" style="font-size: 1.25rem;">{{.CLIVersion}}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Generated At</div>
+        <div class="stat-value" style="font-size: 1.25rem;">{{.GeneratedAt}}</div>
+    </div>
+</div>
+
+<div class="lock-actions">
+    <button id="verify-btn" class="btn-sm btn-primary-sm" onclick="verifyLockFile()">
+        Verify Lock File
+    </button>
+</div>
+
+<div id="verify-result" class="verify-result" style="display: none;"></div>
+
+<div class="lock-table-container">
+    <table class="lock-table">
+        <thead>
+            <tr>
+                <th>Service</th>
+                <th>Version</th>
+                <th>Image</th>
+                <th>Source</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Services}}
+            <tr>
+                <td class="service-name-cell">{{.Name}}</td>
+                <td><code>{{.Version}}</code></td>
+                <td><code class="image-tag">{{.Image}}</code></td>
+                <td><span class="source-badge">{{.Source}}</span></td>
+                <td>
+                    {{if .Enabled}}
+                    <span class="status-badge status-running">Enabled</span>
+                    {{else}}
+                    <span class="status-badge status-stopped">Disabled</span>
+                    {{end}}
+                </td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+
+<div class="lock-meta">
+    <h3>Lock File Details</h3>
+    <dl>
+        <dt>Config Hash</dt>
+        <dd><code>{{.ConfigHash}}</code></dd>
+    </dl>
+</div>
+
+{{else}}
+
+<div class="empty-state">
+    <div class="empty-state-icon">&#128274;</div>
+    <h2>No lock file found</h2>
+    <p>Run <code>sdbx lock</code> to create a lock file that pins your service versions for reproducible deployments.</p>
+</div>
+
+{{end}}
+
+<style>
+    .lock-actions {
+        margin-bottom: 1.5rem;
+    }
+
+    .verify-result {
+        margin-bottom: 1.5rem;
+        padding: 1rem;
+        border-radius: 8px;
+        font-size: 0.875rem;
+    }
+
+    .verify-result.success {
+        background: #dcfce7;
+        color: #166534;
+        border: 1px solid #86efac;
+    }
+
+    .verify-result.error {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fca5a5;
+    }
+
+    .verify-result h4 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1rem;
+    }
+
+    .verify-result ul {
+        margin: 0;
+        padding-left: 1.5rem;
+    }
+
+    .verify-result li {
+        margin-bottom: 0.25rem;
+    }
+
+    .lock-table-container {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        margin-bottom: 2rem;
+        overflow-x: auto;
+    }
+
+    .lock-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .lock-table th {
+        text-align: left;
+        padding: 0.75rem 1rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #64748b;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .lock-table td {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 0.875rem;
+    }
+
+    .lock-table tbody tr:hover {
+        background: #f8fafc;
+    }
+
+    .service-name-cell {
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+    .lock-table code {
+        background: #f1f5f9;
+        padding: 0.125rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.8125rem;
+        color: #334155;
+    }
+
+    .image-tag {
+        word-break: break-all;
+    }
+
+    .source-badge {
+        background: #ede9fe;
+        color: #5b21b6;
+        padding: 0.25rem 0.625rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .lock-meta {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .lock-meta h3 {
+        margin: 0 0 1rem 0;
+        font-size: 1rem;
+        font-weight: 700;
+        color: #1e293b;
+    }
+
+    .lock-meta dl {
+        margin: 0;
+    }
+
+    .lock-meta dt {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #64748b;
+        margin-bottom: 0.25rem;
+    }
+
+    .lock-meta dd {
+        margin: 0 0 1rem 0;
+    }
+
+    .lock-meta code {
+        background: #f1f5f9;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.8125rem;
+        color: #334155;
+        word-break: break-all;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .empty-state-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+    }
+
+    .empty-state h2 {
+        margin: 0 0 0.75rem 0;
+        color: #1e293b;
+    }
+
+    .empty-state p {
+        color: #64748b;
+        max-width: 500px;
+        margin: 0 auto;
+    }
+
+    .empty-state code {
+        background: #f1f5f9;
+        padding: 0.125rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.875rem;
+    }
+
+</style>
+
+<script>
+    function verifyLockFile() {
+        var btn = document.getElementById('verify-btn');
+        var result = document.getElementById('verify-result');
+        btn.disabled = true;
+        btn.textContent = 'Verifying...';
+
+        csrfFetch('/api/lock/verify', {
+            method: 'POST'
+        })
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            result.textContent = '';
+
+            if (data.success) {
+                result.className = 'verify-result success';
+                var h4 = document.createElement('h4');
+                h4.textContent = 'Verification Passed';
+                var p = document.createElement('p');
+                p.textContent = data.message;
+                result.appendChild(h4);
+                result.appendChild(p);
+                showToast(data.message, 'success');
+            } else {
+                result.className = 'verify-result error';
+                var h4 = document.createElement('h4');
+                h4.textContent = 'Verification Found Differences';
+                result.appendChild(h4);
+
+                if (data.results && data.results.length > 0) {
+                    var ul = document.createElement('ul');
+                    data.results.forEach(function(r) {
+                        var li = document.createElement('li');
+                        var text = '[' + r.Type + ']';
+                        if (r.Name) text += ' ' + r.Name + ':';
+                        text += ' ' + r.Message;
+                        li.textContent = text;
+                        ul.appendChild(li);
+                    });
+                    result.appendChild(ul);
+                } else {
+                    var p = document.createElement('p');
+                    p.textContent = data.message;
+                    result.appendChild(p);
+                }
+                showToast(data.message, 'error');
+            }
+            result.style.display = 'block';
+            btn.disabled = false;
+            btn.textContent = 'Verify Lock File';
+        })
+        .catch(function(error) {
+            showToast('Verification failed: ' + error, 'error');
+            btn.disabled = false;
+            btn.textContent = 'Verify Lock File';
+        });
+    }
+</script>
+
+{{end}}
+
+{{template "base" .}}

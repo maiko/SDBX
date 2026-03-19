@@ -7,51 +7,144 @@
     <title>{{block "title" .}}SDBX{{end}}</title>
     <link rel="stylesheet" href="/static/css/colors.css">
     <link rel="stylesheet" href="/static/css/main.css">
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="/static/js/htmx.min.js"></script>
+    <script src="/static/js/main.js"></script>
     <style>
-        body {
-            margin: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: #f8fafc;
-            color: #1e293b;
-        }
-
-        .navbar {
-            background: white;
-            border-bottom: 1px solid #e2e8f0;
-            padding: 1rem 2rem;
+        /* Layout */
+        .app-layout {
             display: flex;
-            align-items: center;
-            justify-content: space-between;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            min-height: 100vh;
         }
 
-        .navbar-brand {
+        /* Sidebar */
+        .sidebar {
+            width: 250px;
+            background: white;
+            border-right: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            z-index: 100;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar-brand {
+            padding: 1.25rem 1.5rem;
             font-size: 1.5rem;
             font-weight: 800;
             background: linear-gradient(135deg, var(--color-primary), var(--color-info));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+            border-bottom: 1px solid #e2e8f0;
         }
 
-        .navbar-nav {
-            display: flex;
-            gap: 1.5rem;
-            list-style: none;
-            margin: 0;
-            padding: 0;
+        .sidebar-nav {
+            flex: 1;
+            padding: 0.5rem 0;
+        }
+
+        .nav-group {
+            margin-bottom: 0.25rem;
+        }
+
+        .nav-group-title {
+            padding: 0.75rem 1.5rem 0.25rem;
+            font-size: 0.675rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #94a3b8;
         }
 
         .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 1.5rem;
             color: #64748b;
             text-decoration: none;
             font-weight: 500;
-            transition: color 0.2s;
+            font-size: 0.875rem;
+            transition: all 0.15s ease;
+            border-left: 3px solid transparent;
         }
 
-        .nav-link:hover, .nav-link.active {
+        .nav-link:hover {
             color: var(--color-primary);
+            background: rgba(139, 92, 246, 0.05);
+        }
+
+        .nav-link.active {
+            color: var(--color-primary);
+            background: rgba(139, 92, 246, 0.08);
+            border-left-color: var(--color-primary);
+            font-weight: 600;
+        }
+
+        .nav-icon {
+            width: 1.25rem;
+            text-align: center;
+            font-size: 1rem;
+        }
+
+        /* Main content */
+        .main-content {
+            flex: 1;
+            margin-left: 250px;
+            min-height: 100vh;
+            background: #f8fafc;
+        }
+
+        /* Top bar (mobile) */
+        .topbar {
+            display: none;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            position: sticky;
+            top: 0;
+            z-index: 90;
+        }
+
+        .hamburger {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            color: #475569;
+            box-shadow: none;
+            transform: none;
+        }
+
+        .hamburger:hover {
+            color: var(--color-primary);
+            box-shadow: none;
+            transform: none;
+        }
+
+        .topbar-brand {
+            font-size: 1.25rem;
+            font-weight: 800;
+            margin-left: 0.75rem;
+            background: linear-gradient(135deg, var(--color-primary), var(--color-info));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 99;
         }
 
         .container {
@@ -76,9 +169,10 @@
             margin: 0;
         }
 
+        /* Shared card styles */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 1.5rem;
             margin-bottom: 2rem;
         }
@@ -105,9 +199,7 @@
             margin-top: 0.5rem;
         }
 
-        .category-section {
-            margin-bottom: 3rem;
-        }
+        .category-section { margin-bottom: 3rem; }
 
         .category-header {
             font-size: 1.25rem;
@@ -160,11 +252,7 @@
             margin-bottom: 1rem;
         }
 
-        .service-name {
-            font-size: 1.125rem;
-            font-weight: 700;
-            color: #1e293b;
-        }
+        .service-name { font-size: 1.125rem; font-weight: 700; color: #1e293b; }
 
         .status-badge {
             font-size: 0.75rem;
@@ -179,17 +267,9 @@
         .status-restarting { background: #fef3c7; color: #92400e; }
         .status-unknown { background: #f1f5f9; color: #475569; }
 
-        .service-description {
-            color: #64748b;
-            font-size: 0.875rem;
-            margin-bottom: 1rem;
-        }
+        .service-description { color: #64748b; font-size: 0.875rem; margin-bottom: 1rem; }
 
-        .service-actions {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-        }
+        .service-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 
         .btn-sm {
             padding: 0.5rem 1rem;
@@ -199,34 +279,23 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+            line-height: 1;
+            box-shadow: none;
+            transform: none;
         }
 
-        .btn-primary-sm {
-            background: var(--color-primary);
-            color: white;
-        }
+        .btn-sm:hover { box-shadow: none; }
 
-        .btn-primary-sm:hover {
-            background: #6d28d9;
-        }
+        .btn-primary-sm { background: var(--color-primary); color: white; }
+        .btn-primary-sm:hover { background: #6d28d9; }
 
-        .btn-secondary-sm {
-            background: #e2e8f0;
-            color: #475569;
-        }
+        .btn-secondary-sm { background: #e2e8f0; color: #475569; }
+        .btn-secondary-sm:hover { background: #cbd5e1; }
 
-        .btn-secondary-sm:hover {
-            background: #cbd5e1;
-        }
-
-        .btn-danger-sm {
-            background: var(--color-error);
-            color: white;
-        }
-
-        .btn-danger-sm:hover {
-            background: #dc2626;
-        }
+        .btn-danger-sm { background: var(--color-error); color: white; }
+        .btn-danger-sm:hover { background: #dc2626; }
 
         .btn-link {
             background: none;
@@ -235,6 +304,66 @@
             text-decoration: underline;
             cursor: pointer;
             padding: 0;
+        }
+
+        /* Toast notifications */
+        .toast-container {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .toast {
+            background: white;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            min-width: 300px;
+            animation: slideIn 0.3s ease;
+        }
+
+        .toast.success { border-left: 4px solid var(--color-success); }
+        .toast.error { border-left: 4px solid var(--color-error); }
+        .toast-icon { font-size: 1.25rem; }
+        .toast-message { flex: 1; font-size: 0.875rem; }
+
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Dark mode overrides for layout */
+        :root[data-theme="dark"] .sidebar { background: #1e293b; border-color: #334155; }
+        :root[data-theme="dark"] .sidebar-brand { border-color: #334155; }
+        :root[data-theme="dark"] .nav-group-title { color: #64748b; }
+        :root[data-theme="dark"] .nav-link { color: #94a3b8; }
+        :root[data-theme="dark"] .nav-link:hover { background: rgba(139, 92, 246, 0.1); }
+        :root[data-theme="dark"] .nav-link.active { background: rgba(139, 92, 246, 0.15); }
+        :root[data-theme="dark"] .main-content { background: #0f172a; }
+        :root[data-theme="dark"] .topbar { background: #1e293b; border-color: #334155; }
+        :root[data-theme="dark"] .service-card { background: #1e293b; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+        :root[data-theme="dark"] .stat-card { background: #1e293b; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+        :root[data-theme="dark"] .service-name { color: #f1f5f9; }
+        :root[data-theme="dark"] .page-header h1 { color: #f1f5f9; }
+        :root[data-theme="dark"] .category-header { color: #f1f5f9; }
+
+        /* Mobile */
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .sidebar-overlay.open { display: block; }
+            .topbar { display: flex; }
+            .main-content { margin-left: 0; }
+            .container { padding: 1rem; }
+            .services-grid { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -245,21 +374,66 @@
             if (match) event.detail.headers['X-CSRF-Token'] = match[2];
         });
     </script>
-    <nav class="navbar">
-        <div class="navbar-brand">SDBX</div>
-        <ul class="navbar-nav">
-            <li><a href="/" class="nav-link">Dashboard</a></li>
-            <li><a href="/services" class="nav-link">Services</a></li>
-            <li><a href="/service-info" class="nav-link">Service Info</a></li>
-            <li><a href="/addons" class="nav-link">Addons</a></li>
-            <li><a href="/config" class="nav-link">Config</a></li>
-            <li><a href="/backup" class="nav-link">Backup</a></li>
-        </ul>
-    </nav>
 
-    <div class="container">
-        {{block "content" .}}{{end}}
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-brand">SDBX</div>
+            <nav class="sidebar-nav">
+                <div class="nav-group">
+                    <div class="nav-group-title">Operations</div>
+                    <a href="/" class="nav-link"><span class="nav-icon">&#9632;</span> Dashboard</a>
+                    <a href="/services" class="nav-link"><span class="nav-icon">&#9654;</span> Services</a>
+                </div>
+                <div class="nav-group">
+                    <div class="nav-group-title">Configuration</div>
+                    <a href="/addons" class="nav-link"><span class="nav-icon">&#10010;</span> Addons</a>
+                    <a href="/vpn" class="nav-link"><span class="nav-icon">&#128274;</span> VPN</a>
+                    <a href="/sources" class="nav-link"><span class="nav-icon">&#128230;</span> Sources</a>
+                    <a href="/config" class="nav-link"><span class="nav-icon">&#9881;</span> Config</a>
+                </div>
+                <div class="nav-group">
+                    <div class="nav-group-title">System</div>
+                    <a href="/doctor" class="nav-link"><span class="nav-icon">&#9829;</span> Doctor</a>
+                    <a href="/compose" class="nav-link"><span class="nav-icon">&#128196;</span> Compose</a>
+                    <a href="/lock" class="nav-link"><span class="nav-icon">&#128274;</span> Lock File</a>
+                    <a href="/backup" class="nav-link"><span class="nav-icon">&#128190;</span> Backup</a>
+                </div>
+                <div class="nav-group">
+                    <div class="nav-group-title">Reference</div>
+                    <a href="/service-info" class="nav-link"><span class="nav-icon">&#8505;</span> Service Info</a>
+                </div>
+            </nav>
+            <div style="padding: 1rem 1.5rem; border-top: 1px solid #e2e8f0;">
+                <button onclick="toggleTheme()" class="btn-sm btn-secondary-sm" style="width: 100%; text-align: center;">
+                    Toggle Dark Mode
+                </button>
+            </div>
+        </aside>
+
+        <!-- Mobile overlay -->
+        <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+        <!-- Main content -->
+        <div class="main-content">
+            <!-- Mobile top bar -->
+            <div class="topbar">
+                <button class="hamburger" onclick="toggleSidebar()">&#9776;</button>
+                <span class="topbar-brand">SDBX</span>
+            </div>
+
+            <div class="container">
+                {{block "content" .}}{{end}}
+            </div>
+        </div>
     </div>
+
+    <script>
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('sidebar-overlay').classList.toggle('open');
+        }
+    </script>
 </body>
 </html>
 {{end}}

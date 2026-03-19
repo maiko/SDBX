@@ -45,9 +45,22 @@
     --status-degraded: var(--color-warning);
 }
 
-/* Dark mode support (if needed) */
+/* Dark mode - manual toggle via data-theme attribute */
+:root[data-theme="dark"] {
+    --bg-dark: #0F172A;
+    --bg-darker: #020617;
+    --bg-light: #1E293B;
+    --bg-lighter: #334155;
+    --text-primary: #F1F5F9;
+    --text-secondary: #CBD5E1;
+    --border-default: #334155;
+    --border-muted: #475569;
+    --text-inverse: #1E293B;
+}
+
+/* Also respect system preference when no manual choice */
 @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not([data-theme="light"]) {
         --bg-dark: #0F172A;
         --bg-darker: #020617;
         --bg-light: #1E293B;
@@ -56,5 +69,6 @@
         --text-secondary: #CBD5E1;
         --border-default: #334155;
         --border-muted: #475569;
+        --text-inverse: #1E293B;
     }
 }

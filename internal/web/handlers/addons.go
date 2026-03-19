@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
+	"path/filepath"
 
 	"github.com/maiko/sdbx/internal/config"
 	"github.com/maiko/sdbx/internal/registry"
@@ -52,6 +54,7 @@ func (h *AddonsHandler) HandleAddonsPage(w http.ResponseWriter, r *http.Request)
 	// Load config to check enabled addons
 	cfg, err := config.Load()
 	if err != nil {
+		log.Printf("Warning [addons.page]: config.Load failed, using defaults: %v", err)
 		cfg = config.DefaultConfig()
 	}
 
@@ -120,6 +123,7 @@ func (h *AddonsHandler) HandleSearchAddons(w http.ResponseWriter, r *http.Reques
 	// Load config to check enabled status
 	cfg, err := config.Load()
 	if err != nil {
+		log.Printf("Warning [addons.search]: config.Load failed, using defaults: %v", err)
 		cfg = config.DefaultConfig()
 	}
 
@@ -178,10 +182,11 @@ func (h *AddonsHandler) HandleEnableAddon(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Load config
+	// Load config — must not fall back to defaults before saving
 	cfg, err := config.Load()
 	if err != nil {
-		cfg = config.DefaultConfig()
+		jsonError(w, "Failed to load configuration", "addons.Enable.Load", err, http.StatusInternalServerError)
+		return
 	}
 
 	// Check if already enabled
@@ -198,7 +203,7 @@ func (h *AddonsHandler) HandleEnableAddon(w http.ResponseWriter, r *http.Request
 	cfg.EnableAddon(addonName)
 
 	// Save config
-	if err := cfg.Save(".sdbx.yaml"); err != nil {
+	if err := cfg.Save(filepath.Join(h.projectDir, ".sdbx.yaml")); err != nil {
 		jsonError(w, "Failed to save config", "addons.Enable.Save", err, http.StatusInternalServerError)
 		return
 	}
@@ -221,10 +226,11 @@ func (h *AddonsHandler) HandleDisableAddon(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Load config
+	// Load config — must not fall back to defaults before saving
 	cfg, err := config.Load()
 	if err != nil {
-		cfg = config.DefaultConfig()
+		jsonError(w, "Failed to load configuration", "addons.Disable.Load", err, http.StatusInternalServerError)
+		return
 	}
 
 	// Check if enabled
@@ -241,7 +247,7 @@ func (h *AddonsHandler) HandleDisableAddon(w http.ResponseWriter, r *http.Reques
 	cfg.DisableAddon(addonName)
 
 	// Save config
-	if err := cfg.Save(".sdbx.yaml"); err != nil {
+	if err := cfg.Save(filepath.Join(h.projectDir, ".sdbx.yaml")); err != nil {
 		jsonError(w, "Failed to save config", "addons.Disable.Save", err, http.StatusInternalServerError)
 		return
 	}

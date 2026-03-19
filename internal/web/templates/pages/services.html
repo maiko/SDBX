@@ -6,11 +6,19 @@
     <p>Control individual services</p>
 </div>
 
-<div class="services-grid">
-    {{range .Services}}
-    {{template "service-card" .}}
-    {{end}}
+{{range $category, $services := .ServicesByCategory}}
+<div class="category-section">
+    <div class="category-header">
+        <span>{{$category}}</span>
+        <span class="category-badge category-{{$category}}">{{len $services}}</span>
+    </div>
+    <div class="services-grid">
+        {{range $services}}
+        {{template "service-card" .}}
+        {{end}}
+    </div>
 </div>
+{{end}}
 
 {{end}}
 

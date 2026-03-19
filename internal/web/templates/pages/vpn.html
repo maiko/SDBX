@@ -1,0 +1,445 @@
+{{define "title"}}SDBX - VPN Configuration{{end}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>VPN Configuration</h1>
+    <p>Configure VPN settings to protect your download traffic</p>
+</div>
+
+<!-- Toast notifications -->
+<div id="toast-container" class="toast-container"></div>
+
+<!-- Status Card -->
+<div class="vpn-status-card">
+    <div class="vpn-status-header">
+        <h2>Current Status</h2>
+        <span id="vpn-status-badge" class="status-badge {{if .VPNEnabled}}status-running{{else}}status-stopped{{end}}">
+            {{if .VPNEnabled}}ENABLED{{else}}DISABLED{{end}}
+        </span>
+    </div>
+    <div class="vpn-status-details">
+        <div class="vpn-detail">
+            <span class="vpn-detail-label">Provider</span>
+            <span class="vpn-detail-value" id="status-provider">{{if .CurrentProvider}}{{.CurrentProvider}}{{else}}Not configured{{end}}</span>
+        </div>
+        <div class="vpn-detail">
+            <span class="vpn-detail-label">Type</span>
+            <span class="vpn-detail-value" id="status-type">{{if .CurrentType}}{{.CurrentType}}{{else}}N/A{{end}}</span>
+        </div>
+        <div class="vpn-detail">
+            <span class="vpn-detail-label">Country</span>
+            <span class="vpn-detail-value" id="status-country">{{if .CurrentCountry}}{{.CurrentCountry}}{{else}}Auto{{end}}</span>
+        </div>
+    </div>
+</div>
+
+<!-- Configuration Form -->
+<div class="vpn-config-card">
+    <h2>Configuration</h2>
+    <form id="vpn-form" onsubmit="saveVPNConfig(event)">
+        <div class="form-group">
+            <label class="form-label toggle-label" for="vpn-enabled">
+                <span>Enable VPN</span>
+                <div class="toggle-switch">
+                    <input type="checkbox" id="vpn-enabled" name="vpn_enabled" {{if .VPNEnabled}}checked{{end}}>
+                    <span class="toggle-slider"></span>
+                </div>
+            </label>
+            <p class="form-help">Routes download traffic through VPN with kill-switch protection</p>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="vpn-provider">VPN Provider</label>
+            <select id="vpn-provider" name="vpn_provider" class="form-select" onchange="updateProviderInfo()">
+                <option value="">Select a provider...</option>
+                {{range .Providers}}
+                <option value="{{.ID}}" {{if eq $.CurrentProvider .ID}}selected{{end}}>{{.Name}}</option>
+                {{end}}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="vpn-type">VPN Type</label>
+            <select id="vpn-type" name="vpn_type" class="form-select">
+                <option value="wireguard" {{if eq .CurrentType "wireguard"}}selected{{end}}>WireGuard</option>
+                <option value="openvpn" {{if eq .CurrentType "openvpn"}}selected{{end}}>OpenVPN</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="vpn-country">Country</label>
+            <input type="text" id="vpn-country" name="vpn_country" class="form-input"
+                   value="{{.CurrentCountry}}" placeholder="e.g., Netherlands, US, Switzerland (leave blank for auto)">
+            <p class="form-help">Server country for VPN connection. Leave blank for automatic selection.</p>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" id="save-btn" class="btn-sm btn-primary-sm">Save Configuration</button>
+        </div>
+    </form>
+</div>
+
+<!-- Provider Info Section -->
+<div id="provider-info" class="vpn-provider-info" style="display: none;">
+    <h2>Provider Details</h2>
+    <div class="provider-details">
+        <div class="vpn-detail">
+            <span class="vpn-detail-label">Authentication Type</span>
+            <span class="vpn-detail-value" id="provider-auth-type"></span>
+        </div>
+        <div class="vpn-detail" id="provider-docs-row">
+            <span class="vpn-detail-label">Credential Setup</span>
+            <span class="vpn-detail-value">
+                <a id="provider-docs-link" href="#" target="_blank" rel="noopener noreferrer" class="provider-link">View documentation</a>
+            </span>
+        </div>
+        <div class="vpn-detail" id="provider-notes-row" style="display: none;">
+            <span class="vpn-detail-label">Notes</span>
+            <span class="vpn-detail-value" id="provider-notes"></span>
+        </div>
+        <div class="vpn-detail" id="provider-protocols-row">
+            <span class="vpn-detail-label">Supported Protocols</span>
+            <span class="vpn-detail-value" id="provider-protocols"></span>
+        </div>
+    </div>
+</div>
+
+<style>
+    .vpn-status-card,
+    .vpn-config-card,
+    .vpn-provider-info {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        margin-bottom: 1.5rem;
+    }
+
+    .vpn-status-card h2,
+    .vpn-config-card h2,
+    .vpn-provider-info h2 {
+        margin: 0 0 1rem 0;
+        font-size: 1.25rem;
+        color: #1e293b;
+    }
+
+    .vpn-status-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+    }
+
+    .vpn-status-header h2 {
+        margin: 0;
+    }
+
+    .vpn-status-details,
+    .provider-details {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+
+    .vpn-detail {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .vpn-detail-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #64748b;
+    }
+
+    .vpn-detail-value {
+        font-size: 1rem;
+        color: #1e293b;
+        font-weight: 500;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+        display: block;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #1e293b;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-help {
+        font-size: 0.8125rem;
+        color: #64748b;
+        margin: 0.375rem 0 0 0;
+    }
+
+    .form-select,
+    .form-input {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 1rem;
+        background: white;
+        color: #1e293b;
+        transition: all 0.2s;
+        box-sizing: border-box;
+    }
+
+    .form-select:focus,
+    .form-input:focus {
+        outline: none;
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+    }
+
+    .form-select {
+        cursor: pointer;
+    }
+
+    .toggle-label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        margin-bottom: 0;
+    }
+
+    .toggle-switch {
+        position: relative;
+        width: 48px;
+        height: 26px;
+        flex-shrink: 0;
+    }
+
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #cbd5e1;
+        border-radius: 26px;
+        transition: all 0.3s;
+    }
+
+    .toggle-slider::before {
+        content: "";
+        position: absolute;
+        height: 20px;
+        width: 20px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        border-radius: 50%;
+        transition: all 0.3s;
+    }
+
+    .toggle-switch input:checked + .toggle-slider {
+        background-color: var(--color-success);
+    }
+
+    .toggle-switch input:checked + .toggle-slider::before {
+        transform: translateX(22px);
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 0.75rem;
+        padding-top: 1rem;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    .provider-link {
+        color: var(--color-info);
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    .provider-link:hover {
+        text-decoration: underline;
+    }
+
+    .protocol-badge {
+        display: inline-block;
+        padding: 0.125rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        margin-right: 0.375rem;
+    }
+
+    .protocol-badge.supported {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .protocol-badge.unsupported {
+        background: #f1f5f9;
+        color: #94a3b8;
+        text-decoration: line-through;
+    }
+</style>
+
+<script>
+    // Provider data from server
+    var providerData = {};
+
+    // Fetch provider details on load
+    fetch('/api/vpn/providers')
+        .then(function(response) { return response.json(); })
+        .then(function(providers) {
+            providers.forEach(function(p) {
+                providerData[p.id] = p;
+            });
+            // Show info for currently selected provider
+            updateProviderInfo();
+        })
+        .catch(function(err) {
+            console.error('Failed to load provider data:', err);
+        });
+
+    function updateProviderInfo() {
+        var select = document.getElementById('vpn-provider');
+        var infoSection = document.getElementById('provider-info');
+        var providerID = select.value;
+
+        if (!providerID || !providerData[providerID]) {
+            infoSection.style.display = 'none';
+            return;
+        }
+
+        var provider = providerData[providerID];
+        infoSection.style.display = '';
+
+        // Auth type
+        var authTypeMap = {
+            'userpass': 'Username & Password',
+            'token': 'Token / Account Key',
+            'wireguard': 'WireGuard Key',
+            'config': 'Config File'
+        };
+        var authTypeEl = document.getElementById('provider-auth-type');
+        authTypeEl.textContent = authTypeMap[provider.authType] || provider.authType;
+
+        // Docs link
+        var docsLink = document.getElementById('provider-docs-link');
+        if (provider.credDocsURL) {
+            docsLink.href = provider.credDocsURL;
+            docsLink.textContent = 'View documentation';
+            document.getElementById('provider-docs-row').style.display = '';
+        } else {
+            document.getElementById('provider-docs-row').style.display = 'none';
+        }
+
+        // Notes
+        var notesRow = document.getElementById('provider-notes-row');
+        var notesEl = document.getElementById('provider-notes');
+        if (provider.notes) {
+            notesEl.textContent = provider.notes;
+            notesRow.style.display = '';
+        } else {
+            notesRow.style.display = 'none';
+        }
+
+        // Protocols
+        var protocolsEl = document.getElementById('provider-protocols');
+        protocolsEl.textContent = '';
+        var wgBadge = document.createElement('span');
+        wgBadge.className = 'protocol-badge ' + (provider.supportsWG ? 'supported' : 'unsupported');
+        wgBadge.textContent = 'WireGuard';
+        protocolsEl.appendChild(wgBadge);
+
+        var ovpnBadge = document.createElement('span');
+        ovpnBadge.className = 'protocol-badge ' + (provider.supportsOpenVPN ? 'supported' : 'unsupported');
+        ovpnBadge.textContent = 'OpenVPN';
+        protocolsEl.appendChild(ovpnBadge);
+
+        // Update VPN type dropdown based on supported protocols
+        var typeSelect = document.getElementById('vpn-type');
+        var wgOption = typeSelect.querySelector('option[value="wireguard"]');
+        var ovpnOption = typeSelect.querySelector('option[value="openvpn"]');
+
+        wgOption.disabled = !provider.supportsWG;
+        ovpnOption.disabled = !provider.supportsOpenVPN;
+
+        // If current selection is unsupported, switch to the supported one
+        if (typeSelect.value === 'wireguard' && !provider.supportsWG) {
+            typeSelect.value = 'openvpn';
+        } else if (typeSelect.value === 'openvpn' && !provider.supportsOpenVPN) {
+            typeSelect.value = 'wireguard';
+        }
+    }
+
+    function saveVPNConfig(event) {
+        event.preventDefault();
+
+        var btn = document.getElementById('save-btn');
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+
+        var vpnEnabled = document.getElementById('vpn-enabled').checked;
+        var vpnProvider = document.getElementById('vpn-provider').value;
+        var vpnType = document.getElementById('vpn-type').value;
+        var vpnCountry = document.getElementById('vpn-country').value;
+
+        var formData = new FormData();
+        formData.append('vpn_enabled', vpnEnabled ? 'true' : 'false');
+        formData.append('vpn_provider', vpnProvider);
+        formData.append('vpn_type', vpnType);
+        formData.append('vpn_country', vpnCountry);
+
+        csrfFetch('/api/vpn/configure', {
+            method: 'POST',
+            body: formData
+        })
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            if (data.success) {
+                showToast(data.message, 'success');
+
+                // Update status card
+                var badge = document.getElementById('vpn-status-badge');
+                if (vpnEnabled) {
+                    badge.className = 'status-badge status-running';
+                    badge.textContent = 'ENABLED';
+                } else {
+                    badge.className = 'status-badge status-stopped';
+                    badge.textContent = 'DISABLED';
+                }
+
+                var providerSelect = document.getElementById('vpn-provider');
+                var selectedOption = providerSelect.options[providerSelect.selectedIndex];
+                document.getElementById('status-provider').textContent = vpnProvider ? (selectedOption ? selectedOption.text : vpnProvider) : 'Not configured';
+                document.getElementById('status-type').textContent = vpnType || 'N/A';
+                document.getElementById('status-country').textContent = vpnCountry || 'Auto';
+            } else {
+                showToast(data.message, 'error');
+            }
+            btn.disabled = false;
+            btn.textContent = 'Save Configuration';
+        })
+        .catch(function(error) {
+            showToast('Failed to save configuration: ' + error, 'error');
+            btn.disabled = false;
+            btn.textContent = 'Save Configuration';
+        });
+    }
+</script>
+
+{{end}}
+
+{{template "base" .}}

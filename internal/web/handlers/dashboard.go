@@ -3,7 +3,6 @@ package handlers
 import (
 	"html/template"
 	"net/http"
-	"strings"
 
 	"github.com/maiko/sdbx/internal/docker"
 	"github.com/maiko/sdbx/internal/registry"
@@ -25,96 +24,49 @@ func NewDashboardHandler(compose *docker.Compose, reg *registry.Registry, tmpl *
 	}
 }
 
-// ServiceInfo represents service information for display
-type ServiceInfo struct {
-	Name        string
-	DisplayName string
-	Status      string
-	Health      string
-	Running     bool
-	Category    string
-	Description string
-	URL         string
-	HasWebUI    bool
-}
-
 // HandleDashboard handles the main dashboard page
 func (h *DashboardHandler) HandleDashboard(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	// Get service status from Docker
-	dockerServices, err := h.compose.PS(ctx)
+	data, err := h.buildDashboardData(r)
 	if err != nil {
-		// If compose fails, show empty dashboard
-		dockerServices = []docker.Service{}
-	}
-
-	// Get service definitions from registry
-	registryServices, err := h.registry.ListServices(ctx)
-	if err != nil {
-		http.Error(w, "Failed to load services", http.StatusInternalServerError)
+		httpError(w, "dashboard.buildData", err, http.StatusInternalServerError)
 		return
 	}
-
-	// Create service info map
-	serviceMap := make(map[string]ServiceInfo)
-
-	// First, populate from registry (to get metadata)
-	for _, regSvc := range registryServices {
-		serviceMap[regSvc.Name] = ServiceInfo{
-			Name:        regSvc.Name,
-			DisplayName: formatServiceName(regSvc.Name),
-			Status:      "unknown",
-			Health:      "",
-			Running:     false,
-			Category:    string(regSvc.Category),
-			Description: regSvc.Description,
-			HasWebUI:    regSvc.HasWebUI,
-			URL:         "", // Will be set based on config
-		}
-	}
-
-	// Update with Docker status
-	for _, dockerSvc := range dockerServices {
-		// Extract service name from container name (sdbx-servicename)
-		serviceName := strings.TrimPrefix(dockerSvc.Name, "sdbx-")
-
-		if info, exists := serviceMap[serviceName]; exists {
-			info.Status = dockerSvc.Status
-			info.Health = dockerSvc.Health
-			info.Running = dockerSvc.Running
-			serviceMap[serviceName] = info
-		}
-	}
-
-	// Convert map to slice and group by category
-	servicesByCategory := make(map[string][]ServiceInfo)
-	for _, svc := range serviceMap {
-		category := svc.Category
-		if category == "" {
-			category = "other"
-		}
-		servicesByCategory[category] = append(servicesByCategory[category], svc)
-	}
-
-	data := map[string]interface{}{
-		"ServicesByCategory": servicesByCategory,
-		"TotalServices":      len(serviceMap),
-		"RunningServices":    countRunningServices(serviceMap),
-	}
-
 	h.renderTemplate(w, "pages/dashboard.html", data)
 }
 
-// countRunningServices counts how many services are running
-func countRunningServices(services map[string]ServiceInfo) int {
-	count := 0
-	for _, svc := range services {
-		if svc.Running {
-			count++
+// HandleServicesGrid returns the services grid HTML fragment for htmx polling
+func (h *DashboardHandler) HandleServicesGrid(w http.ResponseWriter, r *http.Request) {
+	data, err := h.buildDashboardData(r)
+	if err != nil {
+		httpError(w, "dashboard.servicesGrid", err, http.StatusInternalServerError)
+		return
+	}
+	renderTemplate(h.templates, w, "service-grid-fragment", "dashboard.grid", data)
+}
+
+func (h *DashboardHandler) buildDashboardData(r *http.Request) (map[string]interface{}, error) {
+	ctx := r.Context()
+
+	serviceMap, err := buildServiceInfoMap(h.compose, h.registry, ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Build quick access list (services with web UI)
+	var quickAccess []ServiceInfo
+	for _, svc := range serviceMap {
+		if svc.HasWebUI && svc.URL != "" {
+			quickAccess = append(quickAccess, svc)
 		}
 	}
-	return count
+
+	data := map[string]interface{}{
+		"ServicesByCategory": groupByCategory(serviceMap),
+		"TotalServices":      len(serviceMap),
+		"RunningServices":    countRunningServices(serviceMap),
+		"QuickAccess":        quickAccess,
+	}
+	return data, nil
 }
 
 func (h *DashboardHandler) renderTemplate(w http.ResponseWriter, name string, data interface{}) {

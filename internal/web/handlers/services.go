@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/maiko/sdbx/internal/docker"
@@ -48,54 +47,14 @@ type ServiceResponse struct {
 func (h *ServicesHandler) HandleServicesPage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	// Get service status from Docker
-	dockerServices, err := h.compose.PS(ctx)
+	serviceMap, err := buildServiceInfoMap(h.compose, h.registry, ctx)
 	if err != nil {
-		dockerServices = []docker.Service{}
-	}
-
-	// Get service definitions from registry
-	registryServices, err := h.registry.ListServices(ctx)
-	if err != nil {
-		http.Error(w, "Failed to load services", http.StatusInternalServerError)
+		httpError(w, "services.buildInfoMap", err, http.StatusInternalServerError)
 		return
 	}
 
-	// Create service info map (same logic as dashboard)
-	serviceMap := make(map[string]ServiceInfo)
-
-	for _, regSvc := range registryServices {
-		serviceMap[regSvc.Name] = ServiceInfo{
-			Name:        regSvc.Name,
-			DisplayName: formatServiceName(regSvc.Name),
-			Status:      "unknown",
-			Health:      "",
-			Running:     false,
-			Category:    string(regSvc.Category),
-			Description: regSvc.Description,
-			HasWebUI:    regSvc.HasWebUI,
-			URL:         "",
-		}
-	}
-
-	for _, dockerSvc := range dockerServices {
-		serviceName := strings.TrimPrefix(dockerSvc.Name, "sdbx-")
-		if info, exists := serviceMap[serviceName]; exists {
-			info.Status = dockerSvc.Status
-			info.Health = dockerSvc.Health
-			info.Running = dockerSvc.Running
-			serviceMap[serviceName] = info
-		}
-	}
-
-	// Convert to slice
-	var services []ServiceInfo
-	for _, svc := range serviceMap {
-		services = append(services, svc)
-	}
-
 	data := map[string]interface{}{
-		"Services": services,
+		"ServicesByCategory": groupByCategory(serviceMap),
 	}
 
 	h.renderTemplate(w, "pages/services.html", data)
@@ -106,48 +65,12 @@ func (h *ServicesHandler) HandleGetServices(w http.ResponseWriter, r *http.Reque
 	ctx, cancel := context.WithTimeout(r.Context(), serviceQueryTimeout)
 	defer cancel()
 
-	// Get service status from Docker
-	dockerServices, err := h.compose.PS(ctx)
+	serviceMap, err := buildServiceInfoMap(h.compose, h.registry, ctx)
 	if err != nil {
-		jsonError(w, "Failed to get services", "services.PS", err, http.StatusInternalServerError)
+		jsonError(w, "Failed to load services", "services.List", err, http.StatusInternalServerError)
 		return
 	}
 
-	// Get service definitions from registry
-	registryServices, err := h.registry.ListServices(ctx)
-	if err != nil {
-		jsonError(w, "Failed to load service definitions", "services.ListServices", err, http.StatusInternalServerError)
-		return
-	}
-
-	// Create service info map
-	serviceMap := make(map[string]ServiceInfo)
-
-	for _, regSvc := range registryServices {
-		serviceMap[regSvc.Name] = ServiceInfo{
-			Name:        regSvc.Name,
-			DisplayName: formatServiceName(regSvc.Name),
-			Status:      "unknown",
-			Health:      "",
-			Running:     false,
-			Category:    string(regSvc.Category),
-			Description: regSvc.Description,
-			HasWebUI:    regSvc.HasWebUI,
-			URL:         "",
-		}
-	}
-
-	for _, dockerSvc := range dockerServices {
-		serviceName := strings.TrimPrefix(dockerSvc.Name, "sdbx-")
-		if info, exists := serviceMap[serviceName]; exists {
-			info.Status = dockerSvc.Status
-			info.Health = dockerSvc.Health
-			info.Running = dockerSvc.Running
-			serviceMap[serviceName] = info
-		}
-	}
-
-	// Convert to slice
 	var services []ServiceInfo
 	for _, svc := range serviceMap {
 		services = append(services, svc)
@@ -171,9 +94,13 @@ func (h *ServicesHandler) HandleStartService(w http.ResponseWriter, r *http.Requ
 	ctx, cancel := context.WithTimeout(r.Context(), serviceStartTimeout)
 	defer cancel()
 
-	// Start the service
 	if err := h.compose.Start(ctx, serviceName); err != nil {
 		jsonError(w, "Failed to start service", "services.Start", err, http.StatusInternalServerError)
+		return
+	}
+
+	if r.Header.Get("HX-Request") == "true" {
+		h.renderServiceCard(w, r, serviceName, true)
 		return
 	}
 
@@ -199,9 +126,13 @@ func (h *ServicesHandler) HandleStopService(w http.ResponseWriter, r *http.Reque
 	ctx, cancel := context.WithTimeout(r.Context(), serviceStopTimeout)
 	defer cancel()
 
-	// Stop the service
 	if err := h.compose.Stop(ctx, serviceName); err != nil {
 		jsonError(w, "Failed to stop service", "services.Stop", err, http.StatusInternalServerError)
+		return
+	}
+
+	if r.Header.Get("HX-Request") == "true" {
+		h.renderServiceCard(w, r, serviceName, false)
 		return
 	}
 
@@ -227,9 +158,13 @@ func (h *ServicesHandler) HandleRestartService(w http.ResponseWriter, r *http.Re
 	ctx, cancel := context.WithTimeout(r.Context(), serviceRestartTimeout)
 	defer cancel()
 
-	// Restart the service
 	if err := h.compose.Restart(ctx, serviceName); err != nil {
 		jsonError(w, "Failed to restart service", "services.Restart", err, http.StatusInternalServerError)
+		return
+	}
+
+	if r.Header.Get("HX-Request") == "true" {
+		h.renderServiceCard(w, r, serviceName, true)
 		return
 	}
 
@@ -239,6 +174,30 @@ func (h *ServicesHandler) HandleRestartService(w http.ResponseWriter, r *http.Re
 		Service: serviceName,
 		Status:  "restarting",
 	})
+}
+
+// renderServiceCard renders a service-card template fragment for htmx responses
+func (h *ServicesHandler) renderServiceCard(w http.ResponseWriter, r *http.Request, serviceName string, running bool) {
+	ctx := r.Context()
+
+	info := ServiceInfo{
+		Name:        serviceName,
+		DisplayName: formatServiceName(serviceName),
+		Running:     running,
+		Status:      "stopped",
+	}
+	if running {
+		info.Status = "running"
+	}
+
+	// Enrich with registry metadata
+	if svcInfo, _, err := h.registry.GetService(ctx, serviceName); err == nil {
+		info.Category = string(svcInfo.Metadata.Category)
+		info.Description = svcInfo.Metadata.Description
+		info.HasWebUI = svcInfo.Routing.Enabled
+	}
+
+	renderTemplate(h.templates, w, "service-card", "services.card", info)
 }
 
 func (h *ServicesHandler) respondJSON(w http.ResponseWriter, statusCode int, data interface{}) {

@@ -43,57 +43,6 @@
 </div>
 
 <style>
-    .toast-container {
-        position: fixed;
-        top: 2rem;
-        right: 2rem;
-        z-index: 9999;
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-    }
-
-    .toast {
-        background: white;
-        padding: 1rem 1.5rem;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        min-width: 300px;
-        animation: slideIn 0.3s ease;
-    }
-
-    .toast.success {
-        border-left: 4px solid var(--color-success);
-    }
-
-    .toast.error {
-        border-left: 4px solid var(--color-error);
-    }
-
-    .toast-icon {
-        font-size: 1.25rem;
-    }
-
-    .toast-message {
-        flex: 1;
-        font-size: 0.875rem;
-        word-break: break-word;
-    }
-
-    @keyframes slideIn {
-        from {
-            transform: translateX(400px);
-            opacity: 0;
-        }
-        to {
-            transform: translateX(0);
-            opacity: 1;
-        }
-    }
-
     .backup-container {
         background: white;
         border-radius: 12px;
@@ -307,33 +256,6 @@
 </style>
 
 <script>
-    function showToast(message, type = 'success') {
-        const container = document.getElementById('toast-container');
-        const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
-
-        const icon = type === 'success' ? '✓' : '✗';
-
-        // Use textContent to prevent XSS from API responses
-        const iconSpan = document.createElement('span');
-        iconSpan.className = 'toast-icon';
-        iconSpan.textContent = icon;
-
-        const msgSpan = document.createElement('span');
-        msgSpan.className = 'toast-message';
-        msgSpan.textContent = message;
-
-        toast.appendChild(iconSpan);
-        toast.appendChild(msgSpan);
-
-        container.appendChild(toast);
-
-        setTimeout(() => {
-            toast.style.animation = 'slideIn 0.3s ease reverse';
-            setTimeout(() => toast.remove(), 300);
-        }, 5000);
-    }
-
     function loadBackups() {
         const listDiv = document.getElementById('backup-list');
 
@@ -436,7 +358,7 @@
         btn.textContent = 'Creating...';
         progress.style.display = 'block';
 
-        fetch('/api/backup/create', {
+        csrfFetch('/api/backup/create', {
             method: 'POST'
         })
         .then(response => response.json())
@@ -465,7 +387,7 @@
             return;
         }
 
-        fetch(`/api/backup/restore/${name}`, {
+        csrfFetch(`/api/backup/restore/${name}`, {
             method: 'POST'
         })
         .then(response => response.json())
@@ -486,7 +408,7 @@
             return;
         }
 
-        fetch(`/api/backup/delete/${name}`, {
+        csrfFetch(`/api/backup/delete/${name}`, {
             method: 'DELETE'
         })
         .then(response => response.json())

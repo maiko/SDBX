@@ -1,3 +1,5 @@
+version: "2"
+
 linters-settings:
   govet:
     enable-all: true
@@ -34,11 +36,8 @@ linters:
     - goconst
     - gocritic
     - gocyclo
-    - gofmt
-    - goimports
     - revive
     - gosec
-    - gosimple
     - govet
     - ineffassign
     - lll
@@ -46,8 +45,6 @@ linters:
     - nakedret
     - prealloc
     - staticcheck
-    - stylecheck
-    - typecheck
     - unconvert
     - unparam
     - unused
@@ -59,6 +56,11 @@ linters:
     - gocognit
     - godox
     - wsl
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
 
 run:
   timeout: 5m
@@ -141,6 +143,6 @@ issues:
 
 output:
   formats:
-    - format: colored-line-number
+    colored-line-number: {}
   print-issued-lines: true
   print-linter-name: true

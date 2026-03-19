@@ -286,15 +286,26 @@ func (s *Server) setupRoutes(mux *http.ServeMux) {
 		configHandler := handlers.NewConfigHandler(s.config.ProjectDir, s.templates)
 		backupHandler := handlers.NewBackupHandler(s.config.ProjectDir, s.templates)
 		serviceInfoHandler := handlers.NewServiceInfoHandler(s.registry, s.templates)
+		doctorHandler := handlers.NewDoctorHandler(s.config.ProjectDir, s.templates)
+		vpnHandler := handlers.NewVPNHandler(s.config.ProjectDir, s.templates)
+		sourcesHandler := handlers.NewSourcesHandler(s.registry, s.templates)
+		lockHandler := handlers.NewLockHandler(s.registry, s.config.ProjectDir, s.templates)
+		composeHandler := handlers.NewComposeHandler(s.config.ProjectDir, s.templates)
 
 		// Pages
 		mux.HandleFunc("/", dashboardHandler.HandleDashboard)
+		mux.HandleFunc("/api/services-grid", dashboardHandler.HandleServicesGrid)
 		mux.HandleFunc("/services", servicesHandler.HandleServicesPage)
 		mux.HandleFunc("/service-info", serviceInfoHandler.HandleServiceInfoPage)
 		mux.HandleFunc("/logs/{service}", logsHandler.HandleLogsPage)
 		mux.HandleFunc("/addons", addonsHandler.HandleAddonsPage)
 		mux.HandleFunc("/config", configHandler.HandleConfigPage)
 		mux.HandleFunc("/backup", backupHandler.HandleBackupPage)
+		mux.HandleFunc("/doctor", doctorHandler.HandleDoctorPage)
+		mux.HandleFunc("/vpn", vpnHandler.HandleVPNPage)
+		mux.HandleFunc("/sources", sourcesHandler.HandleSourcesPage)
+		mux.HandleFunc("/lock", lockHandler.HandleLockPage)
+		mux.HandleFunc("/compose", composeHandler.HandleComposePage)
 
 		// API endpoints
 		mux.HandleFunc("/api/services", servicesHandler.HandleGetServices)
@@ -321,6 +332,22 @@ func (s *Server) setupRoutes(mux *http.ServeMux) {
 		mux.HandleFunc("/api/backup/create", backupHandler.HandleCreateBackup)
 		mux.HandleFunc("/api/backup/restore/{name}", backupHandler.HandleRestoreBackup)
 		mux.HandleFunc("/api/backup/delete/{name}", backupHandler.HandleDeleteBackup)
+
+		// Doctor endpoints
+		mux.HandleFunc("/api/doctor/run", doctorHandler.HandleRunChecks)
+
+		// VPN endpoints
+		mux.HandleFunc("/api/vpn/providers", vpnHandler.HandleVPNProviders)
+		mux.HandleFunc("/api/vpn/configure", vpnHandler.HandleVPNConfigure)
+
+		// Source endpoints
+		mux.HandleFunc("/api/sources/add", sourcesHandler.HandleAddSource)
+		mux.HandleFunc("/api/sources/{source}/remove", sourcesHandler.HandleRemoveSource)
+		mux.HandleFunc("/api/sources/{source}/update", sourcesHandler.HandleUpdateSource)
+		mux.HandleFunc("/api/sources/update-all", sourcesHandler.HandleUpdateAllSources)
+
+		// Lock endpoints
+		mux.HandleFunc("/api/lock/verify", lockHandler.HandleLockVerify)
 	}
 }
 

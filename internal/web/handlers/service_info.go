@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -38,7 +37,7 @@ type ServiceConnectionInfo struct {
 
 // HandleServiceInfoPage displays service connection information
 func (h *ServiceInfoHandler) HandleServiceInfoPage(w http.ResponseWriter, r *http.Request) {
-	ctx := context.Background()
+	ctx := r.Context()
 
 	// Load configuration
 	cfg, err := config.Load()

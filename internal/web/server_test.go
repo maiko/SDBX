@@ -47,6 +47,12 @@ func TestTemplateLoading(t *testing.T) {
 		"pages/addons.html",
 		"pages/config.html",
 		"pages/backup.html",
+		// New pages
+		"pages/doctor.html",
+		"pages/vpn.html",
+		"pages/sources.html",
+		"pages/lock.html",
+		"pages/compose.html",
 	}
 
 	for _, name := range requiredTemplates {
@@ -70,7 +76,7 @@ func TestEmbeddedFS(t *testing.T) {
 	}
 
 	// Check for key subdirectories
-	expectedDirs := []string{"layouts", "pages", "components"}
+	expectedDirs := []string{"layouts", "pages"}
 	for _, dir := range expectedDirs {
 		_, err := fs.ReadDir(templatesFS, "templates/"+dir)
 		if err != nil {

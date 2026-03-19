@@ -45,57 +45,6 @@
 </div>
 
 <style>
-    .toast-container {
-        position: fixed;
-        top: 2rem;
-        right: 2rem;
-        z-index: 9999;
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-    }
-
-    .toast {
-        background: white;
-        padding: 1rem 1.5rem;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        min-width: 300px;
-        animation: slideIn 0.3s ease;
-    }
-
-    .toast.success {
-        border-left: 4px solid var(--color-success);
-    }
-
-    .toast.error {
-        border-left: 4px solid var(--color-error);
-    }
-
-    .toast-icon {
-        font-size: 1.25rem;
-    }
-
-    .toast-message {
-        flex: 1;
-        font-size: 0.875rem;
-        word-break: break-word;
-    }
-
-    @keyframes slideIn {
-        from {
-            transform: translateX(400px);
-            opacity: 0;
-        }
-        to {
-            transform: translateX(0);
-            opacity: 1;
-        }
-    }
-
     .config-editor-container {
         background: white;
         border-radius: 12px;
@@ -275,33 +224,6 @@
         }
     });
 
-    function showToast(message, type = 'success') {
-        const container = document.getElementById('toast-container');
-        const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
-
-        const icon = type === 'success' ? '✓' : '✗';
-
-        // Use textContent to prevent XSS from API responses
-        const iconSpan = document.createElement('span');
-        iconSpan.className = 'toast-icon';
-        iconSpan.textContent = icon;
-
-        const msgSpan = document.createElement('span');
-        msgSpan.className = 'toast-message';
-        msgSpan.textContent = message;
-
-        toast.appendChild(iconSpan);
-        toast.appendChild(msgSpan);
-
-        container.appendChild(toast);
-
-        setTimeout(() => {
-            toast.style.animation = 'slideIn 0.3s ease reverse';
-            setTimeout(() => toast.remove(), 300);
-        }, 5000);
-    }
-
     function validateConfig() {
         const btn = document.getElementById('validate-btn');
         btn.disabled = true;
@@ -310,7 +232,7 @@
         const formData = new FormData();
         formData.append('content', editor.value);
 
-        fetch('/api/config/validate', {
+        csrfFetch('/api/config/validate', {
             method: 'POST',
             body: formData
         })
@@ -368,7 +290,7 @@
         const formData = new FormData();
         formData.append('content', editor.value);
 
-        fetch('/api/config/save', {
+        csrfFetch('/api/config/save', {
             method: 'POST',
             body: formData
         })

@@ -1,0 +1,283 @@
+{{define "title"}}SDBX - System Diagnostics{{end}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>System Diagnostics</h1>
+    <p>Run health checks to verify your SDBX environment is configured correctly</p>
+</div>
+
+<!-- Toast notifications -->
+<div id="toast-container" class="toast-container"></div>
+
+<!-- Summary banner -->
+<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+    <div class="stat-card">
+        <div class="stat-label">Passed</div>
+        <div class="stat-value" id="summary-passed" style="color: var(--color-success);">{{.Summary.Passed}}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Warnings</div>
+        <div class="stat-value" id="summary-warning" style="color: var(--color-warning);">{{.Summary.Warning}}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Failed</div>
+        <div class="stat-value" id="summary-failed" style="color: var(--color-error);">{{.Summary.Failed}}</div>
+    </div>
+</div>
+
+<div class="doctor-container">
+    <div class="doctor-header">
+        <div class="header-info">
+            <h2>Health Checks</h2>
+            <p>Verify Docker, disk space, ports, secrets, and more</p>
+        </div>
+        <button id="run-checks-btn" class="btn-primary" onclick="runChecks()">
+            Run Checks
+        </button>
+    </div>
+
+    <div id="checks-container" class="checks-list">
+        {{range .Checks}}
+        <div class="check-card">
+            <div class="check-info">
+                <div class="check-name">{{.Name}}</div>
+                <div class="check-message">{{.Message}}</div>
+            </div>
+            <div class="check-meta">
+                <span class="check-duration">{{.Duration}}</span>
+                <span class="status-badge status-{{.Status}}">{{if eq .Status "passed"}}Passed{{else if eq .Status "warning"}}Warning{{else if eq .Status "failed"}}Failed{{else}}Unknown{{end}}</span>
+            </div>
+        </div>
+        {{end}}
+    </div>
+</div>
+
+<style>
+    .doctor-container {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .doctor-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .header-info h2 {
+        margin: 0 0 0.5rem 0;
+        color: #1e293b;
+        font-size: 1.5rem;
+    }
+
+    .header-info p {
+        margin: 0;
+        color: #64748b;
+        font-size: 0.875rem;
+    }
+
+    .btn-primary {
+        background: var(--color-primary);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 0.875rem;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+        background: #6d28d9;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+    }
+
+    .btn-primary:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .checks-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .check-card {
+        background: #f8fafc;
+        border-radius: 8px;
+        padding: 1.25rem 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        transition: all 0.2s;
+    }
+
+    .check-card:hover {
+        background: #f1f5f9;
+        transform: translateX(4px);
+    }
+
+    .check-info {
+        flex: 1;
+    }
+
+    .check-name {
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 0.25rem;
+        font-size: 1rem;
+    }
+
+    .check-message {
+        color: #64748b;
+        font-size: 0.875rem;
+    }
+
+    .check-meta {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-shrink: 0;
+    }
+
+    .check-duration {
+        color: #94a3b8;
+        font-size: 0.75rem;
+    }
+
+    .status-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .status-passed {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .status-warning {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .status-failed {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .status-unknown {
+        background: #f1f5f9;
+        color: #475569;
+    }
+</style>
+
+<script>
+    function runChecks() {
+        var btn = document.getElementById('run-checks-btn');
+        var container = document.getElementById('checks-container');
+
+        btn.disabled = true;
+        btn.textContent = 'Running...';
+
+        // Show loading state
+        while (container.firstChild) container.removeChild(container.firstChild);
+        var loadingEl = document.createElement('p');
+        loadingEl.style.textAlign = 'center';
+        loadingEl.style.color = '#64748b';
+        loadingEl.style.padding = '3rem 0';
+        loadingEl.textContent = 'Running diagnostics...';
+        container.appendChild(loadingEl);
+
+        csrfFetch('/api/doctor/run', { method: 'POST' })
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                btn.disabled = false;
+                btn.textContent = 'Run Checks';
+
+                if (!data.success) {
+                    showToast('Failed to run checks', 'error');
+                    return;
+                }
+
+                // Update summary
+                document.getElementById('summary-passed').textContent = data.summary.passed;
+                document.getElementById('summary-warning').textContent = data.summary.warning;
+                document.getElementById('summary-failed').textContent = data.summary.failed;
+
+                // Rebuild checks list
+                while (container.firstChild) container.removeChild(container.firstChild);
+
+                data.checks.forEach(function(check) {
+                    var card = document.createElement('div');
+                    card.className = 'check-card';
+
+                    var info = document.createElement('div');
+                    info.className = 'check-info';
+
+                    var name = document.createElement('div');
+                    name.className = 'check-name';
+                    name.textContent = check.name;
+
+                    var message = document.createElement('div');
+                    message.className = 'check-message';
+                    message.textContent = check.message;
+
+                    info.appendChild(name);
+                    info.appendChild(message);
+
+                    var meta = document.createElement('div');
+                    meta.className = 'check-meta';
+
+                    var duration = document.createElement('span');
+                    duration.className = 'check-duration';
+                    duration.textContent = check.duration;
+
+                    var badge = document.createElement('span');
+                    badge.className = 'status-badge status-' + check.status;
+                    if (check.status === 'passed') {
+                        badge.textContent = 'Passed';
+                    } else if (check.status === 'warning') {
+                        badge.textContent = 'Warning';
+                    } else if (check.status === 'failed') {
+                        badge.textContent = 'Failed';
+                    } else {
+                        badge.textContent = 'Unknown';
+                    }
+
+                    meta.appendChild(duration);
+                    meta.appendChild(badge);
+
+                    card.appendChild(info);
+                    card.appendChild(meta);
+                    container.appendChild(card);
+                });
+
+                var total = data.summary.passed + data.summary.warning + data.summary.failed;
+                if (data.summary.failed > 0) {
+                    showToast(data.summary.failed + ' of ' + total + ' checks failed', 'error');
+                } else {
+                    showToast('All ' + total + ' checks passed', 'success');
+                }
+            })
+            .catch(function(error) {
+                btn.disabled = false;
+                btn.textContent = 'Run Checks';
+                showToast('Failed to run checks: ' + error, 'error');
+            });
+    }
+</script>
+
+{{end}}
+
+{{template "base" .}}
