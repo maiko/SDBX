@@ -2,7 +2,7 @@
 
 :root {
     /* Base colors */
-    --color-primary: #7C3AED;     /* Violet - Primary actions and highlights */
+    --color-primary: #8b5cf6;     /* Neon Violet - Primary actions and highlights */
     --color-success: #10B981;     /* Emerald - Positive states, confirmations */
     --color-warning: #F59E0B;     /* Amber - Warnings, caution states */
     --color-error: #EF4444;       /* Red - Errors, destructive actions */

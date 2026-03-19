@@ -5,7 +5,7 @@ import "github.com/charmbracelet/lipgloss"
 
 // Color palette - matches PRD specification
 var (
-	ColorPrimary = lipgloss.Color("#7C3AED") // Violet
+	ColorPrimary = lipgloss.Color("#8b5cf6") // Neon Violet
 	ColorSuccess = lipgloss.Color("#10B981") // Emerald
 	ColorWarning = lipgloss.Color("#F59E0B") // Amber
 	ColorError   = lipgloss.Color("#EF4444") // Red
