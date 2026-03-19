@@ -562,7 +562,7 @@ func TestLoadOverridesFromLocal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	svcYAML := `apiVersion: sdbx.io/v1
+	svcYAML := `apiVersion: sdbx.one/v1
 kind: Service
 metadata:
   name: test-svc
@@ -584,7 +584,7 @@ conditions:
 		t.Fatal(err)
 	}
 
-	overrideYAML := `apiVersion: sdbx.io/v1
+	overrideYAML := `apiVersion: sdbx.one/v1
 kind: ServiceOverride
 metadata:
   name: test-svc
@@ -699,7 +699,7 @@ func TestResolveWithCustomLocalService(t *testing.T) {
 	}{
 		{
 			name: "svc-b",
-			yaml: `apiVersion: sdbx.io/v1
+			yaml: `apiVersion: sdbx.one/v1
 kind: Service
 metadata:
   name: svc-b
@@ -720,7 +720,7 @@ conditions:
 		},
 		{
 			name: "svc-a",
-			yaml: `apiVersion: sdbx.io/v1
+			yaml: `apiVersion: sdbx.one/v1
 kind: Service
 metadata:
   name: svc-a
@@ -791,7 +791,7 @@ func TestResolveAddonNotEnabled(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	yaml := `apiVersion: sdbx.io/v1
+	yaml := `apiVersion: sdbx.one/v1
 kind: Service
 metadata:
   name: test-addon
@@ -841,7 +841,7 @@ func TestResolveAddonEnabled(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	yaml := `apiVersion: sdbx.io/v1
+	yaml := `apiVersion: sdbx.one/v1
 kind: Service
 metadata:
   name: test-addon

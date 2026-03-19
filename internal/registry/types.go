@@ -7,7 +7,7 @@ import "time"
 
 // API version for service definitions
 const (
-	APIVersion           = "sdbx.io/v1"
+	APIVersion           = "sdbx.one/v1"
 	KindService          = "Service"
 	KindServiceOverride  = "ServiceOverride"
 	KindSourceRepository = "SourceRepository"

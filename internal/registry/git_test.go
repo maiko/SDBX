@@ -299,7 +299,7 @@ func initTestGitRepo(t *testing.T, dir string, services map[string]string) {
 func TestGitSourceLoadServiceFromClonedRepo(t *testing.T) {
 	// Create a "remote" repo
 	remoteDir := t.TempDir()
-	svcYAML := `apiVersion: sdbx.io/v1
+	svcYAML := `apiVersion: sdbx.one/v1
 kind: Service
 metadata:
   name: test-svc
@@ -356,7 +356,7 @@ conditions:
 
 func TestGitSourceListServicesFromClonedRepo(t *testing.T) {
 	remoteDir := t.TempDir()
-	svcA := `apiVersion: sdbx.io/v1
+	svcA := `apiVersion: sdbx.one/v1
 kind: Service
 metadata:
   name: svc-a
@@ -374,7 +374,7 @@ routing:
 conditions:
   always: true
 `
-	svcB := `apiVersion: sdbx.io/v1
+	svcB := `apiVersion: sdbx.one/v1
 kind: Service
 metadata:
   name: svc-b
@@ -421,7 +421,7 @@ conditions:
 
 func TestGitSourceGetServicePath(t *testing.T) {
 	remoteDir := t.TempDir()
-	svcYAML := `apiVersion: sdbx.io/v1
+	svcYAML := `apiVersion: sdbx.one/v1
 kind: Service
 metadata:
   name: my-svc
@@ -466,7 +466,7 @@ conditions:
 
 func TestGitSourceHasService(t *testing.T) {
 	remoteDir := t.TempDir()
-	svcYAML := `apiVersion: sdbx.io/v1
+	svcYAML := `apiVersion: sdbx.one/v1
 kind: Service
 metadata:
   name: found-svc
@@ -546,7 +546,7 @@ func TestGitSourceUpdateCommitHash(t *testing.T) {
 func TestGitSourceLoadServiceNotFound(t *testing.T) {
 	remoteDir := t.TempDir()
 	initTestGitRepo(t, remoteDir, map[string]string{
-		"core/existing/service.yaml": `apiVersion: sdbx.io/v1
+		"core/existing/service.yaml": `apiVersion: sdbx.one/v1
 kind: Service
 metadata:
   name: existing
@@ -586,7 +586,7 @@ conditions:
 
 func TestGitSourceWithSubPath(t *testing.T) {
 	remoteDir := t.TempDir()
-	svcYAML := `apiVersion: sdbx.io/v1
+	svcYAML := `apiVersion: sdbx.one/v1
 kind: Service
 metadata:
   name: sub-svc

@@ -203,7 +203,7 @@ func TestNewLockManager(t *testing.T) {
 func TestLockManagerLoadLockFile(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	lockYAML := `apiVersion: sdbx.io/v1
+	lockYAML := `apiVersion: sdbx.one/v1
 kind: LockFile
 metadata:
   version: 1
@@ -265,7 +265,7 @@ func TestLockFileStruct(t *testing.T) {
 	now := time.Now()
 
 	lock := LockFile{
-		APIVersion: "sdbx.io/v1",
+		APIVersion: "sdbx.one/v1",
 		Kind:       "LockFile",
 		Metadata: LockFileMetadata{
 			Version:     1,
@@ -299,8 +299,8 @@ func TestLockFileStruct(t *testing.T) {
 		},
 	}
 
-	if lock.APIVersion != "sdbx.io/v1" {
-		t.Errorf("APIVersion = %q, want 'sdbx.io/v1'", lock.APIVersion)
+	if lock.APIVersion != "sdbx.one/v1" {
+		t.Errorf("APIVersion = %q, want 'sdbx.one/v1'", lock.APIVersion)
 	}
 
 	if lock.Metadata.Version != 1 {

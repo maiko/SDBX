@@ -128,7 +128,7 @@ internal/
 
 Example service definition (from Git source, e.g., `addons/sonarr/service.yaml`):
 ```yaml
-apiVersion: sdbx.io/v1
+apiVersion: sdbx.one/v1
 kind: Service
 metadata:
   name: sonarr
@@ -350,7 +350,7 @@ Backups are stored in `./backups/` as tar.gz archives containing `.sdbx.yaml`, `
 
 **Service Definition Schema**
 ```yaml
-apiVersion: sdbx.io/v1
+apiVersion: sdbx.one/v1
 kind: Service
 metadata:
   name: string           # Service identifier

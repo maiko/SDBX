@@ -78,8 +78,8 @@ func TestServiceCategories(t *testing.T) {
 
 // TestAPIConstants verifies API version and kind constants
 func TestAPIConstants(t *testing.T) {
-	if APIVersion != "sdbx.io/v1" {
-		t.Errorf("APIVersion = %q, want 'sdbx.io/v1'", APIVersion)
+	if APIVersion != "sdbx.one/v1" {
+		t.Errorf("APIVersion = %q, want 'sdbx.one/v1'", APIVersion)
 	}
 
 	if KindService != "Service" {

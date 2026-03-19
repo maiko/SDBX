@@ -1,4 +1,4 @@
-apiVersion: sdbx.io/v1
+apiVersion: sdbx.one/v1
 kind: Service
 metadata:
   name: sdbx-webui

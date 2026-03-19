@@ -1,4 +1,4 @@
-apiVersion: sdbx.io/v1
+apiVersion: sdbx.one/v1
 kind: Service
 metadata:
   name: plex
@@ -34,9 +34,13 @@ spec:
       - name: VERSION
         value: docker
     conditional:
-      - name: PLEX_ADVERTISE_IP
-        value: "{{ .Config.PlexAdvertiseURLs }}"
-        when: '{{ ne .Config.PlexAdvertiseURLs "" }}'
+      - name: ADVERTISE_IP
+        value: "https://plex.{{ .Config.Domain }}:443/"
+        when: '{{ ne .Config.Expose.Mode "lan" }}'
+      - name: PLEX_CLAIM
+        valueFrom:
+          secretRef: plex_claim_token
+        when: '{{ ne .Config.Expose.Mode "lan" }}'
 
   volumes:
     - name: config
@@ -45,6 +49,13 @@ spec:
     - name: media
       hostPath: "{{ .Config.MediaPath }}"
       containerPath: /media
+
+  healthCheck:
+    test: ["CMD", "curl", "-f", "http://localhost:32400/web/index.html"]
+    interval: 30s
+    timeout: 10s
+    retries: 3
+    start_period: 60s
 
   ports:
     static:
@@ -63,6 +74,11 @@ routing:
   auth:
     required: false
     bypass: true
+
+secrets:
+  - name: plex_claim_token
+    type: manual
+    description: "Plex claim token from https://www.plex.tv/claim/"
 
 integrations:
   watchtower:

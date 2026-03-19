@@ -78,7 +78,7 @@ func TestLocalSourceLoad(t *testing.T) {
 		t.Fatalf("failed to create service dir: %v", err)
 	}
 
-	serviceYAML := `apiVersion: sdbx.io/v1
+	serviceYAML := `apiVersion: sdbx.one/v1
 kind: Service
 metadata:
   name: test-service
@@ -145,7 +145,7 @@ func TestLocalSourceLoadService(t *testing.T) {
 		t.Fatalf("failed to create core dir: %v", err)
 	}
 
-	serviceYAML := `apiVersion: sdbx.io/v1
+	serviceYAML := `apiVersion: sdbx.one/v1
 kind: Service
 metadata:
   name: my-service
@@ -192,7 +192,7 @@ func TestLocalSourceLoadServiceFromAddons(t *testing.T) {
 		t.Fatalf("failed to create addons dir: %v", err)
 	}
 
-	serviceYAML := `apiVersion: sdbx.io/v1
+	serviceYAML := `apiVersion: sdbx.one/v1
 kind: Service
 metadata:
   name: sonarr
@@ -255,7 +255,7 @@ func TestLocalSourceListServices(t *testing.T) {
 			t.Fatalf("failed to create service dir: %v", err)
 		}
 
-		serviceYAML := `apiVersion: sdbx.io/v1
+		serviceYAML := `apiVersion: sdbx.one/v1
 kind: Service
 metadata:
   name: ` + name + `
@@ -496,7 +496,7 @@ func TestLocalSourceSaveService(t *testing.T) {
 	})
 
 	def := &ServiceDefinition{
-		APIVersion: "sdbx.io/v1",
+		APIVersion: "sdbx.one/v1",
 		Kind:       "Service",
 		Metadata: ServiceMetadata{
 			Name:        "new-service",

@@ -15,7 +15,7 @@ import (
 
 // testAddonYAML returns a minimal service YAML for a test addon
 func testAddonYAML(name, category, description string) string {
-	return `apiVersion: sdbx.io/v1
+	return `apiVersion: sdbx.one/v1
 kind: Service
 metadata:
   name: ` + name + `

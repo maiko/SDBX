@@ -1,4 +1,4 @@
-apiVersion: sdbx.io/v1
+apiVersion: sdbx.one/v1
 kind: Service
 metadata:
   name: cloudflared
@@ -23,13 +23,22 @@ spec:
   container:
     name_template: "sdbx-{{ .Name }}"
     restart: unless-stopped
+    command: tunnel run
 
   environment:
     static:
       - name: TZ
         value: "{{ .Config.Timezone }}"
-      - name: TUNNEL_TOKEN_FILE
-        value: /run/secrets/cloudflared_tunnel_token
+      - name: TUNNEL_TOKEN
+        valueFrom:
+          secretRef: cloudflared_tunnel_token
+
+  healthCheck:
+    test: ["CMD", "pgrep", "cloudflared"]
+    interval: 30s
+    timeout: 10s
+    retries: 3
+    start_period: 15s
 
   volumes:
     - name: config

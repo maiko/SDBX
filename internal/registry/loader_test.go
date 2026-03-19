@@ -19,7 +19,7 @@ func TestNewLoader(t *testing.T) {
 func TestLoaderLoadServiceDefinition(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	serviceYAML := `apiVersion: sdbx.io/v1
+	serviceYAML := `apiVersion: sdbx.one/v1
 kind: Service
 metadata:
   name: test-service
@@ -74,7 +74,7 @@ func TestLoaderParseServiceDefinition(t *testing.T) {
 	}{
 		{
 			name: "valid service",
-			yaml: `apiVersion: sdbx.io/v1
+			yaml: `apiVersion: sdbx.one/v1
 kind: Service
 metadata:
   name: valid-service
@@ -93,7 +93,7 @@ spec:
 		},
 		{
 			name: "wrong API version",
-			yaml: `apiVersion: sdbx.io/v99
+			yaml: `apiVersion: sdbx.one/v99
 kind: Service
 metadata:
   name: test
@@ -106,7 +106,7 @@ spec:
 		},
 		{
 			name: "wrong kind",
-			yaml: `apiVersion: sdbx.io/v1
+			yaml: `apiVersion: sdbx.one/v1
 kind: WrongKind
 metadata:
   name: test
@@ -146,7 +146,7 @@ spec:
 
 // TestLoaderApplyDefaults tests default value application
 func TestLoaderApplyDefaults(t *testing.T) {
-	yaml := `apiVersion: sdbx.io/v1
+	yaml := `apiVersion: sdbx.one/v1
 kind: Service
 metadata:
   name: defaults-test
@@ -208,7 +208,7 @@ routing:
 func TestLoaderLoadServiceOverride(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	overrideYAML := `apiVersion: sdbx.io/v1
+	overrideYAML := `apiVersion: sdbx.one/v1
 kind: ServiceOverride
 metadata:
   name: nginx
@@ -255,7 +255,7 @@ target:
 		},
 		{
 			name: "wrong kind",
-			yaml: `apiVersion: sdbx.io/v1
+			yaml: `apiVersion: sdbx.one/v1
 kind: WrongKind
 metadata:
   name: test
@@ -318,7 +318,7 @@ func TestLoaderLoadSourceConfig(t *testing.T) {
 func TestLoaderLoadLockFile(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	lockYAML := `apiVersion: sdbx.io/v1
+	lockYAML := `apiVersion: sdbx.one/v1
 kind: LockFile
 metadata:
   version: 1
@@ -384,7 +384,7 @@ metadata:
 		},
 		{
 			name: "wrong kind",
-			yaml: `apiVersion: sdbx.io/v1
+			yaml: `apiVersion: sdbx.one/v1
 kind: WrongKind
 metadata:
   version: 1
@@ -410,7 +410,7 @@ metadata:
 func TestLoaderLoadSourceRepository(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	repoYAML := `apiVersion: sdbx.io/v1
+	repoYAML := `apiVersion: sdbx.one/v1
 kind: SourceRepository
 metadata:
   name: official-services
@@ -444,7 +444,7 @@ func TestLoaderSaveServiceDefinition(t *testing.T) {
 	path := filepath.Join(tmpDir, "subdir", "service.yaml")
 
 	def := &ServiceDefinition{
-		APIVersion: "sdbx.io/v1",
+		APIVersion: "sdbx.one/v1",
 		Kind:       "Service",
 		Metadata: ServiceMetadata{
 			Name:        "saved-service",
@@ -525,7 +525,7 @@ func TestLoaderSaveLockFile(t *testing.T) {
 	path := filepath.Join(tmpDir, ".sdbx.lock")
 
 	lock := &LockFile{
-		APIVersion: "sdbx.io/v1",
+		APIVersion: "sdbx.one/v1",
 		Kind:       "LockFile",
 		Metadata: LockFileMetadata{
 			Version:    1,
@@ -617,7 +617,7 @@ func TestLoaderDiscoverServices(t *testing.T) {
 // TestLoaderMergeOverride tests merging overrides
 func TestLoaderMergeOverride(t *testing.T) {
 	base := &ServiceDefinition{
-		APIVersion: "sdbx.io/v1",
+		APIVersion: "sdbx.one/v1",
 		Kind:       "Service",
 		Metadata: ServiceMetadata{
 			Name:    "base-service",
@@ -649,7 +649,7 @@ func TestLoaderMergeOverride(t *testing.T) {
 	newPath := "/custom"
 
 	override := &ServiceOverride{
-		APIVersion: "sdbx.io/v1",
+		APIVersion: "sdbx.one/v1",
 		Kind:       "ServiceOverride",
 		Metadata: OverrideMetadata{
 			Name: "base-service",
