@@ -35,7 +35,7 @@ Services can be accessed via two routing patterns:
 Each service gets its own subdomain:
 ```
 https://auth.domain.tld      → Authelia
-https://home.domain.tld      → Homepage
+https://sdbx.domain.tld      → SDBX Web UI
 https://radarr.domain.tld    → Radarr
 https://sonarr.domain.tld    → Sonarr
 ```
@@ -43,7 +43,7 @@ https://sonarr.domain.tld    → Sonarr
 ### Path-Style Routing
 All services share a single base domain with path prefixes:
 ```
-https://sdbx.domain.tld/          → Homepage
+https://sdbx.domain.tld/          → SDBX Web UI
 https://sdbx.domain.tld/auth      → Authelia
 https://sdbx.domain.tld/radarr    → Radarr
 https://sdbx.domain.tld/sonarr    → Sonarr
@@ -59,7 +59,14 @@ All services reside on a dedicated Docker bridge network (usually named `sdbx_de
 - **Gluetun VPN**: A versatile VPN client that acts as a gateway for the *arr suite.
 - **qBittorrent**: Configured to route all traffic through the Gluetun container. If the VPN connection drops, the kill-switch prevents any traffic from leaking through your home IP.
 
-### 4. The Media Stack
+### 4. The Web UI
+- **SDBX Web UI**: An embedded web interface with 12 pages organized into a sidebar with four navigation groups: Operations (Dashboard, Services), Config (Addons, VPN, Sources, Config), System (Doctor, Compose, Lock File, Backup), and Reference (Service Info).
+- The Dashboard includes a **Quick Access** section with clickable URLs for each running service, replacing the need for a separate Homepage addon.
+- Supports **dark mode** with localStorage persistence.
+- Built with htmx (bundled locally, no CDN), Go templates, and WebSockets for live log streaming.
+- Operates in two phases: pre-init (setup wizard with token auth) and post-init (full dashboard behind Authelia).
+
+### 5. The Media Stack
 - **Plex**: The media server that organizes and streams your content.
 - **Sonarr/Radarr/Lidarr**: Automation tools that monitor for new releases and coordinate with qBittorrent for downloads.
 - **Prowlarr**: A centralized indexer manager that feeds search results to the automation tools.

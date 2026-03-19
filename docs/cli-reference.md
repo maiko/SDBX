@@ -49,6 +49,37 @@ Checks include Docker version, disk space, file permissions, and connectivity.
 ### `sdbx open [service]`
 Opens the dashboard or a specific service's URL in your default web browser.
 
+### `sdbx serve`
+Starts the embedded web UI server. Behavior depends on whether the project has been initialized.
+- **Flags**:
+  - `--host STRING`: Bind address (default: `0.0.0.0`)
+  - `--port INT`: Listen port (default: `3000`)
+
+**Pre-init mode** (no `.sdbx.yaml` exists):
+Runs a 7-step setup wizard that replaces `sdbx init`. A one-time 256-bit token is generated and printed to the terminal as a URL (e.g., `http://192.168.1.100:3000?token=abc123`). The token is required for access.
+
+**Post-init mode** (`.sdbx.yaml` exists):
+Serves the full dashboard and management interface. In production, the web UI runs as a Docker service behind Traefik + Authelia.
+
+The web UI provides **12 pages** organized into four sidebar groups:
+
+| Group | Page | Description |
+|-------|------|-------------|
+| Operations | **Dashboard** | Service overview with Quick Access links to each service URL |
+| Operations | **Services** | Start, stop, and restart individual services |
+| Config | **Addons** | Browse, enable, and disable addon services |
+| Config | **VPN** | Configure VPN provider and credentials |
+| Config | **Sources** | Manage service definition sources |
+| Config | **Config** | Edit YAML configuration |
+| System | **Doctor** | Run diagnostic health checks |
+| System | **Compose** | View generated Docker Compose file |
+| System | **Lock File** | Inspect and verify the lock file |
+| System | **Backup** | Create and restore configuration backups |
+| Reference | **Service Info** | Detailed service definitions and metadata |
+| — | **Logs** | Live WebSocket log streaming per service |
+
+Additional features: dark mode toggle (persisted via localStorage), CSRF protection via `csrfFetch()` wrapper, htmx bundled locally (no CDN dependency), and service control endpoints returning HTML fragments for htmx partial updates.
+
 ---
 
 ## ⚙️ Configuration

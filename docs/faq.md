@@ -265,6 +265,8 @@ sdbx logs -f qbittorrent
 sdbx logs --tail 100 sonarr
 ```
 
+You can also view live-streaming logs from the web UI's Logs page (see "How do I access the web UI?" below).
+
 ### How do I restart a single service?
 
 ```bash
@@ -283,7 +285,7 @@ sdbx restart
 # Check service health
 sdbx status
 
-# Run diagnostics
+# Run diagnostics (also available as a Doctor page in the web UI)
 sdbx doctor
 
 # Check logs
@@ -463,12 +465,16 @@ Yes, with direct HTTPS mode:
 
 ## Advanced
 
+### How do I access the web UI?
+
+Run `sdbx serve` to start the web UI. Before initialization, it launches a setup wizard accessible via a one-time token URL printed in the terminal. After initialization, the web UI serves a full dashboard with 12 pages -- including service control, live logs, Doctor diagnostics, VPN status, addon management, a config editor, and more. It features sidebar navigation with grouped sections, a dark mode toggle, and Quick Access links to your service URLs. In production, the web UI runs as a Docker service (`sdbx-webui`) behind Traefik and Authelia.
+
 ### Can I customize service configurations?
 
 **Yes, but carefully**:
 
 1. Service configs are in `configs/<service>/`
-2. Edit configs directly
+2. Edit configs directly (or use the Config Editor page in the web UI)
 3. Restart service: `sdbx restart <service>`
 
 **Note**: Running `sdbx init` again will overwrite custom configs. Back them up first!

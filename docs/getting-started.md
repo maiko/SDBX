@@ -62,6 +62,16 @@ mkdir ~/seedbox && cd ~/seedbox
 sdbx init
 ```
 
+#### Web UI Alternative (Headless/Remote Setup)
+
+If you're setting up a remote or headless server, you can use the web-based setup wizard instead:
+
+```bash
+sdbx serve
+```
+
+This starts a web UI at `http://YOUR_IP:3000` with a one-time security token displayed in the terminal. Open the provided URL in your browser to access the same 7-step setup wizard. Dark mode is available via the sidebar toggle.
+
 The graphical wizard will ask you for:
 
 1. **Domain Name**: e.g., `yourdomain.com`
@@ -124,7 +134,7 @@ Time to see your creation.
 Login with the **Admin** credentials you created during init.
 
 ### 🎉 Success!
-You should see the **SDBX Web UI** dashboard with status indicators for all your services.
+You should see the **SDBX Web UI** dashboard with status indicators for all your services. The dashboard includes Quick Access links to all your services, and sidebar navigation to management pages (Doctor, VPN, Sources, Config editor, Backups, and more).
 
 **Next Steps:**
 1. Open **Plex** (`sdbx open plex`) and claim your server.

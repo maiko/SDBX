@@ -132,6 +132,7 @@ If you're running a similar stack with raw docker-compose:
    cd /opt/sdbx  # or your preferred location
    sdbx init
    ```
+   Alternatively, run `sdbx serve` to complete setup through the web-based wizard, which is useful for headless or remote servers.
 
 5. **Migrate configurations**:
 

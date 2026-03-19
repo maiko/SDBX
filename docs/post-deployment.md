@@ -30,6 +30,8 @@ sdbx doctor
 sdbx logs
 ```
 
+> **Tip:** The web UI dashboard also shows service health at a glance, the Doctor page runs the same diagnostics as `sdbx doctor`, and the Logs page provides live log streaming.
+
 All services should show as "healthy" or "running".
 
 ### 2. Access Your Dashboard
@@ -633,8 +635,8 @@ Prevent scans during peak viewing:
 ### Monitoring
 
 - ✅ SDBX Web UI dashboard accessible
-- ✅ All services green in `sdbx status`
-- ✅ `sdbx doctor` passes all checks
+- ✅ All services green in `sdbx status` (or the web UI dashboard)
+- ✅ `sdbx doctor` passes all checks (or the web UI Doctor page)
 
 ## Next Steps
 
@@ -646,7 +648,7 @@ Prevent scans during peak viewing:
    - /r/plex
    - SDBX Discussions
 
-4. **Set up backups**:
+4. **Set up backups** (also available via the web UI Backup page):
    ```bash
    # Create regular backups
    sdbx backup run
@@ -665,8 +667,8 @@ Prevent scans during peak viewing:
 
 ### Service Not Accessible
 
-- Check: `sdbx status`
-- View logs: `sdbx logs <service>`
+- Check: `sdbx status` (or web UI dashboard)
+- View logs: `sdbx logs <service>` (or web UI Logs page)
 - Verify DNS/routing
 - Check Authelia logs
 
