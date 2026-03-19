@@ -41,9 +41,9 @@ func runUp(_ *cobra.Command, args []string) error {
 	}
 
 	// Load config to check for Plex
-	cfg, err := config.Load()
-	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
+	cfg, loadErr := config.Load()
+	if loadErr != nil {
+		return fmt.Errorf("failed to load config: %w\n\n  Try: sdbx init", loadErr)
 	}
 
 	compose := docker.NewCompose(projectDir)
@@ -54,13 +54,20 @@ func runUp(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to handle Plex claim token: %w", err)
 	}
 
-	fmt.Println(tui.InfoStyle.Render("Starting SDBX services..."))
-	fmt.Println()
-
 	// Start services
 	start := time.Now()
-	if err := compose.Up(ctx); err != nil {
-		return fmt.Errorf("failed to start services: %w", err)
+	if IsTUIEnabled() {
+		err = tui.RunWithSpinner("Starting SDBX services...", func() error {
+			return compose.Up(ctx)
+		})
+		if err != nil {
+			return fmt.Errorf("failed to start services: %w\n\n  Try: sdbx doctor", err)
+		}
+	} else {
+		fmt.Println(tui.InfoStyle.Render("Starting SDBX services..."))
+		if err := compose.Up(ctx); err != nil {
+			return fmt.Errorf("failed to start services: %w\n\n  Try: sdbx doctor", err)
+		}
 	}
 
 	elapsed := time.Since(start)

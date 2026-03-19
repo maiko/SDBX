@@ -32,10 +32,18 @@ func runDown(_ *cobra.Command, args []string) error {
 	compose := docker.NewCompose(projectDir)
 	ctx := context.Background()
 
-	fmt.Println(tui.InfoStyle.Render("Stopping SDBX services..."))
-
-	if err := compose.Down(ctx); err != nil {
-		return fmt.Errorf("failed to stop services: %w", err)
+	if IsTUIEnabled() {
+		err = tui.RunWithSpinner("Stopping SDBX services...", func() error {
+			return compose.Down(ctx)
+		})
+		if err != nil {
+			return fmt.Errorf("failed to stop services: %w\n\n  Try: sdbx doctor", err)
+		}
+	} else {
+		fmt.Println(tui.InfoStyle.Render("Stopping SDBX services..."))
+		if err := compose.Down(ctx); err != nil {
+			return fmt.Errorf("failed to stop services: %w\n\n  Try: sdbx doctor", err)
+		}
 	}
 
 	fmt.Println()

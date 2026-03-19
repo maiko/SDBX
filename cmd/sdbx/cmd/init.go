@@ -116,7 +116,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	// Initialize registry for addon selection
 	reg, err := registry.NewWithDefaults()
 	if err != nil {
-		return fmt.Errorf("failed to initialize registry: %w", err)
+		return fmt.Errorf("failed to initialize registry: %w\n\n  Try: sdbx source update", err)
 	}
 
 	// If not skipping wizard and TUI is enabled, run wizard
@@ -217,7 +217,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 
 	gen := generator.NewGeneratorWithRegistry(cfg, cwd, reg)
 	if err := gen.Generate(); err != nil {
-		return fmt.Errorf("failed to generate project: %w", err)
+		return fmt.Errorf("failed to generate project: %w\n\n  Try: sdbx doctor", err)
 	}
 
 	// Create data directories if paths are relative

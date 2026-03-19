@@ -54,24 +54,41 @@ func runUpdate(_ *cobra.Command, args []string) error {
 	fmt.Println()
 
 	// Step 1: Pull images
-	fmt.Println(tui.InfoStyle.Render("Pulling latest images..."))
 	start := time.Now()
-
-	if err := compose.Pull(ctx); err != nil {
-		return fmt.Errorf("failed to pull images: %w", err)
+	if IsTUIEnabled() {
+		if err := tui.RunWithSpinner("Pulling latest images...", func() error {
+			return compose.Pull(ctx)
+		}); err != nil {
+			return fmt.Errorf("failed to pull images: %w\n\n  Try: Check internet connection or run 'docker login'", err)
+		}
+	} else {
+		fmt.Println(tui.InfoStyle.Render("Pulling latest images..."))
+		if err := compose.Pull(ctx); err != nil {
+			return fmt.Errorf("failed to pull images: %w\n\n  Try: Check internet connection or run 'docker login'", err)
+		}
 	}
-
 	fmt.Println(tui.SuccessStyle.Render(fmt.Sprintf("  ✓ Images pulled in %s", time.Since(start).Round(time.Millisecond))))
 	fmt.Println()
 
 	// Step 2: Restart services
 	if updateAll {
-		fmt.Println(tui.InfoStyle.Render("Restarting all services..."))
-		if err := compose.Down(ctx); err != nil {
-			return fmt.Errorf("failed to stop services: %w", err)
-		}
-		if err := compose.Up(ctx); err != nil {
-			return fmt.Errorf("failed to start services: %w", err)
+		if IsTUIEnabled() {
+			if err := tui.RunWithSpinner("Restarting all services...", func() error {
+				if err := compose.Down(ctx); err != nil {
+					return fmt.Errorf("failed to stop services: %w", err)
+				}
+				return compose.Up(ctx)
+			}); err != nil {
+				return fmt.Errorf("failed to restart services: %w\n\n  Try: sdbx doctor", err)
+			}
+		} else {
+			fmt.Println(tui.InfoStyle.Render("Restarting all services..."))
+			if err := compose.Down(ctx); err != nil {
+				return fmt.Errorf("failed to stop services: %w", err)
+			}
+			if err := compose.Up(ctx); err != nil {
+				return fmt.Errorf("failed to start services: %w\n\n  Try: sdbx doctor", err)
+			}
 		}
 		fmt.Println(tui.SuccessStyle.Render("  ✓ All services restarted"))
 	} else {
@@ -132,7 +149,7 @@ func getEnabledServicesOrdered(ctx context.Context, _ string) ([]string, error) 
 	// Resolve services based on config
 	graph, err := reg.Resolve(ctx, cfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve services: %w", err)
+		return nil, fmt.Errorf("failed to resolve services: %w\n\n  Try: sdbx source update", err)
 	}
 
 	return graph.Order, nil
