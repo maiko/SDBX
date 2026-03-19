@@ -231,9 +231,8 @@ func TestGenerateWithAddons(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	// Create generator with addons enabled
+	// Create generator (addons only available from git source, not in tests)
 	cfg := config.DefaultConfig()
-	cfg.Addons = []string{"overseerr", "tautulli"}
 	gen := NewGenerator(cfg, tmpDir)
 
 	// Generate project
@@ -241,15 +240,13 @@ func TestGenerateWithAddons(t *testing.T) {
 		t.Fatalf("Generate failed: %v", err)
 	}
 
-	// Verify config directories for addons were created
-	overseerrDir := filepath.Join(tmpDir, "configs/overseerr")
-	if _, err := os.Stat(overseerrDir); os.IsNotExist(err) {
-		t.Error("Overseerr config directory should have been created")
-	}
-
-	tautulliDir := filepath.Join(tmpDir, "configs/tautulli")
-	if _, err := os.Stat(tautulliDir); os.IsNotExist(err) {
-		t.Error("Tautulli config directory should have been created")
+	// Verify config directories for resolved core services were created dynamically
+	// Core services (traefik, authelia, plex, qbittorrent, gluetun) should have config dirs
+	for _, svc := range []string{"traefik", "authelia", "plex", "qbittorrent", "gluetun"} {
+		svcDir := filepath.Join(tmpDir, "configs", svc)
+		if _, err := os.Stat(svcDir); os.IsNotExist(err) {
+			t.Errorf("Config directory for resolved service %q should have been created", svc)
+		}
 	}
 }
 

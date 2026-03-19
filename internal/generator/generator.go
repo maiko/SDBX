@@ -58,8 +58,9 @@ type TemplateData struct {
 
 // Generate creates all project files
 func (g *Generator) Generate() error {
-	// Create directory structure
-	dirs := []string{
+	// Create base directory structure for core infrastructure and templates.
+	// Additional service-specific dirs are created dynamically after resolution.
+	baseDirs := []string{
 		"",
 		"configs",
 		"configs/traefik",
@@ -69,27 +70,15 @@ func (g *Generator) Generate() error {
 		"configs/homepage",
 		"configs/qbittorrent",
 		"configs/qbittorrent/qBittorrent",
-		"configs/prowlarr",
-		"configs/sonarr",
-		"configs/radarr",
-		"configs/lidarr",
-		"configs/readarr",
-		"configs/bazarr",
-		"configs/recyclarr",
-		"configs/unpackerr",
-		"configs/plex",
-		"configs/overseerr",
-		"configs/wizarr",
-		"configs/tautulli",
 		"secrets",
 	}
 
 	// Add cloudflared config dir if using cloudflared mode
 	if g.Config.Expose.Mode == config.ExposeModeCloudflared {
-		dirs = append(dirs, "configs/cloudflared")
+		baseDirs = append(baseDirs, "configs/cloudflared")
 	}
 
-	for _, dir := range dirs {
+	for _, dir := range baseDirs {
 		path := filepath.Join(g.OutputDir, dir)
 		if err := os.MkdirAll(path, 0o755); err != nil {
 			return fmt.Errorf("failed to create directory %s: %w", dir, err)
@@ -151,6 +140,14 @@ func (g *Generator) generateFromRegistry(data TemplateData) error {
 	graph, err := g.Registry.Resolve(ctx, g.Config)
 	if err != nil {
 		return fmt.Errorf("failed to resolve services: %w", err)
+	}
+
+	// Create config directories for all resolved services
+	for name := range graph.Services {
+		configDir := filepath.Join(g.OutputDir, "configs", name)
+		if err := os.MkdirAll(configDir, 0o755); err != nil {
+			return fmt.Errorf("failed to create config directory for %s: %w", name, err)
+		}
 	}
 
 	// Generate compose.yaml using ComposeGenerator
