@@ -161,6 +161,13 @@ func (m *Manager) addToArchive(_ context.Context, tw *tar.Writer, fullPath, arch
 				return nil
 			}
 
+			// Skip files larger than 100MB to prevent archive bloat
+			// (databases, media cache, etc. should be backed up separately)
+			const maxBackupFileSize = 100 << 20 // 100 MiB
+			if info.Size() > maxBackupFileSize {
+				return nil
+			}
+
 			// Create tar header
 			header, err := tar.FileInfoHeader(info, "")
 			if err != nil {
