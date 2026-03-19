@@ -180,14 +180,14 @@ func (m *Manager) addToArchive(_ context.Context, tw *tar.Writer, fullPath, arch
 				return err
 			}
 
-			// Write file content
+			// Write file content (limit to declared size to handle files that grow)
 			file, err := os.Open(path) //nolint:gosec // G304 - path from filepath.Walk within projectDir
 			if err != nil {
 				return err
 			}
 			defer file.Close()
 
-			if _, err := io.Copy(tw, file); err != nil {
+			if _, err := io.Copy(tw, io.LimitReader(file, header.Size)); err != nil {
 				return err
 			}
 
@@ -212,7 +212,7 @@ func (m *Manager) addToArchive(_ context.Context, tw *tar.Writer, fullPath, arch
 	}
 	defer file.Close()
 
-	if _, err := io.Copy(tw, file); err != nil {
+	if _, err := io.Copy(tw, io.LimitReader(file, header.Size)); err != nil {
 		return err
 	}
 
