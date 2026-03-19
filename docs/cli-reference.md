@@ -88,6 +88,11 @@ Lists all configured service definition sources.
 ### `sdbx source add NAME URL`
 Adds a new Git repository as a service source (like Homebrew taps).
 
+> [!NOTE]
+> Adding a third-party source (any source not from the official SDBX repository) will display a trust warning. Third-party sources can contain arbitrary service definitions that run Docker containers on your system. Only add sources you trust.
+
+Source configuration is stored in `sources.yaml` (Kind: `SourceRepository`). The CLI enforces `minCliVersion` from source metadata, ensuring your CLI is compatible with the source's service definitions.
+
 ### `sdbx source remove NAME`
 Removes a configured source.
 

@@ -4,7 +4,7 @@
 
 ### What is SDBX?
 
-SDBX (Seedbox in a Box) is a complete, production-ready CLI tool for deploying and managing a seedbox stack. It bundles Plex, Sonarr, Radarr, qBittorrent, and other services with authentication, VPN enforcement, and beautiful interfaces - all configured automatically.
+SDBX (Seedbox in a Box) is a complete, production-ready CLI tool for deploying and managing a seedbox stack. It ships with **7 core services** embedded in the binary and **27 optional addons** (34 total) — including Plex, Sonarr, Radarr, qBittorrent, and more — with authentication, VPN enforcement, and a web dashboard, all configured automatically. Service definitions use `apiVersion: sdbx.one/v1`.
 
 ### Who is SDBX for?
 
@@ -229,7 +229,7 @@ sdbx backup restore sdbx-backup-20250101-120000.tar.gz
 sdbx version
 
 # Update binary
-curl -fsSL https://github.com/maiko/sdbx/releases/latest/download/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/maiko/SDBX/main/install.sh | bash
 
 # Update service images
 sdbx update

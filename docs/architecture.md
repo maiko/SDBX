@@ -4,6 +4,12 @@ Understanding how SDBX components communicate is key to managing and customizing
 
 ## 🧱 The Core Components
 
+SDBX ships with **7 core services** embedded in the binary and **27 optional addons** available from the official Git source — **34 services total**.
+
+Service definitions use `apiVersion: sdbx.one/v1` and are defined in YAML files following a schema similar to Kubernetes/Helm.
+
+Core services include healthchecks for critical infrastructure (Authelia, Plex, qBittorrent, Cloudflared), enabling Docker to automatically monitor and restart unhealthy services.
+
 SDBX is composed of several architectural layers:
 
 ### 1. The Gateway Layer
@@ -68,7 +74,7 @@ graph TD
     Traefik -->|Check Auth| Authelia[Authelia SSO]
     Authelia -.->|Grant Access| Traefik
     
-    Traefik --> Homepage[Homepage Dashboard]
+    Traefik --> WebUI[SDBX Web UI]
     Traefik --> Plex[Plex Media Server]
     Traefik --> Arrs[Media Automation]
     
@@ -84,7 +90,7 @@ graph TD
 
 1. **Zero Open Ports**: When using Cloudflare Tunnels, your server is invisible to the public internet except through the tunnel.
 2. **SSO Everywhere**: No service is exposed without passing through Traefik's Authelia middleware.
-3. **Internal Routing**: Services communicate using Docker's internal DNS (e.g., `http://sonarr:8989`), which is not accessible from the host or external network.
+3. **Internal Routing**: Services communicate using Docker's internal DNS (e.g., `http://sdbx-sonarr:8989`), which is not accessible from the host or external network.
 4. **Environment Isolation**: Sensitive data is stored in `.env` and `secrets/`, which are never committed to version control.
 
 ## 📂 Storage Layout

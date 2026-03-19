@@ -34,11 +34,11 @@ All services should show as "healthy" or "running".
 
 ### 2. Access Your Dashboard
 
-Open Homepage in your browser:
+Open the SDBX Web UI dashboard in your browser:
 
 ```bash
 # Open automatically
-sdbx open homepage
+sdbx open
 
 # Or manually:
 # - LAN mode: http://YOUR_IP/
@@ -156,7 +156,7 @@ Some indexers use Cloudflare protection. If enabled:
    ```
 
 2. In Prowlarr: **Settings** → **Indexers** → **FlareSolverr**
-   - Host: `http://flaresolverr:8191`
+   - Host: `http://sdbx-flaresolverr:8191`
    - Tags: Add tag (e.g., `flaresolverr`)
 
 3. Tag indexers that need it:
@@ -169,8 +169,8 @@ Prowlarr can automatically sync indexers to Sonarr/Radarr/etc.
 1. Go to **Settings** → **Apps**
 2. Click **+** → Select **Sonarr**
 3. Configure:
-   - Prowlarr Server: `http://prowlarr:9696`
-   - Sonarr Server: `http://sonarr:8989`
+   - Prowlarr Server: `http://sdbx-prowlarr:9696`
+   - Sonarr Server: `http://sdbx-sonarr:8989`
    - API Key: Get from Sonarr (Settings → General → Security → API Key)
    - Sync Level: **Add and Remove Only** (recommended)
 
@@ -283,7 +283,7 @@ sdbx open sonarr
 2. Click **+** → **qBittorrent**
 3. Configure:
    - Name: `qBittorrent`
-   - Host: `qbittorrent`
+   - Host: `sdbx-qbittorrent`
    - Port: `8080`
    - Username: `admin`
    - Password: (from `secrets/qbittorrent_password.txt`)
@@ -451,8 +451,8 @@ If enabled, users can request movies/TV shows:
 3. **Settings**:
    - **Plex**: Connect to Plex server
    - **Services**:
-     - Add Sonarr: http://sonarr:8989
-     - Add Radarr: http://radarr:7878
+     - Add Sonarr: http://sdbx-sonarr:8989
+     - Add Radarr: http://sdbx-radarr:7878
 
 4. Configure:
    - Default quality profiles
@@ -632,7 +632,7 @@ Prevent scans during peak viewing:
 
 ### Monitoring
 
-- ✅ Homepage accessible
+- ✅ SDBX Web UI dashboard accessible
 - ✅ All services green in `sdbx status`
 - ✅ `sdbx doctor` passes all checks
 

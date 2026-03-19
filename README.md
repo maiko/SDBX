@@ -25,7 +25,7 @@ A production-ready, **security-first** seedbox automation stack for collecting, 
   - **Subdomain**: `radarr.domain.tld`, `sonarr.domain.tld` (Clean & classic)
   - **Path-Based**: `sdbx.domain.tld/radarr`, `sdbx.domain.tld/sonarr` (Single generic certificate)
 - **📺 Multimedia Stack** — Full *arr suite (Sonarr, Radarr, Prowlarr) + Plex/Overseerr/Wizarr/Tautulli
-- **📊 Modern Dashboard** — Homepage portal with live service status and widgets
+- **📊 Web Dashboard** — Built-in SDBX Web UI with live service status, management, and monitoring
 - **🔄 Smart Updates** — Managed via Watchtower with health checks and rollbacks
 - **🛠️ Built-in Diagnostics** — Integrated `doctor` command to keep your stack healthy
 
@@ -41,7 +41,7 @@ graph TD
         
         Traefik --> Authelia[Authelia SSO]
         Traefik --> Plex
-        Traefik --> Homepage
+        Traefik --> WebUI[SDBX Web UI]
         Traefik --> Arrs[*arr Stack]
         
         Arrs --> DownloadWrapper[Gluetun VPN]
@@ -111,7 +111,7 @@ sdbx open          # 🌐 Launch dashboard in browser
 
 ### 5. First Login
 
-Access your dashboard at `https://home.yourdomain.com` (or `https://yourdomain.com` if using path routing).
+Access your dashboard at `https://sdbx.yourdomain.com` (or `https://yourdomain.com` if using path routing).
 
 **Credentials:**
 Use the **Admin Username** and **Password** you configured during `sdbx init`.

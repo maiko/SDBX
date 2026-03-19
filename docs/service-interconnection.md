@@ -43,7 +43,6 @@ Examples:
 | Emby | sdbx-emby | 8096 | Media server (Plex alternative) |
 | **Utilities** |
 | FlareSolverr | sdbx-flaresolverr | 8191 | Cloudflare bypass |
-| Unpackerr | sdbx-unpackerr | - | Archive extractor |
 | Recyclarr | sdbx-recyclarr | - | *arr configuration sync |
 | Autoscan | sdbx-autoscan | 3030 | Real-time library updates |
 

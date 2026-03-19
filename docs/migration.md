@@ -42,7 +42,7 @@ Before upgrading, always:
 
 ```bash
 # Update SDBX binary
-curl -fsSL https://github.com/maiko/sdbx/releases/latest/download/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/maiko/SDBX/main/install.sh | bash
 
 # Verify new version
 sdbx version
@@ -257,6 +257,8 @@ Cloudbox/Saltbox also use Docker, making migration easier:
 
 ## Version-Specific Upgrades
 
+*No version-specific migrations exist yet. SDBX is in its first alpha release.*
+
 ### Upgrading to v1.1.0 (from v1.0.x)
 
 **Breaking Changes**: None
@@ -328,7 +330,7 @@ All *arr apps need to point to the new qBittorrent instance:
 
 1. **In each *arr app** (Sonarr, Radarr, etc.):
    - Settings → Download Clients → Edit qBittorrent
-   - Host: `qbittorrent` (Docker network name)
+   - Host: `sdbx-qbittorrent` (Docker network name)
    - Port: `8080`
    - Username: `admin` (default)
    - Password: (from `secrets/qbittorrent_password.txt`)

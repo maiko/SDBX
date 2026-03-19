@@ -160,15 +160,20 @@ conditions:
 - **Official Git source** (priority 0) contains all 27 addons - auto-added on first run
 - **Local source** (~/.config/sdbx/services, priority 100) can override anything
 - Git sources can be added with `sdbx source add <name> <url>`
+- **Third-party sources show a trust warning** when added (non-official repositories)
+- Source manifest file is `sources.yaml` (Kind: `SourceRepository`)
 - Source config stored in `~/.config/sdbx/sources.yaml`
+- The CLI enforces `minCliVersion` from source metadata
 - **Official services repository**: https://github.com/maiko/SDBX-Services (7 core + 27 addons)
 
 **3. Generator Pipeline**
 - `init` command collects user preferences via TUI wizard
-- Registry resolves services based on config (addons, VPN, etc.)
+- Registry resolves services based on config (addons, VPN, etc.) using template-based condition evaluation
 - ComposeGenerator creates `compose.yaml` from resolved services
 - IntegrationsGenerator creates homepage, cloudflared, traefik configs
+- Generator creates dynamic config directories as needed during generation
 - Static templates handle service-specific configs (Authelia, etc.)
+- Core services (Authelia, Plex, qBittorrent, Cloudflared) include Docker healthchecks
 
 **4. Docker Compose Orchestration**
 - `internal/docker/compose.go` wraps `docker compose` commands
@@ -210,9 +215,10 @@ conditions:
   - Deployed behind Traefik + Authelia (subdomain: sdbx.domain.tld)
   - Trusts Authelia Remote-User header for authentication
   - Replaces homepage addon as primary dashboard
+  - **The web dashboard is fully functional** with dashboard, service control, live logs, addon management, config editor, integration center, and backup/restore
 - **Technology stack**: htmx (no heavy JS), Go html/template, WebSockets (logs only)
 - **Features**: Dashboard, service control, live logs, addon management, config editor, integration center, backup/restore
-- **Design**: Minimal aesthetic inspired by Charm.land, TUI color palette ported to CSS
+- **Design**: Minimal aesthetic inspired by Charm.land, brand color neon violet (#8b5cf6), TUI color palette ported to CSS
 - **go:embed**: All templates, CSS, and JS bundled in binary
 
 ### Important Implementation Details

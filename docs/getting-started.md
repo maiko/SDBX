@@ -11,7 +11,9 @@ SDBX is designed to be a **"set it and forget it"** solution for managing your m
 - 🤖 **Automation** (Sonarr, Radarr, Prowlarr)
 - 📥 **Download Client** (qBittorrent via VPN)
 - 🛡️ **SSO Security** (Authelia)
-- 📊 **Dashboard** (Homepage)
+- 📊 **Web Dashboard** (SDBX Web UI)
+
+SDBX ships with **7 core services** embedded in the binary and **27 optional addons** available via the official service repository — **34 services total**.
 
 ---
 
@@ -33,9 +35,15 @@ Before you begin, ensure you have the following:
 Install the SDBX CLI with a single command:
 
 ```bash
-curl -fsSL https://github.com/maiko/sdbx/releases/latest/download/sdbx-linux-amd64 -o sdbx
-chmod +x sdbx
+curl -fsSL https://raw.githubusercontent.com/maiko/SDBX/main/install.sh | bash
+```
+
+Or install manually:
+```bash
+curl -LO https://github.com/maiko/SDBX/releases/latest/download/sdbx_linux_amd64.tar.gz
+tar -xzf sdbx_linux_amd64.tar.gz
 sudo mv sdbx /usr/local/bin/
+sudo chmod +x /usr/local/bin/sdbx
 ```
 
 Verify it works:
@@ -116,7 +124,7 @@ Time to see your creation.
 Login with the **Admin** credentials you created during init.
 
 ### 🎉 Success!
-You should see the **Homepage** dashboard with status indicators for all your services.
+You should see the **SDBX Web UI** dashboard with status indicators for all your services.
 
 **Next Steps:**
 1. Open **Plex** (`sdbx open plex`) and claim your server.
