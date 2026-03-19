@@ -158,7 +158,7 @@ func runSourceAdd(_ *cobra.Command, args []string) error {
 		if IsTUIEnabled() {
 			fmt.Print("Continue? [y/N] ")
 			var response string
-			fmt.Scanln(&response)
+			_, _ = fmt.Scanln(&response)
 			if response != "y" && response != "Y" {
 				return fmt.Errorf("cancelled")
 			}
