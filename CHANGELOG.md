@@ -8,8 +8,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Breaking Changes
-- **Removed `sdbx integrate` command** - Services must be configured manually using Docker hostnames (see `docs/service-interconnection.md`)
-- **Removed `sdbx secrets` command** - Secrets are auto-generated during `sdbx init`, manual rotation via file editing
+- **`sdbx lock` now requires subcommand** — Use `sdbx lock generate` (bare `sdbx lock` shows help)
+- **`sdbx backup` now requires subcommand** — Use `sdbx backup create` (bare `sdbx backup` shows help)
+- **Removed `sdbx integrate` command** — Services must be configured manually using Docker hostnames (see `docs/service-interconnection.md`)
+- **Removed `sdbx secrets` command** — Secrets are auto-generated during `sdbx init`, manual rotation via file editing
+
+### Added
+- **Jellyfin as core media server** — Choose Plex, Jellyfin, or both during `sdbx init` wizard
+- **`sdbx import` command** — Migrate from existing Docker Compose setups (detects 14 service types)
+- **`sdbx regenerate` command** — Re-run generation without the interactive wizard
+- **Addon preset profiles** — Minimal / Standard / Full / Custom presets in the init wizard
+- **DNS challenge support** — `challenge_type: dns` for wildcard TLS certificates (Cloudflare, etc.)
+- **GPU transcoding support** — `gpu_enabled` field in service definitions for NVIDIA passthrough
+- **Extended compose properties** — `shm_size`, `sysctls`, and custom Traefik labels in service definitions
+- **`--dry-run` flag** — Preview `sdbx up` and `sdbx down` actions without executing
+- **Web wizard step progress indicator** — 6-step numbered progress bar with completion states
+- **Client-side form validation** — Real-time password strength, match checking, required field validation
+- **VPN provider display names** — Human-readable names in web wizard (NordVPN, not nordvpn)
+- **Streamlined wizard completion** — Summary page generates directly (removed intermediate step)
+- **YAML syntax highlighting** — Config editor now highlights keys, values, comments, strings, booleans
+- **Log search and filtering** — Client-side keyword filtering in the log viewer
+- **Service page filters** — Search, status filter, and compact view toggle on the services page
+- **Collapsible sidebar** — Toggle between full and icon-only sidebar with localStorage persistence
+- **Auto-refreshing dashboard stats** — Stat cards update alongside the service grid via htmx OOB swaps
+- **Page titles in mobile topbar** — Shows current page name on small screens
+- **Unsaved changes warning** — Config editor warns before navigating away with edits
+- **Trust warning for third-party sources** — Confirmation dialog when adding non-official Git sources
+- **Pending restart banner** — Shown after enabling/disabling addons to remind about restart
+- **📦 favicon** — Inline SVG favicon across all pages
+- **"Zero to Plex" quick start guide** — Minimal setup guide for beginners (LAN mode, no domain)
+- **Wizard screenshots in README** — 5 screenshots showing the setup wizard flow
+- **CODEOWNERS file** — Automatic PR reviewer assignment
+
+### Changed
+- **Total services: 35** (8 core + 27 addons), up from 34
+- **CLI password minimum** — Increased from 4 to 8 characters (matches web UI)
+- **Graceful wizard abort** — Ctrl+C exits cleanly with friendly message instead of error
+- **Start-over option** — Confirmation step offers "Start over" to re-run wizard with values preserved
+- **Backup list** — Now uses styled TUI table instead of raw tabwriter
+- **Error messages** — Recovery hints added throughout (e.g., "Try: sdbx doctor")
+- **Terminal icons** — Emoji icons replaced with text-safe Unicode for terminal compatibility
+- **Category sort order** — Dashboard and service pages use stable ordering instead of random Go map iteration
+- **CSS consolidation** — Styles extracted from inline `<style>` blocks into `main.css`
+- **Dark mode** — Hardcoded colors replaced with CSS variables for proper theming
+- **Sidebar icons** — HTML entities replaced with consistent cross-platform Unicode characters
+- **ARIA landmarks** — Navigation, main content, and toast regions properly labeled
+- **Focus indicators** — Visible `:focus-visible` outlines on all interactive elements
+
+### Fixed
+- **VPN health check** — Now executes inside gluetun container instead of checking host IP
+- **Pre-restore safety backup** — Automatically creates a backup before restoring
+- **Structured logging** — Web server uses `log/slog` with structured key-value fields
+- **Template error logging** — `evalTemplate()` now logs warnings on parse/execute failures
+- **HSTS header** — Added `Strict-Transport-Security` when served over HTTPS
+- **Rate limiter hardening** — 10K visitor map cap with graceful shutdown channel
+- **CIDR range caching** — Private IP ranges parsed once at init, not per-request
+- **CSRF cookie refresh** — Extended to 24h and refreshed on every GET to prevent expiry
+- **Request body limits** — 1MB `MaxBytesReader` on all POST/PUT/PATCH handlers
+- **Dev mode warning** — Prominent log warning when running post-init without Docker
+- **Service name validation** — Regex validation before passing to Docker commands
+- **Session TTL cleanup** — Wizard sessions expire after 30 minutes with background cleanup
+- **hx-confirm on restart** — Restart button now requires confirmation like stop
 
 ### Added
 

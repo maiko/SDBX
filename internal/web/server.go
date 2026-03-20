@@ -108,7 +108,7 @@ func (s *Server) Start(ctx context.Context) error {
 
 	// Setup routes
 	mux := http.NewServeMux()
-	s.setupRoutes(mux, ctx)
+	s.setupRoutes(ctx, mux)
 
 	// Create HTTP server
 	addr := fmt.Sprintf("%s:%d", s.config.Host, s.config.Port)
@@ -283,7 +283,7 @@ func (s *Server) initializeDependencies() error {
 }
 
 // setupRoutes configures HTTP routes
-func (s *Server) setupRoutes(mux *http.ServeMux, ctx context.Context) {
+func (s *Server) setupRoutes(ctx context.Context, mux *http.ServeMux) {
 	// Serve static files
 	staticFS, _ := fs.Sub(staticFS, "static")
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticFS))))

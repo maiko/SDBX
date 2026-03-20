@@ -125,7 +125,7 @@ curl -fsSL https://github.com/maiko/SDBX/releases/latest/download/install.sh | b
 - Keep Docker updated
 - Use minimal host OS (Ubuntu Server, Debian)
 - Enable automatic security updates
-- Regular backups: `sdbx backup run`
+- Regular backups: `sdbx backup create`
 
 #### 7. Monitoring
 - Run `sdbx doctor` regularly

@@ -52,12 +52,12 @@ type composeFile struct {
 
 // composeService represents a service in a Docker Compose file.
 type composeService struct {
-	Image       string            `yaml:"image"`
-	Environment interface{}       `yaml:"environment"` // Can be map or list
-	Volumes     []string          `yaml:"volumes"`
-	Labels      interface{}       `yaml:"labels"` // Can be map or list
-	NetworkMode string            `yaml:"network_mode"`
-	Ports       []string          `yaml:"ports"`
+	Image       string                 `yaml:"image"`
+	Environment interface{}            `yaml:"environment"` // Can be map or list
+	Volumes     []string               `yaml:"volumes"`
+	Labels      interface{}            `yaml:"labels"` // Can be map or list
+	NetworkMode string                 `yaml:"network_mode"`
+	Ports       []string               `yaml:"ports"`
 	Deploy      map[string]interface{} `yaml:"deploy"`
 }
 
@@ -121,9 +121,9 @@ type detectedService struct {
 
 // importResult holds the full result of an import analysis.
 type importResult struct {
-	Detected    []detectedService `json:"detected_services"`
-	Unknown     []unknownService  `json:"unknown_services"`
-	SuggestedCfg suggestedConfig  `json:"suggested_config"`
+	Detected     []detectedService `json:"detected_services"`
+	Unknown      []unknownService  `json:"unknown_services"`
+	SuggestedCfg suggestedConfig   `json:"suggested_config"`
 }
 
 // unknownService represents a compose service that could not be matched.
@@ -231,7 +231,7 @@ var knownPatterns = []servicePattern{
 
 func runImport(_ *cobra.Command, _ []string) error {
 	// Read the compose file
-	data, err := os.ReadFile(importFile)
+	data, err := os.ReadFile(importFile) //nolint:gosec // G304 - user-specified file path is intentional
 	if err != nil {
 		return fmt.Errorf("failed to read %s: %w", importFile, err)
 	}
@@ -388,8 +388,8 @@ func analyzeCompose(compose composeFile) importResult {
 	}
 
 	return importResult{
-		Detected:    detected,
-		Unknown:     unknown,
+		Detected:     detected,
+		Unknown:      unknown,
 		SuggestedCfg: suggested,
 	}
 }

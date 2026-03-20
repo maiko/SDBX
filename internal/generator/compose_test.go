@@ -524,7 +524,7 @@ func TestCustomLabelsRendered(t *testing.T) {
 			Subdomain: "myservice",
 			Traefik: registry.TraefikConfig{
 				CustomLabels: map[string]string{
-					"traefik.http.routers.myservice.tls.certresolver": "letsencrypt",
+					"traefik.http.routers.myservice.tls.certresolver":            "letsencrypt",
 					"traefik.http.services.myservice.loadbalancer.sticky.cookie": "true",
 				},
 			},

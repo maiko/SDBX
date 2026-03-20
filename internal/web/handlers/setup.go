@@ -57,7 +57,7 @@ type WizardSession struct {
 }
 
 // NewSetupHandler creates a new setup handler and starts a background session cleanup goroutine.
-// The cleanup goroutine stops when the provided context is cancelled.
+// The cleanup goroutine stops when the provided context is canceled.
 func NewSetupHandler(ctx context.Context, reg *registry.Registry, projectDir string, tmpl *template.Template) *SetupHandler {
 	h := &SetupHandler{
 		registry:   reg,

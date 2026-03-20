@@ -170,7 +170,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 			}
 			if errors.Is(err, huh.ErrUserAborted) {
 				fmt.Println()
-				fmt.Println(tui.MutedStyle.Render("Setup cancelled. Run 'sdbx init' to try again."))
+				fmt.Println(tui.MutedStyle.Render("Setup canceled. Run 'sdbx init' to try again."))
 				return nil
 			}
 			if err != nil {
@@ -697,7 +697,7 @@ func runWizard(cfg *config.Config, reg *registry.Registry) error {
 		return errStartOver
 	case "cancel":
 		fmt.Println()
-		fmt.Println(tui.MutedStyle.Render("Setup cancelled. Run 'sdbx init' to try again."))
+		fmt.Println(tui.MutedStyle.Render("Setup canceled. Run 'sdbx init' to try again."))
 		return nil
 	}
 

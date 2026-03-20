@@ -40,9 +40,15 @@ func runRegenerate(_ *cobra.Command, _ []string) error {
 	cfg, err := config.Load()
 	if err != nil {
 		if os.IsNotExist(err) {
-			return fmt.Errorf("no .sdbx.yaml found in current directory\n\nHint: Run 'sdbx init' first to create a project, then use 'sdbx regenerate' to refresh generated files")
+			return fmt.Errorf(
+				"no .sdbx.yaml found in current directory\n\n" +
+					"Hint: Run 'sdbx init' first to create a project",
+			)
 		}
-		return fmt.Errorf("failed to load configuration: %w\n\nHint: Check .sdbx.yaml for syntax errors, or run 'sdbx doctor' for diagnostics", err)
+		return fmt.Errorf(
+			"failed to load configuration: %w\n\nHint: Check .sdbx.yaml for syntax errors",
+			err,
+		)
 	}
 
 	// Validate configuration
