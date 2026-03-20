@@ -4,7 +4,7 @@
 
 ### What is SDBX?
 
-SDBX (Seedbox in a Box) is a complete, production-ready CLI tool for deploying and managing a seedbox stack. It ships with **7 core services** embedded in the binary and **27 optional addons** (34 total) — including Plex, Sonarr, Radarr, qBittorrent, and more — with authentication, VPN enforcement, and a web dashboard, all configured automatically. Service definitions use `apiVersion: sdbx.one/v1`.
+SDBX (Seedbox in a Box) is a complete, production-ready CLI tool for deploying and managing a seedbox stack. It ships with **8 core services** embedded in the binary and **27 optional addons** (35 total) — including Plex, Sonarr, Radarr, qBittorrent, and more — with authentication, VPN enforcement, and a web dashboard, all configured automatically. Service definitions use `apiVersion: sdbx.one/v1`.
 
 ### Who is SDBX for?
 
@@ -204,7 +204,7 @@ Currently, SDBX manages its own Plex instance. To migrate:
 
 ```bash
 # Create backup
-sdbx backup run
+sdbx backup create
 
 # List backups
 sdbx backup list
@@ -527,7 +527,7 @@ sdbx down && sdbx up
 
 1. **On old server**:
    ```bash
-   sdbx backup run
+   sdbx backup create
    ```
 
 2. **Transfer backup** to new server

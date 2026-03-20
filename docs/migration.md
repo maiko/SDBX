@@ -17,7 +17,7 @@ Before upgrading, always:
 
 1. **Backup your configuration**
    ```bash
-   sdbx backup run
+   sdbx backup create
    ```
 
 2. **Check the changelog**

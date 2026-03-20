@@ -28,7 +28,7 @@ A production-ready, **security-first** seedbox automation stack for collecting, 
 - **🔀 Flexible Routing Strategies**
   - **Subdomain**: `radarr.domain.tld`, `sonarr.domain.tld` (Clean & classic)
   - **Path-Based**: `sdbx.domain.tld/radarr`, `sdbx.domain.tld/sonarr` (Single generic certificate)
-- **📺 Multimedia Stack** — Full *arr suite (Sonarr, Radarr, Prowlarr) + Plex/Overseerr/Wizarr/Tautulli
+- **📺 Multimedia Stack** — Full *arr suite (Sonarr, Radarr, Prowlarr) + Plex/Jellyfin/Overseerr/Wizarr/Tautulli
 - **📊 Web Dashboard** — Built-in SDBX Web UI with live service status, management, and monitoring
 - **🔄 Smart Updates** — Managed via Watchtower with health checks and rollbacks
 - **🛠️ Built-in Diagnostics** — Integrated `doctor` command to keep your stack healthy
@@ -225,7 +225,7 @@ Dive deeper into the SDBX ecosystem:
 
 | Command | Description |
 |---------|-------------|
-| `sdbx lock` | Generate/update lock file |
+| `sdbx lock generate` | Generate/update lock file |
 | `sdbx lock verify` | Verify lock file integrity |
 | `sdbx lock diff` | Show differences from lock |
 | `sdbx lock update [service]` | Update specific service in lock |
@@ -235,9 +235,11 @@ Dive deeper into the SDBX ecosystem:
 | Command | Description |
 |---------|-------------|
 | `sdbx update` | Update service Docker images |
-| `sdbx backup run` | Create a backup of configuration |
+| `sdbx backup create` | Create a backup of configuration |
 | `sdbx backup list` | List available backups |
 | `sdbx backup restore <file>` | Restore from backup |
+| `sdbx import` | Import from existing Docker Compose |
+| `sdbx regenerate` | Regenerate compose.yaml from config (alias: `regen`) |
 | `sdbx open [service]` | Open service URL in browser |
 
 ## 🔧 Configuration

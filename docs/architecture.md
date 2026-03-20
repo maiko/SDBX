@@ -4,7 +4,7 @@ Understanding how SDBX components communicate is key to managing and customizing
 
 ## 🧱 The Core Components
 
-SDBX ships with **7 core services** embedded in the binary and **27 optional addons** available from the official Git source — **34 services total**.
+SDBX ships with **8 core services** embedded in the binary and **27 optional addons** available from the official Git source — **35 services total**.
 
 Service definitions use `apiVersion: sdbx.one/v1` and are defined in YAML files following a schema similar to Kubernetes/Helm.
 

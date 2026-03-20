@@ -1,6 +1,6 @@
 # Addons 🧩
 
-SDBX is modular. The core binary embeds **7 core services** (Traefik, Authelia, Plex, qBittorrent, Gluetun, Cloudflared, SDBX Web UI). On top of that, **27 optional addons** are available from the official service repository — **34 services total**.
+SDBX is modular. The core binary embeds **8 core services** (Traefik, Authelia, Plex, Jellyfin, qBittorrent, Gluetun, Cloudflared, SDBX Web UI). On top of that, **27 optional addons** are available from the official service repository — **35 services total**.
 
 You can enable additional features and services using the `sdbx addon` command.
 

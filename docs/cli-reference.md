@@ -134,7 +134,7 @@ Updates sources to fetch latest service definitions. Updates all if no name spec
 
 ## 🔒 Lock File
 
-### `sdbx lock`
+### `sdbx lock generate`
 Generates or updates the `.sdbx.lock` file to pin service versions.
 
 ### `sdbx lock verify`
@@ -152,11 +152,17 @@ Updates all Docker images to their latest versions.
 - **Flags**:
   - `--safe`: (Recommended) Updates services one by one and runs health checks before proceeding to the next.
 
-### `sdbx backup run`
+### `sdbx backup create`
 Creates a timestamped backup of your configuration and database volumes.
 
 ### `sdbx backup restore`
 Lists available backups and allows you to restore to a previous state.
+
+### `sdbx import`
+Imports services from an existing Docker Compose file into SDBX configuration.
+
+### `sdbx regenerate`
+Regenerates `compose.yaml` from the current `.sdbx.yaml` configuration. Useful after editing config or enabling/disabling addons. Alias: `regen`.
 
 ### `sdbx version`
 Prints the current version of the `sdbx` CLI.

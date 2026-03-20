@@ -651,10 +651,10 @@ Prevent scans during peak viewing:
 4. **Set up backups** (also available via the web UI Backup page):
    ```bash
    # Create regular backups
-   sdbx backup run
+   sdbx backup create
 
    # Consider automating with cron
-   0 2 * * 0 /usr/local/bin/sdbx backup run
+   0 2 * * 0 /usr/local/bin/sdbx backup create
    ```
 
 5. **Monitor regularly**:

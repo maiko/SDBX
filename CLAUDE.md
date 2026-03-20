@@ -83,7 +83,7 @@ internal/
     cache.go           # Source caching
     lock.go            # Lock file management
     services/          # Embedded service definitions (YAML)
-      core/            # Core services (7): traefik, authelia, plex, qbittorrent, gluetun, cloudflared, sdbx-webui
+      core/            # Core services (8): traefik, authelia, plex, jellyfin, qbittorrent, gluetun, cloudflared, sdbx-webui
                        # NOTE: All addons (27) are in Git source only, not embedded
   tui/                 # Terminal UI styles and components
     styles.go          # Lipgloss styles, icons, colors, render helpers
@@ -130,7 +130,7 @@ internal/
 **1. Registry-Based Service Definitions**
 - Services are defined in YAML files with a schema similar to Kubernetes/Helm
 - Each service definition includes: metadata, container spec, routing, integrations, conditions
-- **Embedded source** bundles 7 core services into the binary (essential infrastructure + web UI)
+- **Embedded source** bundles 8 core services into the binary (essential infrastructure + web UI)
 - **Git source** (https://github.com/maiko/SDBX-Services) contains all 27 addons
 - Multiple Git sources can be added like Homebrew taps
 - Lock files (`.sdbx.lock`) pin versions for reproducibility
@@ -165,7 +165,7 @@ conditions:
 
 **2. Source Management**
 - Sources are Git repositories or local directories containing service definitions
-- **Embedded source** (priority -1) contains 7 core services, available offline as fallback
+- **Embedded source** (priority -1) contains 8 core services, available offline as fallback
 - **Official Git source** (priority 0) contains all 27 addons - auto-added on first run
 - **Local source** (~/.config/sdbx/services, priority 100) can override anything
 - Git sources can be added with `sdbx source add <name> <url>`
@@ -173,7 +173,7 @@ conditions:
 - Source manifest file is `sources.yaml` (Kind: `SourceRepository`)
 - Source config stored in `~/.config/sdbx/sources.yaml`
 - The CLI enforces `minCliVersion` from source metadata
-- **Official services repository**: https://github.com/maiko/SDBX-Services (7 core + 27 addons)
+- **Official services repository**: https://github.com/maiko/SDBX-Services (8 core + 27 addons)
 
 **3. Generator Pipeline**
 - `init` command collects user preferences via TUI wizard
@@ -298,7 +298,7 @@ sdbx addon disable <name>           # Disable an addon
 
 ### Lock File Management
 ```bash
-sdbx lock                           # Generate/update lock file
+sdbx lock generate                  # Generate/update lock file
 sdbx lock verify                    # Verify lock file integrity
 sdbx lock diff                      # Show differences from lock
 sdbx lock update [service...]       # Update services in lock
@@ -332,13 +332,19 @@ The init wizard collects provider-specific credentials and generates the appropr
 
 ### Backup Management
 ```bash
-sdbx backup                         # Create timestamped backup
+sdbx backup create                  # Create timestamped backup
 sdbx backup list                    # List all backups with metadata
 sdbx backup restore <name>          # Restore from backup
 sdbx backup delete <name>           # Delete backup
 ```
 
 Backups are stored in `./backups/` as tar.gz archives containing `.sdbx.yaml`, `.sdbx.lock`, `compose.yaml`, `secrets/`, and `configs/`.
+
+### Import & Regenerate
+```bash
+sdbx import                         # Import from existing Docker Compose
+sdbx regenerate                     # Regenerate compose.yaml from config (alias: regen)
+```
 
 ## Testing Notes
 
@@ -382,6 +388,9 @@ spec:
   container:
     name_template: string # Container name template
     restart: string       # Restart policy
+    shm_size: string      # Shared memory size (e.g., "2gb")
+    sysctls: {}           # Kernel parameters
+    gpu_enabled: bool     # Enable GPU passthrough
   environment:
     static: []           # Always-applied env vars
     conditional: []      # Condition-based env vars
@@ -397,9 +406,13 @@ routing:
   port: int              # Internal port
   subdomain: string      # For subdomain routing
   path: string           # For path routing
+  customLabels: []       # Additional Traefik labels (now rendered)
   auth:
     required: bool       # Whether auth is required
     bypass: bool         # Bypass auth for this service
+  tls:
+    challenge_type: string # ACME challenge type (e.g., "dns", "http")
+    dns_provider: string   # DNS provider for DNS-01 challenge
 conditions:
   always: bool           # Core service (always enabled)
   requireAddon: bool     # Addon (requires explicit enable)
@@ -420,10 +433,15 @@ integrations:
 - Register in `RunAll()` slice
 - Return true + success message or false + error description
 
-**Addon Preset Profiles (Planned)**
+**Addon Preset Profiles**
 Three preset profiles for the init wizard's addon selection step:
-- **Minimal**: No addons enabled. Core services only (Traefik, Authelia, Plex, qBittorrent, Gluetun).
+- **Minimal**: No addons enabled. Core services only (Traefik, Authelia, Plex/Jellyfin, qBittorrent, Gluetun).
 - **Standard** (default): Sonarr, Radarr, Prowlarr, Overseerr. The recommended starting point.
 - **Full**: All media addons enabled: Sonarr, Radarr, Prowlarr, Lidarr, Readarr, Bazarr, Overseerr, Wizarr, Tautulli, Unpackerr, Notifiarr, Flaresolverr.
 Users can always customize after init with `sdbx addon enable/disable`.
-Implementation: Add a preset selection step to the init wizard (both CLI and web UI) that pre-populates the addons list in config.
+The init wizard (both CLI and web UI) includes a preset selection step that pre-populates the addons list in config.
+
+**Media Server Selection**
+- The init wizard includes a media server selection step (Plex, Jellyfin, or both)
+- Jellyfin is a core service controlled by `jellyfin_enabled` config key
+- Plex remains enabled by default; Jellyfin is opt-in during init

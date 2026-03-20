@@ -15,7 +15,7 @@ SDBX is designed to be a **"set it and forget it"** solution for managing your m
 - 🛡️ **SSO Security** (Authelia)
 - 📊 **Web Dashboard** (SDBX Web UI)
 
-SDBX ships with **7 core services** embedded in the binary and **27 optional addons** available via the official service repository — **34 services total**.
+SDBX ships with **8 core services** embedded in the binary and **27 optional addons** available via the official service repository — **35 services total**.
 
 ---
 
