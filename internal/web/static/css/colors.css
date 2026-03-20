@@ -11,6 +11,10 @@
     --color-white: #FFFFFF;       /* White - Primary text, backgrounds */
     --color-black: #000000;       /* Black - Backgrounds, contrast */
 
+    /* Surface and shadow */
+    --color-surface: #FFFFFF;     /* Card/panel backgrounds */
+    --shadow-color: rgba(0, 0, 0, 0.1); /* Box shadow base color */
+
     /* Category-specific colors (for service organization) */
     --color-media: #E879F9;       /* Fuchsia - Media services */
     --color-downloads: #38BDF8;   /* Sky - Download services */
@@ -33,6 +37,7 @@
     /* Text colors */
     --text-primary: #1E293B;
     --text-secondary: #64748B;
+    --text-tertiary: #94A3B8;
     --text-muted: var(--color-muted);
     --text-inverse: var(--color-white);
 
@@ -51,8 +56,11 @@
     --bg-darker: #020617;
     --bg-light: #1E293B;
     --bg-lighter: #334155;
+    --color-surface: #1E293B;
+    --shadow-color: rgba(0, 0, 0, 0.3);
     --text-primary: #F1F5F9;
     --text-secondary: #CBD5E1;
+    --text-tertiary: #64748B;
     --border-default: #334155;
     --border-muted: #475569;
     --text-inverse: #1E293B;
@@ -65,8 +73,11 @@
         --bg-darker: #020617;
         --bg-light: #1E293B;
         --bg-lighter: #334155;
+        --color-surface: #1E293B;
+        --shadow-color: rgba(0, 0, 0, 0.3);
         --text-primary: #F1F5F9;
         --text-secondary: #CBD5E1;
+        --text-tertiary: #64748B;
         --border-default: #334155;
         --border-muted: #475569;
         --text-inverse: #1E293B;

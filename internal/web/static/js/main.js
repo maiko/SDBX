@@ -77,3 +77,22 @@ function toggleTheme() {
     document.documentElement.setAttribute('data-theme', next);
     localStorage.setItem('sdbx-theme', next);
 }
+
+// --- Collapsible Sidebar ---
+
+function toggleSidebarCollapse() {
+    var sidebar = document.getElementById('sidebar');
+    if (!sidebar) return;
+    sidebar.classList.toggle('collapsed');
+    var isCollapsed = sidebar.classList.contains('collapsed');
+    localStorage.setItem('sdbx-sidebar-collapsed', isCollapsed ? 'true' : 'false');
+}
+
+// Restore sidebar collapsed state on load
+document.addEventListener('DOMContentLoaded', function() {
+    var collapsed = localStorage.getItem('sdbx-sidebar-collapsed');
+    if (collapsed === 'true') {
+        var sidebar = document.getElementById('sidebar');
+        if (sidebar) sidebar.classList.add('collapsed');
+    }
+});

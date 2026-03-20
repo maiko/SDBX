@@ -122,6 +122,15 @@ func buildServiceInfoMap(compose *docker.Compose, reg *registry.Registry, ctx co
 	return serviceMap, nil
 }
 
+// CategoryGroup represents a named group of services for stable ordering in templates.
+type CategoryGroup struct {
+	Name     string
+	Services []ServiceInfo
+}
+
+// CategoryOrder defines the canonical display order for service categories.
+var CategoryOrder = []string{"media", "downloads", "management", "auth", "networking", "utility", "other"}
+
 // countRunningServices counts how many services are running.
 func countRunningServices(services map[string]ServiceInfo) int {
 	count := 0
@@ -133,15 +142,35 @@ func countRunningServices(services map[string]ServiceInfo) int {
 	return count
 }
 
-// groupByCategory groups services by their category.
-func groupByCategory(serviceMap map[string]ServiceInfo) map[string][]ServiceInfo {
-	servicesByCategory := make(map[string][]ServiceInfo)
+// groupByCategory groups services by their category in a stable order.
+func groupByCategory(serviceMap map[string]ServiceInfo) []CategoryGroup {
+	byCategory := make(map[string][]ServiceInfo)
 	for _, svc := range serviceMap {
 		category := svc.Category
 		if category == "" {
 			category = "other"
 		}
-		servicesByCategory[category] = append(servicesByCategory[category], svc)
+		byCategory[category] = append(byCategory[category], svc)
 	}
-	return servicesByCategory
+
+	var groups []CategoryGroup
+	for _, cat := range CategoryOrder {
+		if services, ok := byCategory[cat]; ok {
+			groups = append(groups, CategoryGroup{Name: cat, Services: services})
+		}
+	}
+	// Include any categories not in CategoryOrder at the end
+	for cat, services := range byCategory {
+		found := false
+		for _, known := range CategoryOrder {
+			if cat == known {
+				found = true
+				break
+			}
+		}
+		if !found {
+			groups = append(groups, CategoryGroup{Name: cat, Services: services})
+		}
+	}
+	return groups
 }

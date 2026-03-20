@@ -1,5 +1,7 @@
 {{define "title"}}SDBX - Dashboard{{end}}
 
+{{define "page-title"}}Dashboard{{end}}
+
 {{define "content"}}
 <div class="page-header">
     <h1>Dashboard</h1>
@@ -8,7 +10,7 @@
 
 {{if .QuickAccess}}
 <div style="margin-bottom: 2rem;">
-    <h2 style="font-size: 1.25rem; font-weight: 700; color: #1e293b; margin-bottom: 1rem;">Quick Access</h2>
+    <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin-bottom: 1rem;">Quick Access</h2>
     <div class="services-grid" style="grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));">
         {{range .QuickAccess}}
         <div class="service-card" style="padding: 1rem 1.25rem;">
@@ -27,25 +29,29 @@
 </div>
 {{end}}
 
-<div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
-    <div class="stat-card">
-        <div class="stat-label">Total Services</div>
-        <div class="stat-value">{{.TotalServices}}</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-label">Running</div>
-        <div class="stat-value" style="color: var(--color-success);">{{.RunningServices}}</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-label">Stopped</div>
-        <div class="stat-value" style="color: var(--color-error);">{{sub .TotalServices .RunningServices}}</div>
-    </div>
+<div id="stats-container" class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
+    {{template "stats-fragment" .}}
 </div>
 
 <div id="services-container" hx-get="/api/services-grid" hx-trigger="every 5s" hx-swap="innerHTML">
     {{template "service-grid-fragment" .}}
 </div>
 
+{{end}}
+
+{{define "stats-fragment"}}
+<div class="stat-card">
+    <div class="stat-label">Total Services</div>
+    <div class="stat-value">{{.TotalServices}}</div>
+</div>
+<div class="stat-card">
+    <div class="stat-label">Running</div>
+    <div class="stat-value" style="color: var(--color-success);">{{.RunningServices}}</div>
+</div>
+<div class="stat-card">
+    <div class="stat-label">Stopped</div>
+    <div class="stat-value" style="color: var(--color-error);">{{sub .TotalServices .RunningServices}}</div>
+</div>
 {{end}}
 
 {{define "service-card"}}
@@ -89,19 +95,22 @@
 {{end}}
 
 {{define "service-grid-fragment"}}
-{{range $category, $services := .ServicesByCategory}}
+{{range .ServicesByCategory}}
 <div class="category-section">
     <div class="category-header">
-        <span>{{$category}}</span>
-        <span class="category-badge category-{{$category}}">{{len $services}}</span>
+        <span>{{.Name}}</span>
+        <span class="category-badge category-{{.Name}}">{{len .Services}}</span>
     </div>
     <div class="services-grid">
-        {{range $services}}
+        {{range .Services}}
         {{template "service-card" .}}
         {{end}}
     </div>
 </div>
 {{end}}
+<div id="stats-container" hx-swap-oob="innerHTML:#stats-container">
+    {{template "stats-fragment" .}}
+</div>
 {{end}}
 
 {{template "base" .}}
