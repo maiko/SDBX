@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -21,6 +22,17 @@ import (
 	"github.com/maiko/sdbx/internal/registry"
 	"github.com/maiko/sdbx/internal/tui"
 )
+
+// errStartOver is a sentinel error indicating the user wants to restart the wizard.
+var errStartOver = errors.New("start over")
+
+// validateAdminPassword validates the admin password meets minimum requirements.
+func validateAdminPassword(s string) error {
+	if len(s) < 8 {
+		return fmt.Errorf("password must be at least 8 characters")
+	}
+	return nil
+}
 
 var (
 	initDomain            string
@@ -148,9 +160,21 @@ func runInit(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		// Run interactive wizard
-		if err := runWizard(cfg, reg); err != nil {
-			return err
+		// Run interactive wizard in a loop to support "start over"
+		for {
+			err := runWizard(cfg, reg)
+			if errors.Is(err, errStartOver) {
+				continue
+			}
+			if errors.Is(err, huh.ErrUserAborted) {
+				fmt.Println()
+				fmt.Println(tui.MutedStyle.Render("Setup cancelled. Run 'sdbx init' to try again."))
+				return nil
+			}
+			if err != nil {
+				return err
+			}
+			break
 		}
 	} else {
 		// Non-interactive mode - use flags
@@ -339,12 +363,7 @@ func runWizard(cfg *config.Config, reg *registry.Registry) error {
 				Placeholder("secure_password").
 				EchoMode(huh.EchoModePassword).
 				Value(&adminPassword).
-				Validate(func(s string) error {
-					if len(s) < 4 {
-						return fmt.Errorf("password must be at least 4 characters")
-					}
-					return nil
-				}),
+				Validate(validateAdminPassword),
 		).Title("Admin Configuration"),
 	)
 
@@ -468,7 +487,7 @@ func runWizard(cfg *config.Config, reg *registry.Registry) error {
 
 		// Show credentials link
 		if provider.CredDocsURL != "" {
-			fmt.Printf("\n📋 Get your credentials from: %s\n", provider.CredDocsURL)
+			fmt.Printf("\n  Get your credentials from: %s\n", provider.CredDocsURL)
 			if provider.Notes != "" {
 				fmt.Printf("   Note: %s\n\n", provider.Notes)
 			}
@@ -595,16 +614,26 @@ func runWizard(cfg *config.Config, reg *registry.Registry) error {
 	renderStep()
 	printConfigSummary(cfg)
 
-	var confirm bool
-	if err := huh.NewConfirm().
+	var confirmChoice string
+	if err := huh.NewSelect[string]().
 		Title("Generate project with these settings?").
-		Value(&confirm).
+		Options(
+			huh.NewOption("Generate project", "generate"),
+			huh.NewOption("Start over (review settings)", "restart"),
+			huh.NewOption("Cancel", "cancel"),
+		).
+		Value(&confirmChoice).
 		Run(); err != nil {
-		return fmt.Errorf("confirmation prompt failed: %w", err)
+		return err
 	}
 
-	if !confirm {
-		return fmt.Errorf("aborted by user")
+	switch confirmChoice {
+	case "restart":
+		return errStartOver
+	case "cancel":
+		fmt.Println()
+		fmt.Println(tui.MutedStyle.Render("Setup cancelled. Run 'sdbx init' to try again."))
+		return nil
 	}
 
 	return nil
@@ -765,7 +794,7 @@ func collectVPNCredentials(cfg *config.Config, provider config.VPNProvider) erro
 		return collectWireguardCredentials(cfg, provider)
 	case config.VPNAuthConfig:
 		// Custom config - just inform user
-		fmt.Println("\n📝 Custom VPN configuration:")
+		fmt.Println("\n  Custom VPN configuration:")
 		fmt.Println("   Place your .ovpn file in configs/gluetun/")
 		fmt.Println("   Edit configs/gluetun/gluetun.env with your settings")
 		return nil

@@ -23,11 +23,16 @@ Lock files ensure reproducible deployments by recording:
 - Container image digests
 
 Examples:
-  sdbx lock                    # Generate/update lock file
+  sdbx lock generate           # Generate/update lock file
   sdbx lock verify             # Verify lock file integrity
   sdbx lock diff               # Show differences from lock
   sdbx lock update [service]   # Update specific service in lock`,
-	RunE: runLockGenerate,
+}
+
+var lockGenerateCmd = &cobra.Command{
+	Use:   "generate",
+	Short: "Generate or update lock file",
+	RunE:  runLockGenerate,
 }
 
 var lockVerifyCmd = &cobra.Command{
@@ -62,6 +67,7 @@ Examples:
 
 func init() {
 	rootCmd.AddCommand(lockCmd)
+	lockCmd.AddCommand(lockGenerateCmd)
 	lockCmd.AddCommand(lockVerifyCmd)
 	lockCmd.AddCommand(lockDiffCmd)
 	lockCmd.AddCommand(lockUpdateCmd)
@@ -127,10 +133,10 @@ func runLockVerify(_ *cobra.Command, _ []string) error {
 		if os.IsNotExist(err) {
 			fmt.Println(tui.WarningStyle.Render("No lock file found"))
 			fmt.Println()
-			fmt.Printf("Run '%s' to generate one\n", tui.CommandStyle.Render("sdbx lock"))
+			fmt.Printf("Run '%s' to generate one\n", tui.CommandStyle.Render("sdbx lock generate"))
 			return nil
 		}
-		return fmt.Errorf("failed to load lock file: %w", err)
+		return fmt.Errorf("failed to load lock file: %w\n\n  Try: sdbx lock generate", err)
 	}
 
 	// Generate current lock file
@@ -168,7 +174,7 @@ func runLockVerify(_ *cobra.Command, _ []string) error {
 		fmt.Printf("  %s: %s\n", tui.InfoStyle.Render(diff.Type), diff.Description)
 	}
 	fmt.Println()
-	fmt.Printf("Run '%s' to update the lock file\n", tui.CommandStyle.Render("sdbx lock"))
+	fmt.Printf("Run '%s' to update the lock file\n", tui.CommandStyle.Render("sdbx lock generate"))
 
 	return fmt.Errorf("lock file has %d difference(s)", len(diffs))
 }

@@ -49,7 +49,7 @@ func runStatus(_ *cobra.Command, args []string) error {
 	// Get service status
 	services, err := compose.PS(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get service status: %w", err)
+		return fmt.Errorf("failed to get service status: %w\n\n  Try: sdbx doctor", err)
 	}
 
 	// Get registry for service info

@@ -18,8 +18,11 @@ var downCmd = &cobra.Command{
 	RunE:  runDown,
 }
 
+var downDryRun bool
+
 func init() {
 	rootCmd.AddCommand(downCmd)
+	downCmd.Flags().BoolVar(&downDryRun, "dry-run", false, "Show what would be done without stopping services")
 }
 
 func runDown(_ *cobra.Command, args []string) error {
@@ -27,6 +30,17 @@ func runDown(_ *cobra.Command, args []string) error {
 	projectDir, err := config.ProjectDir()
 	if err != nil {
 		return err
+	}
+
+	// Dry-run: show what would happen
+	if downDryRun {
+		fmt.Println(tui.TitleStyle.Render("Dry Run: sdbx down"))
+		fmt.Println()
+		fmt.Printf("  %s Stop all services via docker compose down\n", tui.IconArrow)
+		fmt.Printf("  %s Project directory: %s\n", tui.IconArrow, projectDir)
+		fmt.Println()
+		fmt.Println(tui.MutedStyle.Render("No changes made (dry run)."))
+		return nil
 	}
 
 	compose := docker.NewCompose(projectDir)

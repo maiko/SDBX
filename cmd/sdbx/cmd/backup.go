@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
@@ -30,11 +29,16 @@ Backups DO NOT include:
   - Docker volumes/data
 
 Examples:
-  sdbx backup                  # Create backup
+  sdbx backup create           # Create backup
   sdbx backup list             # List all backups
   sdbx backup restore <name>   # Restore from backup
   sdbx backup delete <name>    # Delete backup`,
-	RunE: runBackupCreate,
+}
+
+var backupCreateCmd = &cobra.Command{
+	Use:   "create",
+	Short: "Create a new backup",
+	RunE:  runBackupCreate,
 }
 
 var backupListCmd = &cobra.Command{
@@ -64,12 +68,13 @@ var (
 
 func init() {
 	rootCmd.AddCommand(backupCmd)
+	backupCmd.AddCommand(backupCreateCmd)
 	backupCmd.AddCommand(backupListCmd)
 	backupCmd.AddCommand(backupRestoreCmd)
 	backupCmd.AddCommand(backupDeleteCmd)
 
 	// Flags
-	backupCmd.Flags().StringVarP(&backupOutput, "output", "o", "", "Custom backup output directory")
+	backupCreateCmd.Flags().StringVarP(&backupOutput, "output", "o", "", "Custom backup output directory")
 }
 
 func runBackupCreate(_ *cobra.Command, _ []string) error {
@@ -168,25 +173,15 @@ func runBackupList(_ *cobra.Command, _ []string) error {
 	fmt.Println(tui.TitleStyle.Render("Available Backups"))
 	fmt.Println()
 
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-	headers := tui.TableHeaderStyle.Render("NAME") + "\t" +
-		tui.TableHeaderStyle.Render("DATE") + "\t" +
-		tui.TableHeaderStyle.Render("SIZE") + "\t" +
-		tui.TableHeaderStyle.Render("HOSTNAME")
-	fmt.Fprintln(w, headers)
+	table := tui.NewTable("Name", "Date", "Size", "Hostname")
 
 	for _, b := range backups {
 		size, _ := b.GetSize()
 		age := backup.FormatAge(b.Metadata.Timestamp)
 
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
-			b.Name,
-			age,
-			backup.FormatBytes(size),
-			b.Metadata.Hostname,
-		)
+		table.AddRow(b.Name, age, backup.FormatBytes(size), b.Metadata.Hostname)
 	}
-	w.Flush()
+	fmt.Println(table.Render())
 
 	return nil
 }
@@ -219,7 +214,7 @@ func runBackupRestore(_ *cobra.Command, args []string) error {
 
 	// Restore backup
 	if err := manager.Restore(ctx, backupName); err != nil {
-		return fmt.Errorf("failed to restore backup: %w", err)
+		return fmt.Errorf("failed to restore backup: %w\n\n  Try: sdbx backup list", err)
 	}
 
 	// JSON output
@@ -254,7 +249,7 @@ func runBackupDelete(_ *cobra.Command, args []string) error {
 
 	// Delete backup
 	if err := manager.Delete(ctx, backupName); err != nil {
-		return fmt.Errorf("failed to delete backup: %w", err)
+		return fmt.Errorf("failed to delete backup: %w\n\n  Try: sdbx backup list", err)
 	}
 
 	// JSON output

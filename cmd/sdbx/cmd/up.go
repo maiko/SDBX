@@ -29,8 +29,11 @@ This command will:
 	RunE: runUp,
 }
 
+var upDryRun bool
+
 func init() {
 	rootCmd.AddCommand(upCmd)
+	upCmd.Flags().BoolVar(&upDryRun, "dry-run", false, "Show what would be done without starting services")
 }
 
 func runUp(_ *cobra.Command, args []string) error {
@@ -44,6 +47,22 @@ func runUp(_ *cobra.Command, args []string) error {
 	cfg, loadErr := config.Load()
 	if loadErr != nil {
 		return fmt.Errorf("failed to load config: %w\n\n  Try: sdbx init", loadErr)
+	}
+
+	// Dry-run: show what would happen
+	if upDryRun {
+		fmt.Println(tui.TitleStyle.Render("Dry Run: sdbx up"))
+		fmt.Println()
+		fmt.Printf("  %s Pull latest images\n", tui.IconArrow)
+		fmt.Printf("  %s Start all services via docker compose up -d\n", tui.IconArrow)
+		fmt.Printf("  %s Project directory: %s\n", tui.IconArrow, projectDir)
+		fmt.Printf("  %s Domain: %s\n", tui.IconArrow, cfg.Domain)
+		if cfg.VPNEnabled {
+			fmt.Printf("  %s VPN: %s (%s)\n", tui.IconArrow, cfg.VPNProvider, cfg.VPNType)
+		}
+		fmt.Println()
+		fmt.Println(tui.MutedStyle.Render("No changes made (dry run)."))
+		return nil
 	}
 
 	compose := docker.NewCompose(projectDir)
