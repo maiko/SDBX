@@ -1,0 +1,11 @@
+# Default owner for the entire repository
+* @maiko
+
+# Core packages
+/internal/generator/ @maiko
+/internal/registry/ @maiko
+/internal/web/ @maiko
+/internal/config/ @maiko
+
+# CI/CD
+/.github/ @maiko

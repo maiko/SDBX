@@ -33,6 +33,17 @@ A production-ready, **security-first** seedbox automation stack for collecting, 
 - **🔄 Smart Updates** — Managed via Watchtower with health checks and rollbacks
 - **🛠️ Built-in Diagnostics** — Integrated `doctor` command to keep your stack healthy
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/wizard-welcome.png" width="400" alt="Setup Wizard Welcome">
+  <img src="docs/screenshots/wizard-domain.png" width="400" alt="Domain Configuration">
+</p>
+<p align="center">
+  <img src="docs/screenshots/wizard-addons.png" width="400" alt="Addon Selection">
+  <img src="docs/screenshots/wizard-summary.png" width="400" alt="Configuration Summary">
+</p>
+
 ## 🏗️ Architecture
 
 ```mermaid
