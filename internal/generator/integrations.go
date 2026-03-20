@@ -396,6 +396,9 @@ func (g *IntegrationsGenerator) GenerateEnvFile(graph *registry.ResolutionGraph)
 	// TLS
 	if g.Config.Expose.Mode == config.ExposeModeDirect {
 		lines = append(lines, fmt.Sprintf("TRAEFIK_ACME_EMAIL=%s", g.Config.Expose.TLS.Email))
+		if g.Config.Expose.TLS.ChallengeType == "dns" {
+			lines = append(lines, fmt.Sprintf("TRAEFIK_ACME_DNS_PROVIDER=%s", g.Config.Expose.TLS.DNSProvider))
+		}
 		lines = append(lines, "")
 	}
 

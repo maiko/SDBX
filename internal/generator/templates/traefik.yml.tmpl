@@ -38,8 +38,17 @@ certificatesResolvers:
     acme:
       email: ${TRAEFIK_ACME_EMAIL}
       storage: /acme.json
+{{- if eq .Config.Expose.TLS.ChallengeType "dns"}}
+      dnsChallenge:
+        provider: ${TRAEFIK_ACME_DNS_PROVIDER}
+        delayBeforeCheck: 10
+        resolvers:
+          - "1.1.1.1:53"
+          - "8.8.8.8:53"
+{{- else}}
       httpChallenge:
         entryPoint: web
+{{- end}}
 {{- end}}
 
 providers:

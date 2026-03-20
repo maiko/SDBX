@@ -87,10 +87,12 @@ type ExposeConfig struct {
 
 // TLSConfig defines TLS/SSL settings for direct mode
 type TLSConfig struct {
-	Provider string `mapstructure:"provider"`  // "acme" | "custom" | "selfsigned" | "none"
-	Email    string `mapstructure:"email"`     // For ACME (Let's Encrypt)
-	CertFile string `mapstructure:"cert_file"` // For custom certificates
-	KeyFile  string `mapstructure:"key_file"`  // For custom certificates
+	Provider      string `mapstructure:"provider"`       // "acme" | "custom" | "selfsigned" | "none"
+	Email         string `mapstructure:"email"`          // For ACME (Let's Encrypt)
+	CertFile      string `mapstructure:"cert_file"`      // For custom certificates
+	KeyFile       string `mapstructure:"key_file"`       // For custom certificates
+	ChallengeType string `mapstructure:"challenge_type"` // "http" | "dns" (default: "http")
+	DNSProvider   string `mapstructure:"dns_provider"`   // For DNS challenge (e.g., "cloudflare")
 }
 
 // RoutingConfig defines how services are routed (subdomain vs path)
