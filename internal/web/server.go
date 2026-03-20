@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html/template"
 	"io/fs"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -35,7 +36,32 @@ const (
 	// Rate limiter defaults
 	rateLimitPerSecond = 10
 	rateLimitBurst     = 20
+
+	// Maximum request body size (1 MB)
+	maxBodySize = 1 << 20
 )
+
+// contextKey is a private type for context keys in this package.
+type contextKey string
+
+const devModeKey contextKey = "devMode"
+
+// IsDevMode returns true if the request context indicates development mode.
+func IsDevMode(ctx context.Context) bool {
+	v, _ := ctx.Value(devModeKey).(bool)
+	return v
+}
+
+// maxBytesMiddleware limits the request body size for POST, PUT, and PATCH methods.
+func maxBytesMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost, http.MethodPut, http.MethodPatch:
+			r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
+		}
+		next.ServeHTTP(w, r)
+	})
+}
 
 // Server represents the HTTP server
 type Server struct {
@@ -82,7 +108,7 @@ func (s *Server) Start(ctx context.Context) error {
 
 	// Setup routes
 	mux := http.NewServeMux()
-	s.setupRoutes(mux)
+	s.setupRoutes(mux, ctx)
 
 	// Create HTTP server
 	addr := fmt.Sprintf("%s:%d", s.config.Host, s.config.Port)
@@ -257,7 +283,7 @@ func (s *Server) initializeDependencies() error {
 }
 
 // setupRoutes configures HTTP routes
-func (s *Server) setupRoutes(mux *http.ServeMux) {
+func (s *Server) setupRoutes(mux *http.ServeMux, ctx context.Context) {
 	// Serve static files
 	staticFS, _ := fs.Sub(staticFS, "static")
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticFS))))
@@ -267,7 +293,7 @@ func (s *Server) setupRoutes(mux *http.ServeMux) {
 
 	if !s.initialized {
 		// Pre-init routes: Setup wizard
-		setupHandler := handlers.NewSetupHandler(s.registry, s.config.ProjectDir, s.templates)
+		setupHandler := handlers.NewSetupHandler(ctx, s.registry, s.config.ProjectDir, s.templates)
 		mux.HandleFunc("/", setupHandler.HandleWelcome)
 		mux.HandleFunc("/setup/domain", setupHandler.HandleDomain)
 		mux.HandleFunc("/setup/cloudflare", setupHandler.HandleCloudflareTokenForm)
@@ -362,6 +388,12 @@ func (s *Server) applyMiddleware(handler http.Handler) http.Handler {
 	// Security headers (CSP, X-Frame-Options, etc.)
 	handler = middleware.SecurityHeaders(handler)
 
+	// Dev mode context injection (initialized but not running in Docker)
+	if s.initialized && !s.dockerMode {
+		log.Printf("WARNING: Running in development mode without Authelia. Use Docker service in production.")
+		handler = devModeMiddleware(handler)
+	}
+
 	// Auth middleware (based on phase)
 	authMiddleware := middleware.NewAuth(s.initialized, s.dockerMode, s.setupToken)
 	handler = authMiddleware.Middleware(handler)
@@ -370,12 +402,23 @@ func (s *Server) applyMiddleware(handler http.Handler) http.Handler {
 	csrfMiddleware := middleware.NewCSRF()
 	handler = csrfMiddleware.Middleware(handler)
 
+	// Request body size limit middleware
+	handler = maxBytesMiddleware(handler)
+
 	// Rate limiting middleware (innermost, applied first)
 	// Allow 10 requests/second with burst of 20 per IP
 	rateLimiter := middleware.NewRateLimiter(rateLimitPerSecond, rateLimitBurst)
 	handler = rateLimiter.Middleware(handler)
 
 	return handler
+}
+
+// devModeMiddleware injects devMode=true into the request context.
+func devModeMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := context.WithValue(r.Context(), devModeKey, true)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
 
 // handleHealth handles health check requests

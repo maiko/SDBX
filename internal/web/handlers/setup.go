@@ -1,14 +1,17 @@
 package handlers
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"golang.org/x/crypto/argon2"
 
@@ -22,6 +25,11 @@ const (
 	sessionIDBytes = 16
 	// wizardSessionMaxAge is the cookie lifetime for wizard sessions (30 minutes).
 	wizardSessionMaxAge = 1800
+
+	// sessionTTL is the maximum lifetime of a wizard session before cleanup.
+	sessionTTL = 30 * time.Minute
+	// sessionCleanupInterval is how often the cleanup goroutine runs.
+	sessionCleanupInterval = 5 * time.Minute
 
 	// Argon2 password hashing parameters
 	argon2Time    = 3
@@ -43,17 +51,44 @@ type SetupHandler struct {
 // WizardSession holds the state of a setup wizard session
 type WizardSession struct {
 	Config                *config.Config
-	Password              string // Temporary storage for password (cleared after hashing)
-	CloudflareTunnelToken string // Temporary storage for Cloudflare token
+	Password              string    // Temporary storage for password (cleared after hashing)
+	CloudflareTunnelToken string    // Temporary storage for Cloudflare token
+	CreatedAt             time.Time // When the session was created
 }
 
-// NewSetupHandler creates a new setup handler
-func NewSetupHandler(reg *registry.Registry, projectDir string, tmpl *template.Template) *SetupHandler {
-	return &SetupHandler{
+// NewSetupHandler creates a new setup handler and starts a background session cleanup goroutine.
+// The cleanup goroutine stops when the provided context is cancelled.
+func NewSetupHandler(ctx context.Context, reg *registry.Registry, projectDir string, tmpl *template.Template) *SetupHandler {
+	h := &SetupHandler{
 		registry:   reg,
 		projectDir: projectDir,
 		templates:  tmpl,
 		sessions:   make(map[string]*WizardSession),
+	}
+	go h.cleanupExpiredSessions(ctx)
+	return h
+}
+
+// cleanupExpiredSessions periodically removes sessions older than sessionTTL.
+func (h *SetupHandler) cleanupExpiredSessions(ctx context.Context) {
+	ticker := time.NewTicker(sessionCleanupInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			h.mu.Lock()
+			now := time.Now()
+			for id, session := range h.sessions {
+				if now.Sub(session.CreatedAt) > sessionTTL {
+					delete(h.sessions, id)
+					log.Printf("Cleaned up expired wizard session %s (age: %s)", id, now.Sub(session.CreatedAt).Round(time.Second))
+				}
+			}
+			h.mu.Unlock()
+		}
 	}
 }
 
@@ -79,7 +114,8 @@ func (h *SetupHandler) getSession(r *http.Request) (*WizardSession, string, erro
 		return nil, "", err
 	}
 	session := &WizardSession{
-		Config: config.DefaultConfig(),
+		Config:    config.DefaultConfig(),
+		CreatedAt: time.Now(),
 	}
 	h.sessions[sessionID] = session
 

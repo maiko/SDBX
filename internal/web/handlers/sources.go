@@ -5,10 +5,20 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"regexp"
 	"time"
 
 	"github.com/maiko/sdbx/internal/registry"
 )
+
+// validSourceName matches valid source names: starts with lowercase alphanumeric,
+// followed by up to 63 lowercase alphanumeric, hyphen, or underscore characters.
+var validSourceName = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,63}$`)
+
+// validateSourceName checks whether a source name is valid.
+func validateSourceName(name string) bool {
+	return validSourceName.MatchString(name)
+}
 
 const (
 	sourceUpdateTimeout    = 60 * time.Second
@@ -110,6 +120,14 @@ func (h *SourcesHandler) HandleAddSource(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	if !validateSourceName(name) {
+		h.respondJSON(w, http.StatusBadRequest, SourceResponse{
+			Success: false,
+			Message: "Invalid source name: must match ^[a-z0-9][a-z0-9_-]{0,63}$",
+		})
+		return
+	}
+
 	if branch == "" {
 		branch = "main"
 	}
@@ -162,6 +180,13 @@ func (h *SourcesHandler) HandleRemoveSource(w http.ResponseWriter, r *http.Reque
 		})
 		return
 	}
+	if !validateSourceName(sourceName) {
+		h.respondJSON(w, http.StatusBadRequest, SourceResponse{
+			Success: false,
+			Message: "Invalid source name",
+		})
+		return
+	}
 
 	// Prevent removing the embedded source
 	if sourceName == "embedded" {
@@ -199,6 +224,13 @@ func (h *SourcesHandler) HandleUpdateSource(w http.ResponseWriter, r *http.Reque
 		h.respondJSON(w, http.StatusBadRequest, SourceResponse{
 			Success: false,
 			Message: "Source name is required",
+		})
+		return
+	}
+	if !validateSourceName(sourceName) {
+		h.respondJSON(w, http.StatusBadRequest, SourceResponse{
+			Success: false,
+			Message: "Invalid source name",
 		})
 		return
 	}

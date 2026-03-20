@@ -6,11 +6,21 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"regexp"
 	"time"
 
 	"github.com/maiko/sdbx/internal/docker"
 	"github.com/maiko/sdbx/internal/registry"
 )
+
+// validServiceName matches valid service names: starts with lowercase alphanumeric,
+// followed by up to 63 lowercase alphanumeric, hyphen, or underscore characters.
+var validServiceName = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,63}$`)
+
+// validateServiceName checks whether a service name is valid.
+func validateServiceName(name string) bool {
+	return validServiceName.MatchString(name)
+}
 
 const (
 	serviceQueryTimeout   = 10 * time.Second
@@ -90,6 +100,13 @@ func (h *ServicesHandler) HandleStartService(w http.ResponseWriter, r *http.Requ
 		})
 		return
 	}
+	if !validateServiceName(serviceName) {
+		h.respondJSON(w, http.StatusBadRequest, ServiceResponse{
+			Success: false,
+			Message: "Invalid service name",
+		})
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(r.Context(), serviceStartTimeout)
 	defer cancel()
@@ -122,6 +139,13 @@ func (h *ServicesHandler) HandleStopService(w http.ResponseWriter, r *http.Reque
 		})
 		return
 	}
+	if !validateServiceName(serviceName) {
+		h.respondJSON(w, http.StatusBadRequest, ServiceResponse{
+			Success: false,
+			Message: "Invalid service name",
+		})
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(r.Context(), serviceStopTimeout)
 	defer cancel()
@@ -151,6 +175,13 @@ func (h *ServicesHandler) HandleRestartService(w http.ResponseWriter, r *http.Re
 		h.respondJSON(w, http.StatusBadRequest, ServiceResponse{
 			Success: false,
 			Message: "Service name is required",
+		})
+		return
+	}
+	if !validateServiceName(serviceName) {
+		h.respondJSON(w, http.StatusBadRequest, ServiceResponse{
+			Success: false,
+			Message: "Invalid service name",
 		})
 		return
 	}

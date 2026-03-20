@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"html/template"
 	"io/fs"
 	"net/http"
@@ -395,6 +396,104 @@ func TestLoadTemplatesIntegration(t *testing.T) {
 	// Verify a known template exists
 	if server.templates.Lookup("layouts/base.html") == nil {
 		t.Error("layouts/base.html template should exist")
+	}
+}
+
+// TestMaxBytesMiddleware verifies request body size limiting
+func TestMaxBytesMiddleware(t *testing.T) {
+	// Handler that reads the full body
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		buf := make([]byte, 2<<20) // 2MB buffer
+		_, err := r.Body.Read(buf)
+		if err != nil && err.Error() != "EOF" {
+			http.Error(w, err.Error(), http.StatusRequestEntityTooLarge)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	})
+
+	handler := maxBytesMiddleware(inner)
+
+	t.Run("GET requests are not limited", func(t *testing.T) {
+		body := strings.NewReader(strings.Repeat("a", 2<<20)) // 2MB
+		req := httptest.NewRequest(http.MethodGet, "/test", body)
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+		if w.Code == http.StatusRequestEntityTooLarge {
+			t.Error("GET request should not be body-limited")
+		}
+	})
+
+	t.Run("Small POST succeeds", func(t *testing.T) {
+		body := strings.NewReader("small body")
+		req := httptest.NewRequest(http.MethodPost, "/test", body)
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Errorf("small POST should succeed, got status %d", w.Code)
+		}
+	})
+
+	t.Run("Oversized POST is rejected", func(t *testing.T) {
+		body := strings.NewReader(strings.Repeat("a", (1<<20)+1)) // 1MB+1 byte
+		req := httptest.NewRequest(http.MethodPost, "/test", body)
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+		if w.Code != http.StatusRequestEntityTooLarge {
+			t.Errorf("oversized POST should be rejected, got status %d", w.Code)
+		}
+	})
+
+	t.Run("Oversized PUT is rejected", func(t *testing.T) {
+		body := strings.NewReader(strings.Repeat("a", (1<<20)+1))
+		req := httptest.NewRequest(http.MethodPut, "/test", body)
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+		if w.Code != http.StatusRequestEntityTooLarge {
+			t.Errorf("oversized PUT should be rejected, got status %d", w.Code)
+		}
+	})
+}
+
+// TestIsDevMode verifies the dev mode context detection
+func TestIsDevMode(t *testing.T) {
+	t.Run("returns false for empty context", func(t *testing.T) {
+		ctx := context.Background()
+		if IsDevMode(ctx) {
+			t.Error("expected IsDevMode to be false for empty context")
+		}
+	})
+
+	t.Run("returns true when devMode is set", func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), devModeKey, true)
+		if !IsDevMode(ctx) {
+			t.Error("expected IsDevMode to be true")
+		}
+	})
+
+	t.Run("returns false when devMode is explicitly false", func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), devModeKey, false)
+		if IsDevMode(ctx) {
+			t.Error("expected IsDevMode to be false")
+		}
+	})
+}
+
+// TestDevModeMiddleware verifies that devModeMiddleware injects context
+func TestDevModeMiddleware(t *testing.T) {
+	var gotDevMode bool
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotDevMode = IsDevMode(r.Context())
+		w.WriteHeader(http.StatusOK)
+	})
+
+	handler := devModeMiddleware(inner)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if !gotDevMode {
+		t.Error("devModeMiddleware should inject devMode=true into context")
 	}
 }
 

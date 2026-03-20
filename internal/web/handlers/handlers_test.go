@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -198,7 +200,7 @@ func TestBackupHandlerConstruction(t *testing.T) {
 
 // TestSetupHandlerConstruction verifies setup handler can be created
 func TestSetupHandlerConstruction(t *testing.T) {
-	handler := NewSetupHandler(nil, "", nil)
+	handler := NewSetupHandler(context.Background(), nil, "", nil)
 
 	if handler == nil {
 		t.Error("NewSetupHandler should return non-nil handler")
@@ -207,7 +209,7 @@ func TestSetupHandlerConstruction(t *testing.T) {
 
 // TestSetupAdminRejectsShortPassword verifies password minimum length is enforced
 func TestSetupAdminRejectsShortPassword(t *testing.T) {
-	handler := NewSetupHandler(nil, t.TempDir(), nil)
+	handler := NewSetupHandler(context.Background(), nil, t.TempDir(), nil)
 
 	// Create a session first by calling getSession through requireSession
 	// We'll test the password validation directly by simulating a POST
@@ -235,7 +237,7 @@ func TestSetupAdminRejectsShortPassword(t *testing.T) {
 
 // TestSetupAdminAcceptsValidPassword verifies valid passwords are accepted
 func TestSetupAdminAcceptsValidPassword(t *testing.T) {
-	handler := NewSetupHandler(nil, t.TempDir(), nil)
+	handler := NewSetupHandler(context.Background(), nil, t.TempDir(), nil)
 
 	validPasswords := []string{"12345678", "MyP@ssw0rd!", "a-very-long-and-secure-password"}
 	for _, pw := range validPasswords {
@@ -347,5 +349,71 @@ func TestCheckWebSocketOriginInvalidURL(t *testing.T) {
 
 	if checkWebSocketOrigin(req) {
 		t.Error("malformed origin should be rejected")
+	}
+}
+
+// TestValidateServiceName verifies the service name validation regex
+func TestValidateServiceName(t *testing.T) {
+	valid := []string{
+		"radarr",
+		"sonarr",
+		"qbittorrent",
+		"sdbx-webui",
+		"my_service",
+		"a",
+		"0service",
+		"abc-def_ghi",
+	}
+	for _, name := range valid {
+		if !validateServiceName(name) {
+			t.Errorf("expected %q to be valid", name)
+		}
+	}
+
+	invalid := []string{
+		"",
+		"-starts-with-dash",
+		"_starts-with-underscore",
+		"UPPERCASE",
+		"has space",
+		"has/slash",
+		"has.dot",
+		"../traversal",
+		"; rm -rf /",
+		"a" + strings.Repeat("b", 64), // 65 chars total, exceeds 64
+	}
+	for _, name := range invalid {
+		if validateServiceName(name) {
+			t.Errorf("expected %q to be invalid", name)
+		}
+	}
+}
+
+// TestServiceStartRejectsInvalidName verifies that start endpoint rejects invalid service names
+func TestServiceStartRejectsInvalidName(t *testing.T) {
+	handler := NewServicesHandler(nil, nil, nil)
+
+	badNames := []string{"../etc/passwd", "UPPER", "has-CAPS", "-leading-dash"}
+	for _, name := range badNames {
+		req := httptest.NewRequest(http.MethodPost, "/api/services/test/start", nil)
+		req.SetPathValue("service", name)
+		w := httptest.NewRecorder()
+
+		handler.HandleStartService(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("service name %q: expected 400, got %d", name, w.Code)
+		}
+
+		var resp ServiceResponse
+		if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+			t.Fatalf("failed to decode response for %q: %v", name, err)
+		}
+		if resp.Success {
+			t.Errorf("service name %q: expected success=false", name)
+		}
+		if !strings.Contains(resp.Message, "Invalid service name") {
+			t.Errorf("service name %q: expected 'Invalid service name' message, got %q", name, resp.Message)
+		}
 	}
 }
