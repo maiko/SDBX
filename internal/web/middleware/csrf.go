@@ -11,7 +11,7 @@ const (
 	csrfCookieName   = "csrf_token"
 	csrfHeaderName   = "X-CSRF-Token"
 	csrfTokenBytes   = 32
-	csrfCookieMaxAge = 3600 // 1 hour
+	csrfCookieMaxAge = 86400 // 24 hours
 )
 
 // CSRF provides double-submit cookie CSRF protection.
@@ -68,15 +68,19 @@ func (c *CSRF) Middleware(next http.Handler) http.Handler {
 	})
 }
 
-// ensureToken sets a CSRF token cookie if one doesn't exist.
+// ensureToken sets a CSRF token cookie if one doesn't exist, or refreshes its
+// MaxAge if it does. This keeps the cookie alive as long as the user is active.
 func (c *CSRF) ensureToken(w http.ResponseWriter, r *http.Request) {
-	if _, err := r.Cookie(csrfCookieName); err == nil {
-		return // Cookie already exists
-	}
-
-	token, err := generateCSRFToken()
-	if err != nil {
-		return // Fail open for token generation (GET requests are safe)
+	token := ""
+	if cookie, err := r.Cookie(csrfCookieName); err == nil && cookie.Value != "" {
+		// Reuse existing token, just refresh the expiry
+		token = cookie.Value
+	} else {
+		var err error
+		token, err = generateCSRFToken()
+		if err != nil {
+			return // Fail open for token generation (GET requests are safe)
+		}
 	}
 
 	http.SetCookie(w, &http.Cookie{

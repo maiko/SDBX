@@ -135,6 +135,26 @@ func isHTTPS(r *http.Request) bool {
 	return r.Header.Get("X-Forwarded-Proto") == "https"
 }
 
+// privateNetworks holds parsed CIDR ranges for private/Docker network detection.
+// Parsed once at init to avoid repeated allocation on every request.
+var privateNetworks []*net.IPNet
+
+func init() {
+	cidrs := []string{
+		"10.0.0.0/8",
+		"172.16.0.0/12",
+		"192.168.0.0/16",
+		"fc00::/7", // IPv6 unique local
+	}
+	for _, cidr := range cidrs {
+		_, network, err := net.ParseCIDR(cidr)
+		if err != nil {
+			panic("invalid CIDR: " + cidr)
+		}
+		privateNetworks = append(privateNetworks, network)
+	}
+}
+
 // isPrivateIP checks whether a request originates from a private/Docker network address.
 // This is used to ensure the Remote-User header is only trusted from the reverse proxy,
 // not from direct public access.
@@ -154,29 +174,11 @@ func isPrivateIP(remoteAddr string) bool {
 		return true
 	}
 
-	// RFC 1918 and Docker default networks
-	privateRanges := []struct {
-		network *net.IPNet
-	}{
-		{mustParseCIDR("10.0.0.0/8")},
-		{mustParseCIDR("172.16.0.0/12")},
-		{mustParseCIDR("192.168.0.0/16")},
-		{mustParseCIDR("fc00::/7")}, // IPv6 unique local
-	}
-
-	for _, r := range privateRanges {
-		if r.network.Contains(ip) {
+	for _, network := range privateNetworks {
+		if network.Contains(ip) {
 			return true
 		}
 	}
 
 	return false
-}
-
-func mustParseCIDR(s string) *net.IPNet {
-	_, network, err := net.ParseCIDR(s)
-	if err != nil {
-		panic("invalid CIDR: " + s)
-	}
-	return network
 }

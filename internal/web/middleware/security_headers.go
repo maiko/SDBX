@@ -24,6 +24,11 @@ func SecurityHeaders(next http.Handler) http.Handler {
 		// Opt out of browser features not needed
 		h.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
 
+		// HSTS: instruct browsers to always use HTTPS for this domain
+		if isHTTPS(r) {
+			h.Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
+		}
+
 		next.ServeHTTP(w, r)
 	})
 }

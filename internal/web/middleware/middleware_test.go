@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"golang.org/x/time/rate"
 )
@@ -1015,6 +1016,188 @@ func TestCSRFCookieSecureFlag(t *testing.T) {
 			if !c.Secure {
 				t.Error("csrf_token should have Secure flag behind HTTPS proxy")
 			}
+		}
+	}
+}
+
+// TestSecurityHeadersHSTSOnHTTPS verifies HSTS header is set for HTTPS requests
+func TestSecurityHeadersHSTSOnHTTPS(t *testing.T) {
+	handler := SecurityHeaders(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("X-Forwarded-Proto", "https")
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	hsts := w.Header().Get("Strict-Transport-Security")
+	if hsts == "" {
+		t.Error("Strict-Transport-Security header should be set for HTTPS requests")
+	}
+	if hsts != "max-age=63072000; includeSubDomains" {
+		t.Errorf("unexpected HSTS value: %s", hsts)
+	}
+}
+
+// TestSecurityHeadersNoHSTSOnHTTP verifies HSTS header is NOT set for plain HTTP requests
+func TestSecurityHeadersNoHSTSOnHTTP(t *testing.T) {
+	handler := SecurityHeaders(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	hsts := w.Header().Get("Strict-Transport-Security")
+	if hsts != "" {
+		t.Errorf("Strict-Transport-Security should NOT be set on HTTP, got: %s", hsts)
+	}
+}
+
+// TestRateLimiterClose verifies that Close stops the cleanup goroutine
+func TestRateLimiterClose(t *testing.T) {
+	rl := NewRateLimiter(10, 20)
+	// Should not panic or block
+	rl.Close()
+}
+
+// TestRateLimiterMapSizeCap verifies that the visitor map does not grow beyond the cap
+func TestRateLimiterMapSizeCap(t *testing.T) {
+	rl := NewRateLimiter(100, 100)
+	defer rl.Close()
+
+	// Use a small cap for testing: directly fill the map to maxVisitors
+	// We test with the real maxVisitors constant by filling to capacity
+	// For speed, we test the getVisitor nil return with a controlled scenario
+	rl.mu.Lock()
+	for i := 0; i < maxVisitors; i++ {
+		ip := "10.0." + string(rune(i/256)) + "." + string(rune(i%256))
+		rl.visitors[ip] = &visitor{
+			limiter:  rate.NewLimiter(rl.rate, rl.burst),
+			lastSeen: time.Now(),
+		}
+	}
+	rl.mu.Unlock()
+
+	// A new IP should get nil
+	limiter := rl.getVisitor("99.99.99.99")
+	if limiter != nil {
+		t.Error("getVisitor should return nil when map is at capacity for a new IP")
+	}
+}
+
+// TestRateLimiterExistingVisitorWhenMapFull verifies that an existing visitor still gets a limiter when map is full
+func TestRateLimiterExistingVisitorWhenMapFull(t *testing.T) {
+	rl := NewRateLimiter(100, 100)
+	defer rl.Close()
+
+	existingIP := "1.2.3.4"
+	// Add the existing visitor
+	limiter := rl.getVisitor(existingIP)
+	if limiter == nil {
+		t.Fatal("should get a limiter for new visitor when map is not full")
+	}
+
+	// Fill the map to capacity
+	rl.mu.Lock()
+	for i := len(rl.visitors); i < maxVisitors; i++ {
+		ip := "10.0." + string(rune(i/256)) + "." + string(rune(i%256))
+		rl.visitors[ip] = &visitor{
+			limiter:  rate.NewLimiter(rl.rate, rl.burst),
+			lastSeen: time.Now(),
+		}
+	}
+	rl.mu.Unlock()
+
+	// Existing visitor should still get their limiter
+	limiter2 := rl.getVisitor(existingIP)
+	if limiter2 == nil {
+		t.Error("existing visitor should still get a limiter when map is at capacity")
+	}
+}
+
+// TestRateLimiterNilLimiterReturns429 verifies that a nil limiter from map cap returns 429
+func TestRateLimiterNilLimiterReturns429(t *testing.T) {
+	rl := NewRateLimiter(100, 100)
+	defer rl.Close()
+
+	// Fill the map to capacity
+	rl.mu.Lock()
+	for i := 0; i < maxVisitors; i++ {
+		ip := "10.0." + string(rune(i/256)) + "." + string(rune(i%256))
+		rl.visitors[ip] = &visitor{
+			limiter:  rate.NewLimiter(rl.rate, rl.burst),
+			lastSeen: time.Now(),
+		}
+	}
+	rl.mu.Unlock()
+
+	handler := rl.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/test", nil)
+	req.RemoteAddr = "99.99.99.99:12345"
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusTooManyRequests {
+		t.Errorf("expected 429 when map is at capacity for new IP, got %d", w.Code)
+	}
+}
+
+// TestCSRFCookieRefreshOnGET verifies that an existing CSRF cookie gets its MaxAge refreshed
+func TestCSRFCookieRefreshOnGET(t *testing.T) {
+	csrf := NewCSRF()
+
+	handler := csrf.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	existingToken := "existing-csrf-token-value"
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(&http.Cookie{Name: "csrf_token", Value: existingToken})
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d", w.Code)
+	}
+
+	// Should re-set the cookie with the same token value to refresh MaxAge
+	cookies := w.Result().Cookies()
+	found := false
+	for _, c := range cookies {
+		if c.Name == "csrf_token" {
+			found = true
+			if c.Value != existingToken {
+				t.Errorf("expected cookie to keep existing token %q, got %q", existingToken, c.Value)
+			}
+			if c.MaxAge != csrfCookieMaxAge {
+				t.Errorf("expected MaxAge %d, got %d", csrfCookieMaxAge, c.MaxAge)
+			}
+			break
+		}
+	}
+	if !found {
+		t.Error("csrf_token cookie should be re-set to refresh MaxAge")
+	}
+}
+
+// TestPrivateNetworksInitialized verifies that the privateNetworks slice was populated by init()
+func TestPrivateNetworksInitialized(t *testing.T) {
+	if len(privateNetworks) != 4 {
+		t.Errorf("expected 4 private networks, got %d", len(privateNetworks))
+	}
+
+	// Verify the expected CIDRs are present
+	expectedCIDRs := []string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "fc00::/7"}
+	for i, expected := range expectedCIDRs {
+		if privateNetworks[i].String() != expected {
+			t.Errorf("privateNetworks[%d] = %s, expected %s", i, privateNetworks[i].String(), expected)
 		}
 	}
 }
