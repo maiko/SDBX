@@ -1,6 +1,6 @@
 module github.com/maiko/sdbx
 
-go 1.25.5
+go 1.25.8
 
 require (
 	github.com/charmbracelet/huh v1.0.0

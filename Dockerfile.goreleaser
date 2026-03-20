@@ -1,8 +1,9 @@
 # GoReleaser Dockerfile - uses pre-built binary
 FROM alpine:3.23
 
-# Install runtime dependencies
-RUN apk --no-cache add \
+# Install runtime dependencies and apply security patches
+RUN apk --no-cache upgrade && \
+    apk --no-cache add \
     ca-certificates \
     docker-cli \
     su-exec \
