@@ -167,6 +167,7 @@ Use the **Admin Username** and **Password** you configured during `sdbx init`.
 Dive deeper into the SDBX ecosystem:
 
 ### Getting Started
+- [⚡ Quick Start: Zero to Plex in 10 Minutes](docs/quick-start-minimal.md) — Minimal setup for beginners
 - [🚀 Getting Started](docs/getting-started.md) — Comprehensive guide for new users
 - [📦 Post-Deployment Guide](docs/post-deployment.md) — Configure services after installation
 - [❓ FAQ](docs/faq.md) — Frequently asked questions

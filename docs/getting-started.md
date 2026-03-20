@@ -1,5 +1,7 @@
 # Getting Started with SDBX 🚀
 
+> **New to self-hosting?** Start with our [Quick Start: Zero to Plex in 10 Minutes](quick-start-minimal.md) guide.
+
 Welcome to **SDBX**! This guide will walk you through setting up your own professional-grade seedbox automation stack from scratch.
 
 ## 🏁 Introduction
