@@ -1,30 +1,35 @@
 {{define "pages/setup/storage.html"}}
+<div data-wizard-step="3" style="display:none;"></div>
 <h2>Storage Configuration</h2>
 <p>Configure where your media, downloads, and configs will be stored.</p>
 
-<form hx-post="/setup/storage" hx-target="body" hx-swap="outerHTML">
+<form id="storage-form" hx-post="/setup/storage" hx-target="body" hx-swap="outerHTML">
     <div class="form-group">
         <label for="media_path">Media Path *</label>
         <span class="description">Where to store movies, TV shows, music</span>
         <input type="text" id="media_path" name="media_path" value="{{.Config.MediaPath}}" placeholder="./data/media" required>
+        <span class="field-error-msg" id="media-error">Media path is required</span>
     </div>
 
     <div class="form-group">
         <label for="downloads_path">Downloads Path *</label>
         <span class="description">Where torrent client stores downloads</span>
         <input type="text" id="downloads_path" name="downloads_path" value="{{.Config.DownloadsPath}}" placeholder="./data/downloads" required>
+        <span class="field-error-msg" id="downloads-error">Downloads path is required</span>
     </div>
 
     <div class="form-group">
         <label for="config_path">Config Path *</label>
         <span class="description">Where service configs are stored</span>
         <input type="text" id="config_path" name="config_path" value="{{.Config.ConfigPath}}" placeholder="./config" required>
+        <span class="field-error-msg" id="config-error">Config path is required</span>
     </div>
 
     <div class="form-group">
         <label for="timezone">Timezone *</label>
         <span class="description">System timezone for all services</span>
         <input type="text" id="timezone" name="timezone" value="{{.Config.Timezone}}" placeholder="Europe/Paris" required>
+        <span class="field-error-msg" id="tz-error">Timezone is required</span>
     </div>
 
     <div class="wizard-actions">
@@ -32,4 +37,46 @@
         <button type="submit" class="btn btn-primary">Next →</button>
     </div>
 </form>
+
+<script>
+    (function() {
+        var fields = [
+            { input: document.getElementById('media_path'), error: document.getElementById('media-error') },
+            { input: document.getElementById('downloads_path'), error: document.getElementById('downloads-error') },
+            { input: document.getElementById('config_path'), error: document.getElementById('config-error') },
+            { input: document.getElementById('timezone'), error: document.getElementById('tz-error') }
+        ];
+
+        function validateField(f) {
+            var valid = f.input.value.trim().length > 0;
+            if (valid) {
+                f.input.classList.remove('field-error');
+                f.input.classList.add('field-valid');
+                f.error.classList.remove('visible');
+            } else {
+                f.input.classList.add('field-error');
+                f.input.classList.remove('field-valid');
+                f.error.classList.add('visible');
+            }
+            return valid;
+        }
+
+        for (var i = 0; i < fields.length; i++) {
+            (function(f) {
+                f.input.addEventListener('blur', function() { validateField(f); });
+            })(fields[i]);
+        }
+
+        document.getElementById('storage-form').addEventListener('submit', function(e) {
+            var ok = true;
+            for (var i = 0; i < fields.length; i++) {
+                if (!validateField(fields[i])) ok = false;
+            }
+            if (!ok) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        });
+    })();
+</script>
 {{end}}

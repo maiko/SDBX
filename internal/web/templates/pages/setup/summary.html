@@ -1,4 +1,5 @@
 {{define "pages/setup/summary.html"}}
+<div data-wizard-step="6" style="display:none;"></div>
 <h2>Configuration Summary</h2>
 <p>Review your configuration before generating the project.</p>
 
@@ -69,10 +70,21 @@
     {{end}}
 </div>
 
-<form hx-post="/setup/summary" hx-target="body" hx-swap="outerHTML">
+<form hx-post="/setup/complete" hx-target=".wizard-content" hx-swap="innerHTML">
     <div class="wizard-actions" style="margin-top: 2rem;">
         <a href="/setup/addons" class="btn btn-secondary">← Back</a>
-        <button type="submit" class="btn btn-primary">Generate Project →</button>
+        <button type="submit" class="btn btn-primary" id="generate-btn" onclick="showGenerating(this)">Generate Project →</button>
     </div>
 </form>
+
+<script>
+    function showGenerating(btn) {
+        btn.disabled = true;
+        btn.textContent = '';
+        var spinner = document.createElement('span');
+        spinner.className = 'btn-spinner';
+        btn.appendChild(spinner);
+        btn.appendChild(document.createTextNode('Generating...'));
+    }
+</script>
 {{end}}

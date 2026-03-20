@@ -1,12 +1,14 @@
 {{define "pages/setup/domain.html"}}
+<div data-wizard-step="1" style="display:none;"></div>
 <h2>Domain Configuration</h2>
 <p>Configure how your services will be accessed.</p>
 
-<form hx-post="/setup/domain" hx-target="body" hx-swap="outerHTML">
+<form id="domain-form" hx-post="/setup/domain" hx-target="body" hx-swap="outerHTML">
     <div class="form-group">
         <label for="domain">Base Domain *</label>
         <span class="description">Your root domain for all services (e.g., box.sdbx.one)</span>
         <input type="text" id="domain" name="domain" value="{{.Config.Domain}}" placeholder="box.sdbx.one" required>
+        <span class="field-error-msg" id="domain-error">Domain is required</span>
     </div>
 
     <div class="form-group">
@@ -52,10 +54,37 @@
 
 <script>
     function toggleBaseDomain(strategy) {
-        const baseDomainGroup = document.getElementById('base-domain-group');
+        var baseDomainGroup = document.getElementById('base-domain-group');
         baseDomainGroup.style.display = strategy === 'path' ? 'block' : 'none';
     }
-    // Initialize on load
     toggleBaseDomain(document.getElementById('routing_strategy').value);
+
+    (function() {
+        var domainInput = document.getElementById('domain');
+        var domainError = document.getElementById('domain-error');
+
+        function validateDomain() {
+            var val = domainInput.value.trim();
+            if (!val) {
+                domainInput.classList.add('field-error');
+                domainInput.classList.remove('field-valid');
+                domainError.classList.add('visible');
+                return false;
+            }
+            domainInput.classList.remove('field-error');
+            domainInput.classList.add('field-valid');
+            domainError.classList.remove('visible');
+            return true;
+        }
+
+        domainInput.addEventListener('blur', validateDomain);
+
+        document.getElementById('domain-form').addEventListener('submit', function(e) {
+            if (!validateDomain()) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        });
+    })();
 </script>
 {{end}}

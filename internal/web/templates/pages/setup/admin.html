@@ -1,23 +1,27 @@
 {{define "pages/setup/admin.html"}}
+<div data-wizard-step="2" style="display:none;"></div>
 <h2>Admin Configuration</h2>
 <p>Create your admin account for Authelia SSO authentication.</p>
 
-<form hx-post="/setup/admin" hx-target="body" hx-swap="outerHTML">
+<form id="admin-form" hx-post="/setup/admin" hx-target="body" hx-swap="outerHTML">
     <div class="form-group">
         <label for="username">Admin Username *</label>
         <span class="description">Username for accessing all services</span>
         <input type="text" id="username" name="username" value="{{.Config.AdminUser}}" placeholder="admin" required autocomplete="username">
+        <span class="field-error-msg" id="username-error">Username is required</span>
     </div>
 
     <div class="form-group">
         <label for="password">Admin Password *</label>
-        <span class="description">Password will be securely hashed with Argon2</span>
-        <input type="password" id="password" name="password" placeholder="Enter a secure password" required minlength="4" autocomplete="new-password">
+        <span class="description">Password will be securely hashed with Argon2 (minimum 8 characters)</span>
+        <input type="password" id="password" name="password" placeholder="Enter a secure password" required minlength="8" autocomplete="new-password">
+        <span class="field-error-msg" id="password-error">Password must be at least 8 characters</span>
     </div>
 
     <div class="form-group">
         <label for="confirm_password">Confirm Password *</label>
-        <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm your password" required minlength="4" autocomplete="new-password">
+        <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm your password" required minlength="8" autocomplete="new-password">
+        <span class="field-error-msg" id="confirm-error">Passwords do not match</span>
     </div>
 
     <div class="wizard-actions">
@@ -25,4 +29,63 @@
         <button type="submit" class="btn btn-primary">Next →</button>
     </div>
 </form>
+
+<script>
+    (function() {
+        var username = document.getElementById('username');
+        var password = document.getElementById('password');
+        var confirm = document.getElementById('confirm_password');
+        var usernameErr = document.getElementById('username-error');
+        var passwordErr = document.getElementById('password-error');
+        var confirmErr = document.getElementById('confirm-error');
+
+        function setFieldState(input, errorSpan, isValid) {
+            if (isValid) {
+                input.classList.remove('field-error');
+                input.classList.add('field-valid');
+                errorSpan.classList.remove('visible');
+            } else {
+                input.classList.add('field-error');
+                input.classList.remove('field-valid');
+                errorSpan.classList.add('visible');
+            }
+        }
+
+        function validateUsername() {
+            var valid = username.value.trim().length > 0;
+            setFieldState(username, usernameErr, valid);
+            return valid;
+        }
+
+        function validatePassword() {
+            var valid = password.value.length >= 8;
+            setFieldState(password, passwordErr, valid);
+            // Re-validate confirm if it has a value
+            if (confirm.value.length > 0) validateConfirm();
+            return valid;
+        }
+
+        function validateConfirm() {
+            var valid = confirm.value.length > 0 && confirm.value === password.value;
+            setFieldState(confirm, confirmErr, valid);
+            return valid;
+        }
+
+        username.addEventListener('blur', validateUsername);
+        password.addEventListener('blur', validatePassword);
+        confirm.addEventListener('blur', validateConfirm);
+        // Also validate password match on keyup for confirm field
+        confirm.addEventListener('input', function() {
+            if (confirm.value.length > 0) validateConfirm();
+        });
+
+        document.getElementById('admin-form').addEventListener('submit', function(e) {
+            var ok = validateUsername() & validatePassword() & validateConfirm();
+            if (!ok) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        });
+    })();
+</script>
 {{end}}

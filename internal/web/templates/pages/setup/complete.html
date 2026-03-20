@@ -1,16 +1,6 @@
 {{define "pages/setup/complete.html"}}
-<div id="generation-status">
-    <h2>Ready to Generate</h2>
-    <p>Click the button below to generate your SDBX project.</p>
-
-    <form hx-post="/setup/complete" hx-target="#generation-status" hx-swap="innerHTML">
-        <div class="wizard-actions" style="justify-content: center; margin-top: 2rem;">
-            <button type="submit" class="btn btn-primary" style="padding: 1rem 3rem; font-size: 1.1rem;">
-                Generate Project
-            </button>
-        </div>
-    </form>
-</div>
+<script>window.location.href = '/setup/summary';</script>
+<p>Redirecting to summary...</p>
 {{end}}
 
 {{define "pages/setup/complete-success.html"}}

@@ -1,4 +1,5 @@
 {{define "pages/setup/vpn.html"}}
+<div data-wizard-step="4" style="display:none;"></div>
 <h2>VPN Configuration</h2>
 <p>Optionally route torrent traffic through a VPN for privacy.</p>
 
@@ -41,7 +42,38 @@
     function toggleVPNFields(enabled) {
         document.getElementById('vpn-fields').style.display = enabled ? 'block' : 'none';
     }
-    // Initialize on load
     toggleVPNFields(document.getElementById('vpn_enabled').checked);
+
+    /* U15: VPN provider display names */
+    (function() {
+        var displayNames = {
+            'nordvpn': 'NordVPN',
+            'mullvad': 'Mullvad VPN',
+            'pia': 'Private Internet Access',
+            'surfshark': 'Surfshark',
+            'protonvpn': 'ProtonVPN',
+            'expressvpn': 'ExpressVPN',
+            'windscribe': 'Windscribe',
+            'ipvanish': 'IPVanish',
+            'cyberghost': 'CyberGhost',
+            'ivpn': 'IVPN',
+            'torguard': 'TorGuard',
+            'vyprvpn': 'VyprVPN',
+            'purevpn': 'PureVPN',
+            'hidemyass': 'HideMyAss!',
+            'perfectprivacy': 'Perfect Privacy',
+            'airvpn': 'AirVPN',
+            'custom': 'Custom OpenVPN Config'
+        };
+
+        var select = document.getElementById('vpn_provider');
+        if (select) {
+            for (var i = 0; i < select.options.length; i++) {
+                var opt = select.options[i];
+                var name = displayNames[opt.value];
+                if (name) opt.textContent = name;
+            }
+        }
+    })();
 </script>
 {{end}}

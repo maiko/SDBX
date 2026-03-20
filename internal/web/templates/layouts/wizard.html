@@ -47,6 +47,77 @@
             font-size: 0.95rem;
         }
 
+        /* Step progress indicator */
+        .wizard-progress {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 2rem;
+            padding: 0 1rem;
+        }
+
+        .wizard-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        .wizard-step-circle {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid #e2e8f0;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #94a3b8;
+            transition: all 0.3s;
+        }
+
+        .wizard-step.completed .wizard-step-circle {
+            background: var(--color-primary);
+            border-color: var(--color-primary);
+            color: white;
+        }
+
+        .wizard-step.active .wizard-step-circle {
+            border-color: var(--color-primary);
+            color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+        }
+
+        .wizard-step-label {
+            font-size: 0.7rem;
+            color: #94a3b8;
+            margin-top: 0.35rem;
+            white-space: nowrap;
+            font-weight: 500;
+        }
+
+        .wizard-step.completed .wizard-step-label,
+        .wizard-step.active .wizard-step-label {
+            color: var(--color-primary);
+        }
+
+        .wizard-step-connector {
+            flex: 1;
+            height: 2px;
+            background: #e2e8f0;
+            margin: 0 0.25rem;
+            margin-bottom: 1.2rem;
+            min-width: 20px;
+            transition: background 0.3s;
+        }
+
+        .wizard-step-connector.completed {
+            background: var(--color-primary);
+        }
+
         .wizard-content {
             margin-bottom: 2rem;
         }
@@ -87,6 +158,29 @@
             box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
         }
 
+        /* Field validation states */
+        .form-group input.field-error,
+        .form-group select.field-error {
+            border-color: var(--color-error);
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+        }
+
+        .form-group input.field-valid,
+        .form-group select.field-valid {
+            border-color: var(--color-success);
+        }
+
+        .field-error-msg {
+            display: none;
+            font-size: 0.8rem;
+            color: var(--color-error);
+            margin-top: 0.35rem;
+        }
+
+        .field-error-msg.visible {
+            display: block;
+        }
+
         .btn {
             padding: 0.75rem 2rem;
             border: none;
@@ -107,6 +201,13 @@
         .btn-primary:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
         }
 
         .btn-secondary {
@@ -199,6 +300,22 @@
         .summary-value {
             color: #333;
         }
+
+        .btn-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: wizard-spin 0.6s linear infinite;
+            margin-right: 0.5rem;
+            vertical-align: middle;
+        }
+
+        @keyframes wizard-spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -213,10 +330,92 @@
             <div class="wizard-logo">SDBX</div>
             <div class="wizard-subtitle">Seedbox in a Box - Setup Wizard</div>
         </div>
+        <div class="wizard-progress" id="wizard-progress" style="display: none;"></div>
+        <div id="wizard-error" class="error-message" style="display: none;"></div>
         <div class="wizard-content">
             {{block "page-content" .}}{{end}}
         </div>
     </div>
+
+    <script>
+        (function() {
+            var stepNames = ['Domain', 'Admin', 'Storage', 'VPN', 'Addons', 'Summary'];
+            var totalSteps = stepNames.length;
+            var checkmark = document.createTextNode('\u2713');
+
+            function buildProgress(currentStep) {
+                var container = document.getElementById('wizard-progress');
+                if (!container || currentStep < 1) {
+                    if (container) container.style.display = 'none';
+                    return;
+                }
+                container.style.display = 'flex';
+                while (container.firstChild) container.removeChild(container.firstChild);
+
+                for (var i = 0; i < totalSteps; i++) {
+                    if (i > 0) {
+                        var conn = document.createElement('div');
+                        conn.className = 'wizard-step-connector';
+                        if (i < currentStep) conn.className += ' completed';
+                        container.appendChild(conn);
+                    }
+
+                    var step = document.createElement('div');
+                    step.className = 'wizard-step';
+                    if (i + 1 < currentStep) step.className += ' completed';
+                    else if (i + 1 === currentStep) step.className += ' active';
+
+                    var circle = document.createElement('div');
+                    circle.className = 'wizard-step-circle';
+                    if (i + 1 < currentStep) {
+                        circle.textContent = '\u2713';
+                    } else {
+                        circle.textContent = String(i + 1);
+                    }
+
+                    var label = document.createElement('div');
+                    label.className = 'wizard-step-label';
+                    label.textContent = stepNames[i];
+
+                    step.appendChild(circle);
+                    step.appendChild(label);
+                    container.appendChild(step);
+                }
+            }
+
+            function initProgress() {
+                var marker = document.querySelector('[data-wizard-step]');
+                if (marker) {
+                    buildProgress(parseInt(marker.getAttribute('data-wizard-step'), 10));
+                } else {
+                    var container = document.getElementById('wizard-progress');
+                    if (container) container.style.display = 'none';
+                }
+            }
+
+            initProgress();
+
+            /* U2: Inline validation errors from server responses */
+            var errorDiv = document.getElementById('wizard-error');
+
+            document.body.addEventListener('htmx:beforeRequest', function() {
+                if (errorDiv) {
+                    errorDiv.style.display = 'none';
+                    errorDiv.textContent = '';
+                }
+            });
+
+            document.body.addEventListener('htmx:responseError', function(evt) {
+                if (errorDiv && evt.detail && evt.detail.xhr) {
+                    var status = evt.detail.xhr.status;
+                    if (status >= 400 && status < 500) {
+                        errorDiv.textContent = evt.detail.xhr.responseText || 'An error occurred. Please check your input.';
+                        errorDiv.style.display = 'block';
+                    }
+                }
+            });
+        })();
+    </script>
 </body>
 </html>
 {{end}}
