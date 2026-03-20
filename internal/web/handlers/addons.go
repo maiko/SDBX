@@ -42,9 +42,10 @@ type AddonDisplay struct {
 
 // AddonResponse represents API response for addon operations
 type AddonResponse struct {
-	Success bool   `json:"success"`
-	Message string `json:"message"`
-	Addon   string `json:"addon,omitempty"`
+	Success        bool   `json:"success"`
+	Message        string `json:"message"`
+	Addon          string `json:"addon,omitempty"`
+	PendingRestart bool   `json:"pendingRestart,omitempty"`
 }
 
 // HandleAddonsPage handles the addons catalog page
@@ -209,9 +210,10 @@ func (h *AddonsHandler) HandleEnableAddon(w http.ResponseWriter, r *http.Request
 	}
 
 	h.respondJSON(w, http.StatusOK, AddonResponse{
-		Success: true,
-		Message: fmt.Sprintf("Enabled '%s'. Run 'sdbx up' to start the service.", addonName),
-		Addon:   addonName,
+		Success:        true,
+		Message:        fmt.Sprintf("Enabled '%s'. Run 'sdbx up' to start the service.", addonName),
+		Addon:          addonName,
+		PendingRestart: true,
 	})
 }
 
@@ -253,9 +255,10 @@ func (h *AddonsHandler) HandleDisableAddon(w http.ResponseWriter, r *http.Reques
 	}
 
 	h.respondJSON(w, http.StatusOK, AddonResponse{
-		Success: true,
-		Message: fmt.Sprintf("Disabled '%s'. Run 'sdbx down && sdbx up' to apply changes.", addonName),
-		Addon:   addonName,
+		Success:        true,
+		Message:        fmt.Sprintf("Disabled '%s'. Run 'sdbx down && sdbx up' to apply changes.", addonName),
+		Addon:          addonName,
+		PendingRestart: true,
 	})
 }
 

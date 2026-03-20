@@ -6,19 +6,213 @@
     <p>Control individual services</p>
 </div>
 
-{{range $category, $services := .ServicesByCategory}}
-<div class="category-section">
+<div class="service-controls">
+    <input type="text" id="service-search" class="search-input" placeholder="Search services...">
+    <select id="status-filter" class="status-select">
+        <option value="">All Statuses</option>
+        <option value="running">Running</option>
+        <option value="stopped">Stopped</option>
+    </select>
+    <button id="view-toggle" class="btn-sm btn-secondary-sm" onclick="toggleView()">
+        Compact View
+    </button>
+</div>
+
+<div id="services-container">
+{{range .ServicesByCategory}}
+<div class="category-section" data-category="{{.Name}}">
     <div class="category-header">
-        <span>{{$category}}</span>
-        <span class="category-badge category-{{$category}}">{{len $services}}</span>
+        <span>{{.Name}}</span>
+        <span class="category-badge {{.Name}}">{{len .Services}}</span>
     </div>
     <div class="services-grid">
-        {{range $services}}
+        {{range .Services}}
         {{template "service-card" .}}
         {{end}}
     </div>
 </div>
 {{end}}
+</div>
+
+<style>
+    .service-controls {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        align-items: center;
+    }
+
+    .search-input {
+        flex: 1;
+        padding: 0.75rem 1rem;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.2s;
+    }
+
+    .search-input:focus {
+        outline: none;
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+    }
+
+    .status-select {
+        padding: 0.75rem 1rem;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 1rem;
+        cursor: pointer;
+        background: white;
+        min-width: 160px;
+    }
+
+    .status-select:focus {
+        outline: none;
+        border-color: var(--color-primary);
+    }
+
+    /* Compact list view */
+    .services-grid.compact-view {
+        grid-template-columns: 1fr !important;
+        gap: 0.5rem !important;
+    }
+
+    .compact-view .service-card {
+        padding: 0.75rem 1rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .compact-view .service-header {
+        flex: 0 0 auto;
+        min-width: 180px;
+    }
+
+    .compact-view .service-description {
+        flex: 1;
+        margin: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .compact-view .service-actions {
+        flex: 0 0 auto;
+        margin-top: 0;
+    }
+
+    /* Loading state for buttons */
+    .htmx-request .btn-sm {
+        opacity: 0.6;
+        pointer-events: none;
+    }
+</style>
+
+<script>
+    // --- U3: Loading states on service action buttons ---
+    document.body.addEventListener('htmx:beforeRequest', function(event) {
+        var card = event.target.closest('.service-card');
+        if (!card) return;
+        var buttons = card.querySelectorAll('.btn-sm');
+        buttons.forEach(function(btn) {
+            if (btn.tagName === 'BUTTON') {
+                btn.dataset.originalText = btn.textContent;
+                btn.textContent = 'Loading...';
+                btn.disabled = true;
+            }
+        });
+    });
+
+    document.body.addEventListener('htmx:afterRequest', function(event) {
+        var card = event.target.closest('.service-card');
+        if (!card) return;
+        var buttons = card.querySelectorAll('.btn-sm');
+        buttons.forEach(function(btn) {
+            if (btn.tagName === 'BUTTON' && btn.dataset.originalText) {
+                btn.textContent = btn.dataset.originalText;
+                btn.disabled = false;
+                delete btn.dataset.originalText;
+            }
+        });
+    });
+
+    // --- U20: hx-confirm on Restart button ---
+    document.body.addEventListener('htmx:confirm', function(event) {
+        var elt = event.detail.elt;
+        if (!elt || !elt.getAttribute) return;
+        var action = elt.getAttribute('hx-post') || '';
+        if (action.indexOf('/restart') === -1) return;
+
+        // Already has hx-confirm? Let htmx handle it.
+        if (elt.hasAttribute('hx-confirm')) return;
+
+        event.preventDefault();
+        var serviceName = action.split('/services/')[1];
+        if (serviceName) {
+            serviceName = serviceName.split('/')[0];
+        }
+        if (confirm('Restart service ' + (serviceName || '') + '? This will cause brief downtime.')) {
+            event.detail.issueRequest(true);
+        }
+    });
+
+    // --- U23: Filter controls and compact list view ---
+    var searchInput = document.getElementById('service-search');
+    var statusFilter = document.getElementById('status-filter');
+    var isCompact = false;
+
+    function filterServices() {
+        var query = searchInput.value.toLowerCase();
+        var status = statusFilter.value;
+
+        document.querySelectorAll('.category-section').forEach(function(section) {
+            var hasVisible = false;
+
+            section.querySelectorAll('.service-card').forEach(function(card) {
+                var name = card.querySelector('.service-name');
+                var desc = card.querySelector('.service-description');
+                var statusBadge = card.querySelector('.status-badge');
+
+                var nameText = name ? name.textContent.toLowerCase() : '';
+                var descText = desc ? desc.textContent.toLowerCase() : '';
+                var isRunning = statusBadge ? statusBadge.classList.contains('status-running') : false;
+
+                var matchesQuery = !query || nameText.indexOf(query) !== -1 || descText.indexOf(query) !== -1;
+                var matchesStatus = !status ||
+                    (status === 'running' && isRunning) ||
+                    (status === 'stopped' && !isRunning);
+
+                if (matchesQuery && matchesStatus) {
+                    card.style.display = '';
+                    hasVisible = true;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            section.style.display = hasVisible ? '' : 'none';
+        });
+    }
+
+    function toggleView() {
+        isCompact = !isCompact;
+        var btn = document.getElementById('view-toggle');
+        var grids = document.querySelectorAll('.services-grid');
+
+        if (isCompact) {
+            btn.textContent = 'Grid View';
+            grids.forEach(function(g) { g.classList.add('compact-view'); });
+        } else {
+            btn.textContent = 'Compact View';
+            grids.forEach(function(g) { g.classList.remove('compact-view'); });
+        }
+    }
+
+    searchInput.addEventListener('input', filterServices);
+    statusFilter.addEventListener('change', filterServices);
+</script>
 
 {{end}}
 

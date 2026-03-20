@@ -137,3 +137,60 @@ func TestAddonResponseStruct(t *testing.T) {
 		t.Errorf("Addon = %q, want 'sonarr'", resp.Addon)
 	}
 }
+
+// TestAddonResponsePendingRestart verifies pendingRestart field in addon response
+func TestAddonResponsePendingRestart(t *testing.T) {
+	resp := AddonResponse{
+		Success:        true,
+		Message:        "Enabled 'sonarr'. Run 'sdbx up' to start the service.",
+		Addon:          "sonarr",
+		PendingRestart: true,
+	}
+
+	if !resp.PendingRestart {
+		t.Error("PendingRestart should be true after enable/disable")
+	}
+
+	respNoPending := AddonResponse{
+		Success: true,
+		Message: "Already enabled",
+		Addon:   "sonarr",
+	}
+
+	if respNoPending.PendingRestart {
+		t.Error("PendingRestart should be false when not set")
+	}
+}
+
+// TestValidLogServiceName verifies log service name validation regex
+func TestValidLogServiceName(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		valid bool
+	}{
+		{"valid simple", "sonarr", true},
+		{"valid with hyphen", "my-service", true},
+		{"valid with underscore", "my_service", true},
+		{"valid with numbers", "service123", true},
+		{"starts with number", "1service", true},
+		{"empty", "", false},
+		{"starts with hyphen", "-service", false},
+		{"starts with underscore", "_service", false},
+		{"uppercase", "Sonarr", false},
+		{"spaces", "my service", false},
+		{"special chars", "service;rm", false},
+		{"path traversal", "../etc/passwd", false},
+		{"too long", "a" + strings.Repeat("b", 64), false},
+		{"max length", "a" + strings.Repeat("b", 63), true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := validLogServiceName.MatchString(tt.input)
+			if got != tt.valid {
+				t.Errorf("validLogServiceName.MatchString(%q) = %v, want %v", tt.input, got, tt.valid)
+			}
+		})
+	}
+}

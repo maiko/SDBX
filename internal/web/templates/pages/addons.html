@@ -21,8 +21,14 @@
     </div>
 </div>
 
+<!-- U8: Changes pending banner -->
+<div id="pending-banner" class="pending-banner" style="display: none;">
+    <span>Changes pending &mdash; run <code>sdbx down &amp;&amp; sdbx up</code> or restart via the Services page to apply.</span>
+    <button class="btn-sm btn-secondary-sm" onclick="document.getElementById('pending-banner').style.display='none'">Dismiss</button>
+</div>
+
 <div class="addon-controls">
-    <input type="text" id="search-input" class="search-input" placeholder="🔍 Search addons...">
+    <input type="text" id="search-input" class="search-input" placeholder="Search addons...">
     <select id="category-filter" class="category-select">
         <option value="">All Categories</option>
         <option value="media">Media</option>
@@ -40,7 +46,7 @@
     <div class="category-section">
         <div class="category-header">
             <span>{{$category}}</span>
-            <span class="category-badge category-{{$category}}">{{len $addons}}</span>
+            <span class="category-badge {{$category}}">{{len $addons}}</span>
         </div>
         <div class="services-grid">
             {{range $addons}}
@@ -102,50 +108,76 @@
         font-weight: 600;
     }
 
+    .pending-banner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.875rem 1.25rem;
+        margin-bottom: 1.5rem;
+        background: #fef3c7;
+        border: 1px solid #fbbf24;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        color: #92400e;
+    }
+
+    .pending-banner code {
+        background: #fcd34d;
+        padding: 0.125rem 0.375rem;
+        border-radius: 4px;
+        font-size: 0.875rem;
+    }
+
 </style>
 
 <script>
     function toggleAddon(addonName, enable) {
-        const action = enable ? 'enable' : 'disable';
-        const card = document.getElementById(`addon-${addonName}`);
-        const btn = card.querySelector('.addon-toggle-btn');
+        var action = enable ? 'enable' : 'disable';
+        var card = document.getElementById('addon-' + addonName);
+        var btn = card.querySelector('.addon-toggle-btn');
 
         // Disable button during request
         btn.disabled = true;
         btn.textContent = enable ? 'Enabling...' : 'Disabling...';
 
-        csrfFetch(`/api/addons/${addonName}/${action}`, {
+        csrfFetch('/api/addons/' + addonName + '/' + action, {
             method: 'POST'
         })
-        .then(response => response.json())
-        .then(data => {
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
             if (data.success) {
                 showToast(data.message, 'success');
+
+                // Show pending banner on any successful toggle
+                if (data.pendingRestart) {
+                    document.getElementById('pending-banner').style.display = 'flex';
+                }
 
                 // Update UI
                 if (enable) {
                     card.classList.add('addon-card-enabled');
-                    card.querySelector('.addon-header').insertAdjacentHTML('beforeend',
+                    card.querySelector('.service-header').insertAdjacentHTML('beforeend',
                         '<span class="enabled-badge">ENABLED</span>');
                     btn.textContent = 'Disable';
                     btn.classList.remove('btn-primary-sm');
                     btn.classList.add('btn-secondary-sm');
-                    btn.onclick = () => toggleAddon(addonName, false);
+                    btn.onclick = function() { toggleAddon(addonName, false); };
                 } else {
                     card.classList.remove('addon-card-enabled');
-                    const badge = card.querySelector('.enabled-badge');
+                    var badge = card.querySelector('.enabled-badge');
                     if (badge) badge.remove();
                     btn.textContent = 'Enable';
                     btn.classList.remove('btn-secondary-sm');
                     btn.classList.add('btn-primary-sm');
-                    btn.onclick = () => toggleAddon(addonName, true);
+                    btn.onclick = function() { toggleAddon(addonName, true); };
                 }
             } else {
                 showToast(data.message, 'error');
             }
             btn.disabled = false;
         })
-        .catch(error => {
+        .catch(function(error) {
             showToast('Failed to ' + action + ' addon: ' + error, 'error');
             btn.disabled = false;
             btn.textContent = enable ? 'Enable' : 'Disable';
@@ -153,23 +185,23 @@
     }
 
     // Search functionality
-    const searchInput = document.getElementById('search-input');
-    const categoryFilter = document.getElementById('category-filter');
+    var searchInput = document.getElementById('search-input');
+    var categoryFilter = document.getElementById('category-filter');
 
     function filterAddons() {
-        const query = searchInput.value.toLowerCase();
-        const category = categoryFilter.value.toLowerCase();
+        var query = searchInput.value.toLowerCase();
+        var category = categoryFilter.value.toLowerCase();
 
-        document.querySelectorAll('.category-section').forEach(section => {
-            const sectionCategory = section.querySelector('.category-header span').textContent.toLowerCase();
-            let hasVisibleCards = false;
+        document.querySelectorAll('.category-section').forEach(function(section) {
+            var sectionCategory = section.querySelector('.category-header span').textContent.toLowerCase();
+            var hasVisibleCards = false;
 
-            section.querySelectorAll('.service-card').forEach(card => {
-                const name = card.querySelector('.service-name').textContent.toLowerCase();
-                const desc = card.querySelector('.service-description').textContent.toLowerCase();
+            section.querySelectorAll('.service-card').forEach(function(card) {
+                var name = card.querySelector('.service-name').textContent.toLowerCase();
+                var desc = card.querySelector('.service-description').textContent.toLowerCase();
 
-                const matchesQuery = !query || name.includes(query) || desc.includes(query);
-                const matchesCategory = !category || sectionCategory === category;
+                var matchesQuery = !query || name.indexOf(query) !== -1 || desc.indexOf(query) !== -1;
+                var matchesCategory = !category || sectionCategory === category;
 
                 if (matchesQuery && matchesCategory) {
                     card.style.display = '';
@@ -199,7 +231,7 @@
     </div>
     <div class="service-description">{{.Description}}</div>
     <div style="display: flex; gap: 0.5rem; align-items: center; margin: 0.75rem 0; font-size: 0.875rem;">
-        <span class="category-badge category-{{.Category}}">{{.Category}}</span>
+        <span class="category-badge {{.Category}}">{{.Category}}</span>
         <span style="color: #94a3b8;">v{{.Version}}</span>
         <span style="color: #94a3b8;">· {{.Source}}</span>
     </div>

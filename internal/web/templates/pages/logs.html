@@ -7,13 +7,14 @@
 </div>
 
 <div class="log-controls">
-    <button id="pause-btn" class="btn-sm btn-secondary-sm">⏸ Pause</button>
-    <button id="clear-btn" class="btn-sm btn-secondary-sm">🗑 Clear</button>
-    <button id="download-btn" class="btn-sm btn-primary-sm">⬇ Download</button>
+    <button id="pause-btn" class="btn-sm btn-secondary-sm">Pause</button>
+    <button id="clear-btn" class="btn-sm btn-secondary-sm">Clear</button>
+    <button id="download-btn" class="btn-sm btn-primary-sm">Download</button>
     <label class="control-label">
         <input type="checkbox" id="autoscroll-check" checked> Auto-scroll
     </label>
-    <a href="/services" class="btn-sm btn-secondary-sm">← Back to Services</a>
+    <input type="text" id="log-search" class="log-search-input" placeholder="Filter logs...">
+    <a href="/services" class="btn-sm btn-secondary-sm">Back to Services</a>
 </div>
 
 <div id="log-viewer" class="log-viewer">
@@ -35,6 +36,7 @@
         background: white;
         border-radius: 8px;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        flex-wrap: wrap;
     }
 
     .control-label {
@@ -49,6 +51,21 @@
 
     .control-label input[type="checkbox"] {
         cursor: pointer;
+    }
+
+    .log-search-input {
+        padding: 0.5rem 0.75rem;
+        border: 2px solid #e2e8f0;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        min-width: 180px;
+        transition: border-color 0.2s;
+    }
+
+    .log-search-input:focus {
+        outline: none;
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
     }
 
     .log-viewer {
@@ -74,6 +91,10 @@
 
     .log-line:hover {
         background: rgba(100, 116, 139, 0.1);
+    }
+
+    .log-line.log-hidden {
+        display: none;
     }
 
     .log-timestamp {
@@ -137,23 +158,25 @@
 </style>
 
 <script>
-    const serviceName = "{{.ServiceName}}";
-    const logLines = document.getElementById('log-lines');
-    const pauseBtn = document.getElementById('pause-btn');
-    const clearBtn = document.getElementById('clear-btn');
-    const downloadBtn = document.getElementById('download-btn');
-    const autoscrollCheck = document.getElementById('autoscroll-check');
-    const statusDot = document.getElementById('status-dot');
-    const statusText = document.getElementById('status-text');
-    const logViewer = document.getElementById('log-viewer');
+    var serviceName = "{{.ServiceName}}";
+    var logLines = document.getElementById('log-lines');
+    var pauseBtn = document.getElementById('pause-btn');
+    var clearBtn = document.getElementById('clear-btn');
+    var downloadBtn = document.getElementById('download-btn');
+    var autoscrollCheck = document.getElementById('autoscroll-check');
+    var statusDot = document.getElementById('status-dot');
+    var statusText = document.getElementById('status-text');
+    var logViewer = document.getElementById('log-viewer');
+    var logSearchInput = document.getElementById('log-search');
 
-    let ws = null;
-    let isPaused = false;
-    let logBuffer = [];
+    var ws = null;
+    var isPaused = false;
+    var logBuffer = [];
+    var currentFilter = '';
 
     // Determine WebSocket protocol
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${wsProtocol}//${window.location.host}/api/logs/${serviceName}/stream`;
+    var wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    var wsUrl = wsProtocol + '//' + window.location.host + '/api/logs/' + serviceName + '/stream';
 
     function connect() {
         statusText.textContent = 'Connecting...';
@@ -161,17 +184,16 @@
 
         ws = new WebSocket(wsUrl);
 
-        ws.onopen = () => {
+        ws.onopen = function() {
             statusText.textContent = 'Connected';
             statusDot.className = 'status-dot connected';
-            console.log('WebSocket connected');
         };
 
-        ws.onmessage = (event) => {
+        ws.onmessage = function(event) {
             if (isPaused) return;
 
             try {
-                const data = JSON.parse(event.data);
+                var data = JSON.parse(event.data);
 
                 if (data.error) {
                     appendLog('ERROR', data.error, true);
@@ -180,23 +202,21 @@
 
                 appendLog(data.timestamp, data.line);
             } catch (e) {
-                console.error('Failed to parse message:', e);
+                // ignore parse errors
             }
         };
 
-        ws.onerror = (error) => {
-            console.error('WebSocket error:', error);
+        ws.onerror = function() {
             statusText.textContent = 'Error';
             statusDot.className = 'status-dot disconnected';
         };
 
-        ws.onclose = () => {
+        ws.onclose = function() {
             statusText.textContent = 'Disconnected';
             statusDot.className = 'status-dot disconnected';
-            console.log('WebSocket closed');
 
             // Attempt to reconnect after 5 seconds
-            setTimeout(() => {
+            setTimeout(function() {
                 if (!isPaused) {
                     connect();
                 }
@@ -204,15 +224,15 @@
         };
     }
 
-    function appendLog(timestamp, content, isError = false) {
-        const line = document.createElement('div');
+    function appendLog(timestamp, content, isError) {
+        var line = document.createElement('div');
         line.className = 'log-line';
 
-        const ts = document.createElement('span');
+        var ts = document.createElement('span');
         ts.className = 'log-timestamp';
         ts.textContent = timestamp;
 
-        const cont = document.createElement('span');
+        var cont = document.createElement('span');
         cont.className = 'log-content';
         cont.textContent = content;
 
@@ -222,10 +242,17 @@
 
         line.appendChild(ts);
         line.appendChild(cont);
+
+        // Apply current filter
+        if (currentFilter && content.toLowerCase().indexOf(currentFilter) === -1 &&
+            timestamp.toLowerCase().indexOf(currentFilter) === -1) {
+            line.classList.add('log-hidden');
+        }
+
         logLines.appendChild(line);
 
         // Store in buffer for download
-        logBuffer.push(`[${timestamp}] ${content}`);
+        logBuffer.push('[' + timestamp + '] ' + content);
 
         // Auto-scroll if enabled
         if (autoscrollCheck.checked) {
@@ -239,34 +266,50 @@
         }
     }
 
+    // U21: Log search/filter
+    logSearchInput.addEventListener('input', function() {
+        currentFilter = logSearchInput.value.toLowerCase();
+        var lines = logLines.querySelectorAll('.log-line');
+        lines.forEach(function(line) {
+            var content = line.textContent.toLowerCase();
+            if (!currentFilter || content.indexOf(currentFilter) !== -1) {
+                line.classList.remove('log-hidden');
+            } else {
+                line.classList.add('log-hidden');
+            }
+        });
+    });
+
     // Pause/Resume functionality
-    pauseBtn.addEventListener('click', () => {
+    pauseBtn.addEventListener('click', function() {
         isPaused = !isPaused;
         if (isPaused) {
-            pauseBtn.textContent = '▶ Resume';
+            pauseBtn.textContent = 'Resume';
             pauseBtn.classList.remove('btn-secondary-sm');
             pauseBtn.classList.add('btn-primary-sm');
         } else {
-            pauseBtn.textContent = '⏸ Pause';
+            pauseBtn.textContent = 'Pause';
             pauseBtn.classList.remove('btn-primary-sm');
             pauseBtn.classList.add('btn-secondary-sm');
         }
     });
 
     // Clear logs
-    clearBtn.addEventListener('click', () => {
-        logLines.innerHTML = '';
+    clearBtn.addEventListener('click', function() {
+        while (logLines.firstChild) {
+            logLines.removeChild(logLines.firstChild);
+        }
         logBuffer = [];
     });
 
     // Download logs
-    downloadBtn.addEventListener('click', () => {
-        const content = logBuffer.join('\n');
-        const blob = new Blob([content], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
+    downloadBtn.addEventListener('click', function() {
+        var content = logBuffer.join('\n');
+        var blob = new Blob([content], { type: 'text/plain' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
         a.href = url;
-        a.download = `${serviceName}-logs-${new Date().toISOString()}.txt`;
+        a.download = serviceName + '-logs-' + new Date().toISOString() + '.txt';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -277,7 +320,7 @@
     connect();
 
     // Close WebSocket on page unload
-    window.addEventListener('beforeunload', () => {
+    window.addEventListener('beforeunload', function() {
         if (ws) {
             ws.close();
         }

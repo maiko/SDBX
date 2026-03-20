@@ -204,11 +204,22 @@
         lineNumbers.scrollTop = editor.scrollTop;
     });
 
+    // U6: Track unsaved changes
+    let hasUnsavedChanges = false;
+
+    window.addEventListener('beforeunload', function(e) {
+        if (hasUnsavedChanges) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+
     // Update on input
     editor.addEventListener('input', () => {
         updateLineNumbers();
         updateStats();
         validationResult.style.display = 'none';
+        hasUnsavedChanges = true;
     });
 
     // Tab handling
@@ -300,6 +311,7 @@
             validationResult.textContent = '';
 
             if (data.success) {
+                hasUnsavedChanges = false;
                 showToast(data.message, 'success');
                 validationResult.className = 'validation-result success';
                 const h4 = document.createElement('h4');
@@ -350,6 +362,7 @@
                 updateLineNumbers();
                 updateStats();
                 validationResult.style.display = 'none';
+                hasUnsavedChanges = false;
                 showToast('Configuration reloaded', 'success');
             })
             .catch(error => {

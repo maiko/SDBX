@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"regexp"
 	"sync"
 	"time"
 
@@ -16,6 +17,9 @@ import (
 	"github.com/maiko/sdbx/internal/docker"
 	"github.com/maiko/sdbx/internal/registry"
 )
+
+// validLogServiceName matches valid service names for log requests.
+var validLogServiceName = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,63}$`)
 
 const (
 	// WebSocket buffer sizes
@@ -62,6 +66,10 @@ func (h *LogsHandler) HandleLogsPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Service name is required", http.StatusBadRequest)
 		return
 	}
+	if !validLogServiceName.MatchString(serviceName) {
+		http.Error(w, "Invalid service name", http.StatusBadRequest)
+		return
+	}
 
 	// Get service info from registry - use request context for cancellation
 	ctx := r.Context()
@@ -97,6 +105,10 @@ func (h *LogsHandler) HandleLogStream(w http.ResponseWriter, r *http.Request) {
 	serviceName := r.PathValue("service")
 	if serviceName == "" {
 		http.Error(w, "Service name is required", http.StatusBadRequest)
+		return
+	}
+	if !validLogServiceName.MatchString(serviceName) {
+		http.Error(w, "Invalid service name", http.StatusBadRequest)
 		return
 	}
 
@@ -238,6 +250,10 @@ func (h *LogsHandler) HandleGetLogs(w http.ResponseWriter, r *http.Request) {
 	serviceName := r.PathValue("service")
 	if serviceName == "" {
 		http.Error(w, "Service name is required", http.StatusBadRequest)
+		return
+	}
+	if !validLogServiceName.MatchString(serviceName) {
+		http.Error(w, "Invalid service name", http.StatusBadRequest)
 		return
 	}
 

@@ -238,6 +238,21 @@
             return;
         }
 
+        // U7: Trust warning for third-party sources
+        var officialURL = 'https://github.com/maiko/SDBX-Services';
+        if (url.indexOf(officialURL) === -1) {
+            var trusted = confirm(
+                'Warning: You are adding a third-party source.\n\n' +
+                'Third-party sources can provide arbitrary service definitions ' +
+                'that run Docker containers on your system. Only add sources you trust.\n\n' +
+                'URL: ' + url + '\n\n' +
+                'Do you want to continue?'
+            );
+            if (!trusted) {
+                return;
+            }
+        }
+
         btn.disabled = true;
         btn.textContent = 'Adding...';
 
