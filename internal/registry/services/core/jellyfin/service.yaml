@@ -1,0 +1,83 @@
+apiVersion: sdbx.one/v1
+kind: Service
+metadata:
+  name: jellyfin
+  version: 1.0.0
+  category: media
+  description: "Free software media server for movies, TV, music, and more"
+  homepage: https://jellyfin.org
+  documentation: https://jellyfin.org/docs
+  maintainer: sdbx-official
+  tags:
+    - media
+    - streaming
+    - foss
+
+spec:
+  image:
+    repository: jellyfin/jellyfin
+    tag: latest
+    registry: docker.io
+
+  container:
+    name_template: "sdbx-{{ .Name }}"
+    restart: unless-stopped
+
+  environment:
+    static:
+      - name: TZ
+        value: "{{ .Config.Timezone }}"
+      - name: PUID
+        value: "{{ .Config.PUID }}"
+      - name: PGID
+        value: "{{ .Config.PGID }}"
+
+  volumes:
+    - name: config
+      hostPath: "./configs/jellyfin"
+      containerPath: /config
+    - name: cache
+      hostPath: "./data/jellyfin/cache"
+      containerPath: /cache
+    - name: media
+      hostPath: "{{ .Config.MediaPath }}"
+      containerPath: /media
+      readOnly: true
+
+  healthCheck:
+    test: ["CMD", "curl", "-f", "http://localhost:8096/health"]
+    interval: 30s
+    timeout: 10s
+    retries: 3
+    start_period: 30s
+
+  ports:
+    static:
+      - "8096:8096"
+
+  networking:
+    networks:
+      - name: proxy
+
+routing:
+  enabled: true
+  port: 8096
+  subdomain: jellyfin
+  path: /jellyfin
+  auth:
+    required: false
+    bypass: true
+
+integrations:
+  watchtower:
+    enabled: true
+  cloudflared:
+    enabled: true
+  homepage:
+    enabled: true
+    group: Media
+    icon: jellyfin.svg
+    description: "Media Server"
+
+conditions:
+  requireConfig: jellyfin_enabled

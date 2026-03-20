@@ -62,6 +62,9 @@ type Config struct {
 	// Addons
 	Addons []string `mapstructure:"addons"`
 
+	// Media server selection
+	JellyfinEnabled bool `mapstructure:"jellyfin_enabled"`
+
 	// Plex configuration
 	PlexAdvertiseURLs string `mapstructure:"plex_advertise_urls"`
 
@@ -282,6 +285,7 @@ func (c *Config) Save(path string) error {
 	viper.Set("vpn_provider", c.VPNProvider)
 	viper.Set("vpn_type", c.VPNType)
 	viper.Set("vpn_country", c.VPNCountry)
+	viper.Set("jellyfin_enabled", c.JellyfinEnabled)
 	viper.Set("addons", c.Addons)
 	if c.PlexAdvertiseURLs != "" {
 		viper.Set("plex_advertise_urls", c.PlexAdvertiseURLs)

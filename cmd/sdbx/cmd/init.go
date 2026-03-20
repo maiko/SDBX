@@ -49,6 +49,7 @@ var (
 	initAdminUser         string
 	initAdminPassword     string
 	initPlexAdvertiseURLs string
+	initJellyfinEnabled   bool
 )
 
 var initCmd = &cobra.Command{
@@ -83,6 +84,7 @@ func init() {
 	initCmd.Flags().BoolVar(&initSkipWizard, "skip-wizard", false, "Skip interactive wizard")
 	initCmd.Flags().StringVar(&initAdminUser, "admin-user", "admin", "Admin username for Authelia")
 	initCmd.Flags().StringVar(&initAdminPassword, "admin-password", "", "Admin password for Authelia (will be hashed)")
+	initCmd.Flags().BoolVar(&initJellyfinEnabled, "jellyfin", false, "Enable Jellyfin media server")
 	initCmd.Flags().StringVar(&initPlexAdvertiseURLs, "plex-advertise-urls", "",
 		"Comma-separated URLs where Plex can be reached (e.g., https://plex.domain.com:443,http://192.168.1.100:32400)")
 }
@@ -210,6 +212,9 @@ func runInit(cmd *cobra.Command, args []string) error {
 			cfg.VPNCountry = initVPNCountry
 		}
 
+		// Jellyfin configuration
+		cfg.JellyfinEnabled = initJellyfinEnabled
+
 		// Plex advertise URLs configuration
 		if initPlexAdvertiseURLs != "" {
 			cfg.PlexAdvertiseURLs = initPlexAdvertiseURLs
@@ -263,6 +268,7 @@ func runWizard(cfg *config.Config, reg *registry.Registry) error {
 	wizardSteps := []string{
 		"Domain & Routing",
 		"Admin Credentials",
+		"Media Server",
 		"Storage Paths",
 		"VPN Configuration",
 		"System Settings",
@@ -378,7 +384,36 @@ func runWizard(cfg *config.Config, reg *registry.Registry) error {
 	}
 	cfg.AdminPasswordHash = hash
 
-	// Step 3: Storage configuration
+	// Step 3: Media Server Selection
+	progress.Next()
+	renderStep()
+	mediaServer := "plex" // default
+	formMedia := huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[string]().
+				Title("Media Server").
+				Description("Choose your media server (or both)").
+				Options(
+					huh.NewOption("Plex (popular, polished UI)", "plex"),
+					huh.NewOption("Jellyfin (free & open source)", "jellyfin"),
+					huh.NewOption("Both (Plex + Jellyfin)", "both"),
+				).
+				Value(&mediaServer),
+		).Title("Media Server"),
+	)
+
+	if err := formMedia.Run(); err != nil {
+		return err
+	}
+
+	switch mediaServer {
+	case "jellyfin":
+		cfg.JellyfinEnabled = true
+	case "both":
+		cfg.JellyfinEnabled = true
+	}
+
+	// Step 4: Storage configuration
 	progress.Next()
 	renderStep()
 	form2 := huh.NewForm(
@@ -516,7 +551,7 @@ func runWizard(cfg *config.Config, reg *registry.Registry) error {
 		return err
 	}
 
-	// Step 6: Addons - Load from registry
+	// Step 6: Addons - Preset profiles then optional custom picker
 	progress.Next()
 	renderStep()
 	addonOptions, err := getAddonOptions(reg)
@@ -524,26 +559,56 @@ func runWizard(cfg *config.Config, reg *registry.Registry) error {
 		return fmt.Errorf("failed to load addons: %w", err)
 	}
 
-	var selectedAddons []string
-	form5 := huh.NewForm(
+	var addonPreset string
+	presetForm := huh.NewForm(
 		huh.NewGroup(
-			huh.NewMultiSelect[string]().
-				Title("Optional Addons").
-				Description("Select additional services to enable").
-				Options(addonOptions...).
-				Value(&selectedAddons),
+			huh.NewSelect[string]().
+				Title("Addon Profile").
+				Description("Choose a preset or pick addons individually").
+				Options(
+					huh.NewOption("Minimal (core only)", "minimal"),
+					huh.NewOption("Standard (recommended)", "standard"),
+					huh.NewOption("Full (all media)", "full"),
+					huh.NewOption("Custom (pick your own)", "custom"),
+				).
+				Value(&addonPreset),
 		).Title("Addons"),
 	)
 
-	if err := form5.Run(); err != nil {
+	if err := presetForm.Run(); err != nil {
 		return err
+	}
+
+	var selectedAddons []string
+	switch addonPreset {
+	case "minimal":
+		// No addons — core services only
+	case "standard":
+		selectedAddons = filterAvailableAddons(addonOptions, addonPresetsStandard)
+	case "full":
+		selectedAddons = filterAvailableAddons(addonOptions, addonPresetsFull)
+	case "custom":
+		form5 := huh.NewForm(
+			huh.NewGroup(
+				huh.NewMultiSelect[string]().
+					Title("Optional Addons").
+					Description("Select additional services to enable").
+					Options(addonOptions...).
+					Value(&selectedAddons),
+			).Title("Addons"),
+		)
+
+		if err := form5.Run(); err != nil {
+			return err
+		}
 	}
 
 	cfg.Addons = selectedAddons
 
 	// Step 6.5: Advanced Plex Configuration (conditional)
-	// Only show if using Cloudflare Tunnel or Direct mode
-	if cfg.Expose.Mode == config.ExposeModeCloudflared || cfg.Expose.Mode == config.ExposeModeDirect {
+	// Only show if Plex is selected and using Cloudflare Tunnel or Direct mode
+	if (mediaServer == "plex" || mediaServer == "both") &&
+		(cfg.Expose.Mode == config.ExposeModeCloudflared || cfg.Expose.Mode == config.ExposeModeDirect) {
 		var configurePlex bool
 		formPlexQuestion := huh.NewForm(
 			huh.NewGroup(
@@ -639,6 +704,32 @@ func runWizard(cfg *config.Config, reg *registry.Registry) error {
 	return nil
 }
 
+// addonPresetsStandard defines the recommended set of addons.
+var addonPresetsStandard = []string{
+	"sonarr", "radarr", "prowlarr", "overseerr",
+}
+
+// addonPresetsFull defines the full media automation addon set.
+var addonPresetsFull = []string{
+	"sonarr", "radarr", "prowlarr", "lidarr", "readarr", "bazarr",
+	"overseerr", "wizarr", "tautulli", "unpackerr", "notifiarr", "flaresolverr",
+}
+
+// filterAvailableAddons returns only the preset addons that exist in the registry.
+func filterAvailableAddons(available []huh.Option[string], preset []string) []string {
+	lookup := make(map[string]bool)
+	for _, opt := range available {
+		lookup[opt.Value] = true
+	}
+	var result []string
+	for _, name := range preset {
+		if lookup[name] {
+			result = append(result, name)
+		}
+	}
+	return result
+}
+
 // getAddonOptions loads addon options from the registry
 func getAddonOptions(reg *registry.Registry) ([]huh.Option[string], error) {
 	ctx := context.Background()
@@ -697,6 +788,11 @@ func printConfigSummary(cfg *config.Config) {
 		printRow("Base Domain", fmt.Sprintf("%s.%s", cfg.Routing.BaseDomain, cfg.Domain))
 	}
 
+	if cfg.JellyfinEnabled {
+		printRow("Media Server", "Plex + Jellyfin")
+	} else {
+		printRow("Media Server", "Plex")
+	}
 	printRow("Media Path", cfg.MediaPath)
 
 	if cfg.VPNEnabled {

@@ -18,6 +18,10 @@ func EvaluateConditions(cond Conditions, cfg *config.Config) bool {
 			if !cfg.VPNEnabled {
 				return false
 			}
+		case "jellyfin_enabled":
+			if !cfg.JellyfinEnabled {
+				return false
+			}
 		case "cloudflared":
 			if cfg.Expose.Mode != config.ExposeModeCloudflared {
 				return false
