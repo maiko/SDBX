@@ -258,35 +258,7 @@ Cloudbox/Saltbox also use Docker, making migration easier:
 
 ## Version-Specific Upgrades
 
-*No version-specific migrations exist yet. SDBX is in its first alpha release.*
-
-### Upgrading to v1.1.0 (from v1.0.x)
-
-**Breaking Changes**: None
-
-**New Features**:
-- Additional addons
-- Performance improvements
-
-**Upgrade Steps**:
-1. Standard upgrade process (above)
-2. Enable new addons if desired: `sdbx addon enable <name>`
-
-### Upgrading to v1.2.0 (from v1.1.x)
-
-**Breaking Changes**: None
-
-**Upgrade Steps**:
-1. Standard upgrade process
-2. Check for new configuration options: `sdbx config get`
-
-### Upgrading to v2.0.0 (from v1.x)
-
-**Breaking Changes**: TBD (when v2.0.0 is released)
-
-**Major Changes**: TBD
-
-**Upgrade Steps**: TBD
+SDBX is currently in its first alpha release. Version-specific migration instructions will be documented here as new versions are released. Check the [GitHub Releases](https://github.com/maiko/sdbx/releases) page for changelogs.
 
 ---
 

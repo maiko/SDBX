@@ -419,3 +419,11 @@ integrations:
 - Add check function to `internal/doctor/checks.go` with signature `func (d *Doctor) checkX(context.Context) (bool, string)`
 - Register in `RunAll()` slice
 - Return true + success message or false + error description
+
+**Addon Preset Profiles (Planned)**
+Three preset profiles for the init wizard's addon selection step:
+- **Minimal**: No addons enabled. Core services only (Traefik, Authelia, Plex, qBittorrent, Gluetun).
+- **Standard** (default): Sonarr, Radarr, Prowlarr, Overseerr. The recommended starting point.
+- **Full**: All media addons enabled: Sonarr, Radarr, Prowlarr, Lidarr, Readarr, Bazarr, Overseerr, Wizarr, Tautulli, Unpackerr, Notifiarr, Flaresolverr.
+Users can always customize after init with `sdbx addon enable/disable`.
+Implementation: Add a preset selection step to the init wizard (both CLI and web UI) that pre-populates the addons list in config.

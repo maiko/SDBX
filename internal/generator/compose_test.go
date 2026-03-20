@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/maiko/sdbx/internal/config"
+	"github.com/maiko/sdbx/internal/registry"
 )
 
 // TestLabelTransferWithVPN verifies that Traefik labels are transferred from
@@ -366,5 +367,255 @@ func TestMultipleServicesSharing(t *testing.T) {
 		if strings.HasPrefix(label, "traefik.") {
 			t.Errorf("service2 should not have traefik label: %s", label)
 		}
+	}
+}
+
+// TestGenerateServiceExtraProperties verifies ShmSize, Sysctls, and GPU deploy
+func TestGenerateServiceExtraProperties(t *testing.T) {
+	cfg := &config.Config{
+		Domain: "example.com",
+		Routing: config.RoutingConfig{
+			Strategy:   config.RoutingStrategySubdomain,
+			BaseDomain: "sdbx",
+		},
+		Expose: config.ExposeConfig{
+			Mode: config.ExposeModeCloudflared,
+		},
+	}
+
+	gen := NewComposeGenerator(cfg, nil, nil)
+
+	def := &registry.ServiceDefinition{
+		Metadata: registry.ServiceMetadata{
+			Name: "plex",
+		},
+		Spec: registry.ServiceSpec{
+			Image: registry.ImageSpec{
+				Repository: "linuxserver/plex",
+				Tag:        "latest",
+			},
+			Container: registry.ContainerSpec{
+				NameTemplate: "sdbx-plex",
+				Restart:      "unless-stopped",
+				ShmSize:      "2g",
+				Sysctls: map[string]string{
+					"net.ipv4.conf.all.src_valid_mark": "1",
+				},
+				GPUEnabled: true,
+			},
+		},
+	}
+
+	svc := gen.generateService(def)
+
+	// Verify ShmSize
+	if svc.ShmSize != "2g" {
+		t.Errorf("ShmSize = %q, want '2g'", svc.ShmSize)
+	}
+
+	// Verify Sysctls
+	if len(svc.Sysctls) != 1 {
+		t.Errorf("expected 1 sysctl, got %d", len(svc.Sysctls))
+	}
+	if val, ok := svc.Sysctls["net.ipv4.conf.all.src_valid_mark"]; !ok || val != "1" {
+		t.Error("Sysctls not set correctly")
+	}
+
+	// Verify GPU deploy
+	if svc.Deploy == nil {
+		t.Fatal("Deploy should not be nil when GPUEnabled is true")
+	}
+	if svc.Deploy.Resources == nil {
+		t.Fatal("Deploy.Resources should not be nil")
+	}
+	if svc.Deploy.Resources.Reservations == nil {
+		t.Fatal("Deploy.Resources.Reservations should not be nil")
+	}
+	if len(svc.Deploy.Resources.Reservations.Devices) != 1 {
+		t.Fatalf("expected 1 device, got %d", len(svc.Deploy.Resources.Reservations.Devices))
+	}
+
+	device := svc.Deploy.Resources.Reservations.Devices[0]
+	if device.Driver != "nvidia" {
+		t.Errorf("device driver = %q, want 'nvidia'", device.Driver)
+	}
+	if device.Count != "all" {
+		t.Errorf("device count = %q, want 'all'", device.Count)
+	}
+	if len(device.Capabilities) != 1 || device.Capabilities[0] != "gpu" {
+		t.Errorf("device capabilities = %v, want [gpu]", device.Capabilities)
+	}
+}
+
+// TestGenerateServiceNoExtraProperties verifies defaults when extra properties are not set
+func TestGenerateServiceNoExtraProperties(t *testing.T) {
+	cfg := &config.Config{
+		Domain: "example.com",
+		Routing: config.RoutingConfig{
+			Strategy:   config.RoutingStrategySubdomain,
+			BaseDomain: "sdbx",
+		},
+		Expose: config.ExposeConfig{
+			Mode: config.ExposeModeCloudflared,
+		},
+	}
+
+	gen := NewComposeGenerator(cfg, nil, nil)
+
+	def := &registry.ServiceDefinition{
+		Metadata: registry.ServiceMetadata{
+			Name: "sonarr",
+		},
+		Spec: registry.ServiceSpec{
+			Image: registry.ImageSpec{
+				Repository: "linuxserver/sonarr",
+				Tag:        "latest",
+			},
+			Container: registry.ContainerSpec{
+				NameTemplate: "sdbx-sonarr",
+			},
+		},
+	}
+
+	svc := gen.generateService(def)
+
+	if svc.ShmSize != "" {
+		t.Errorf("ShmSize should be empty, got %q", svc.ShmSize)
+	}
+	if svc.Sysctls != nil {
+		t.Error("Sysctls should be nil")
+	}
+	if svc.Deploy != nil {
+		t.Error("Deploy should be nil when GPUEnabled is false")
+	}
+}
+
+// TestCustomLabelsRendered verifies custom Traefik labels are added
+func TestCustomLabelsRendered(t *testing.T) {
+	cfg := &config.Config{
+		Domain: "example.com",
+		Routing: config.RoutingConfig{
+			Strategy:   config.RoutingStrategySubdomain,
+			BaseDomain: "sdbx",
+		},
+		Expose: config.ExposeConfig{
+			Mode: config.ExposeModeCloudflared,
+		},
+	}
+
+	gen := NewComposeGenerator(cfg, nil, nil)
+
+	def := &registry.ServiceDefinition{
+		Metadata: registry.ServiceMetadata{
+			Name: "myservice",
+		},
+		Spec: registry.ServiceSpec{
+			Image: registry.ImageSpec{
+				Repository: "example/myservice",
+				Tag:        "latest",
+			},
+			Container: registry.ContainerSpec{
+				NameTemplate: "sdbx-myservice",
+			},
+		},
+		Routing: registry.RoutingConfig{
+			Enabled:   true,
+			Port:      8080,
+			Subdomain: "myservice",
+			Traefik: registry.TraefikConfig{
+				CustomLabels: map[string]string{
+					"traefik.http.routers.myservice.tls.certresolver": "letsencrypt",
+					"traefik.http.services.myservice.loadbalancer.sticky.cookie": "true",
+				},
+			},
+		},
+	}
+
+	ctx := TemplateContext{Config: cfg}
+	labels := gen.buildTraefikLabels(def, ctx)
+
+	foundCertResolver := false
+	foundSticky := false
+	for _, label := range labels {
+		if label == "traefik.http.routers.myservice.tls.certresolver=letsencrypt" {
+			foundCertResolver = true
+		}
+		if label == "traefik.http.services.myservice.loadbalancer.sticky.cookie=true" {
+			foundSticky = true
+		}
+	}
+
+	if !foundCertResolver {
+		t.Error("expected custom label for certresolver")
+	}
+	if !foundSticky {
+		t.Error("expected custom label for sticky cookie")
+	}
+}
+
+// TestCustomLabelsEmpty verifies no custom labels when none defined
+func TestCustomLabelsEmpty(t *testing.T) {
+	cfg := &config.Config{
+		Domain: "example.com",
+		Routing: config.RoutingConfig{
+			Strategy:   config.RoutingStrategySubdomain,
+			BaseDomain: "sdbx",
+		},
+		Expose: config.ExposeConfig{
+			Mode: config.ExposeModeCloudflared,
+		},
+	}
+
+	gen := NewComposeGenerator(cfg, nil, nil)
+
+	def := &registry.ServiceDefinition{
+		Metadata: registry.ServiceMetadata{
+			Name: "sonarr",
+		},
+		Routing: registry.RoutingConfig{
+			Enabled:   true,
+			Port:      8989,
+			Subdomain: "sonarr",
+		},
+	}
+
+	ctx := TemplateContext{Config: cfg}
+	labels := gen.buildTraefikLabels(def, ctx)
+
+	// Should have standard traefik labels but no custom ones
+	hasTraefikEnable := false
+	for _, label := range labels {
+		if label == "traefik.enable=true" {
+			hasTraefikEnable = true
+		}
+	}
+
+	if !hasTraefikEnable {
+		t.Error("should have traefik.enable=true")
+	}
+}
+
+// TestEvalTemplateWarnings verifies evalTemplate returns fallback on bad templates
+func TestEvalTemplateWarnings(t *testing.T) {
+	cfg := &config.Config{}
+	gen := NewComposeGenerator(cfg, nil, nil)
+	ctx := TemplateContext{Config: cfg}
+
+	// Invalid template syntax should return the original string
+	result := gen.evalTemplate("{{ .Invalid }", ctx)
+	if result != "{{ .Invalid }" {
+		t.Errorf("expected original string for parse error, got %q", result)
+	}
+
+	// Template referencing missing field should return original
+	result = gen.evalTemplate("{{ .NonExistent.Field }}", ctx)
+	if result != "{{ .NonExistent.Field }}" {
+		t.Errorf("expected original string for execute error, got %q", result)
+	}
+
+	// Valid template should work normally
+	result = gen.evalTemplate("hello-world", ctx)
+	if result != "hello-world" {
+		t.Errorf("expected 'hello-world', got %q", result)
 	}
 }

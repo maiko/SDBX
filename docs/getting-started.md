@@ -24,7 +24,7 @@ Before you begin, ensure you have the following:
 - **🐧 A Linux Server**: Debian 11+ or Ubuntu 20.04+.
   - *Minimum specs*: 2 CPU, 4GB RAM.
   - *Recommended*: 4 CPU, 8GB+ RAM (especially for Plex transcoding).
-- **🌐 A Domain Name**: You need a domain (e.g., `myseedbox.com`) to access your services securily.
+- **🌐 A Domain Name**: You need a domain (e.g., `myseedbox.com`) to access your services securely.
 - **🛡️ VPN Provider (Optional)**: Highly recommended for privacy. SDBX supports:
   - NordVPN, ProtonVPN, PIA, Mullvad, Surfshark, and more via Gluetun.
 
@@ -126,7 +126,7 @@ sdbx doctor
 Time to see your creation.
 
 **If you chose Subdomain routing:**
-👉 Go to `https://home.yourdomain.com`
+👉 Go to `https://sdbx.yourdomain.com`
 
 **If you chose Path routing:**
 👉 Go to `https://yourdomain.com/` (or your configured base subdomain)

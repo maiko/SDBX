@@ -72,12 +72,15 @@ type ImageSpec struct {
 
 // ContainerSpec defines container runtime settings
 type ContainerSpec struct {
-	NameTemplate string           `yaml:"name_template"`
-	Restart      string           `yaml:"restart,omitempty"`
-	Command      string           `yaml:"command,omitempty"`
-	Privileged   bool             `yaml:"privileged,omitempty"`
-	Capabilities CapabilitiesSpec `yaml:"capabilities,omitempty"`
-	Devices      []string         `yaml:"devices,omitempty"`
+	NameTemplate string            `yaml:"name_template"`
+	Restart      string            `yaml:"restart,omitempty"`
+	Command      string            `yaml:"command,omitempty"`
+	Privileged   bool              `yaml:"privileged,omitempty"`
+	Capabilities CapabilitiesSpec  `yaml:"capabilities,omitempty"`
+	Devices      []string          `yaml:"devices,omitempty"`
+	ShmSize      string            `yaml:"shm_size,omitempty"`
+	Sysctls      map[string]string `yaml:"sysctls,omitempty"`
+	GPUEnabled   bool              `yaml:"gpu_enabled,omitempty"`
 }
 
 // CapabilitiesSpec defines Linux capabilities to add or drop

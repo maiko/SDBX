@@ -371,6 +371,53 @@ func TestHealthCheck(t *testing.T) {
 	}
 }
 
+// TestContainerSpecExtraProperties verifies ShmSize, Sysctls, GPUEnabled fields
+func TestContainerSpecExtraProperties(t *testing.T) {
+	spec := ContainerSpec{
+		NameTemplate: "sdbx-{{ .Name }}",
+		ShmSize:      "2g",
+		Sysctls: map[string]string{
+			"net.ipv4.conf.all.src_valid_mark": "1",
+		},
+		GPUEnabled: true,
+	}
+
+	if spec.ShmSize != "2g" {
+		t.Errorf("ShmSize = %q, want '2g'", spec.ShmSize)
+	}
+
+	if len(spec.Sysctls) != 1 {
+		t.Errorf("expected 1 sysctl, got %d", len(spec.Sysctls))
+	}
+
+	if val, ok := spec.Sysctls["net.ipv4.conf.all.src_valid_mark"]; !ok || val != "1" {
+		t.Error("Sysctls not set correctly")
+	}
+
+	if !spec.GPUEnabled {
+		t.Error("GPUEnabled should be true")
+	}
+}
+
+// TestContainerSpecExtraPropertiesDefaults verifies zero values for new fields
+func TestContainerSpecExtraPropertiesDefaults(t *testing.T) {
+	spec := ContainerSpec{
+		NameTemplate: "sdbx-{{ .Name }}",
+	}
+
+	if spec.ShmSize != "" {
+		t.Errorf("ShmSize should be empty by default, got %q", spec.ShmSize)
+	}
+
+	if spec.Sysctls != nil {
+		t.Error("Sysctls should be nil by default")
+	}
+
+	if spec.GPUEnabled {
+		t.Error("GPUEnabled should be false by default")
+	}
+}
+
 // TestIntegrations verifies Integrations struct
 func TestIntegrations(t *testing.T) {
 	integrations := Integrations{

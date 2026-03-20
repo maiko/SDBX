@@ -4,8 +4,12 @@
 [![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat-square&logo=go)](https://go.dev)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker)](https://docs.docker.com/compose/)
 [![Release](https://img.shields.io/github/v/release/maiko/sdbx?style=flat-square&color=success)](https://github.com/maiko/sdbx/releases/latest)
-[![Test](https://img.shields.io/badge/Tests-Passing-brightgreen?style=flat-square)](https://github.com/maiko/sdbx/actions)
+[![Test](https://github.com/maiko/sdbx/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/maiko/sdbx/actions/workflows/test.yml)
 [![Coverage](https://img.shields.io/badge/Coverage-43%25-yellow?style=flat-square)](https://github.com/maiko/sdbx)
+
+## What is SDBX?
+
+SDBX (Seedbox in a Box) is an open-source CLI tool that turns a fresh Linux server into a fully configured media automation platform in minutes. It generates and orchestrates a Docker Compose stack that includes a VPN-enforced download client, the full *arr suite for media management, Plex for streaming, and Authelia for single sign-on authentication across every service. You run one command, answer a few questions, and SDBX handles the rest: networking, reverse proxy routing, secrets management, and security hardening.
 
 A production-ready, **security-first** seedbox automation stack for collecting, organizing, and streaming **legal media**.
 
@@ -52,10 +56,35 @@ graph TD
     end
 ```
 
+### Data Flow
+
+```
+Request Flow (user accessing a service):
+  Browser --> Cloudflare Tunnel / Port 443
+    --> Traefik (reverse proxy)
+      --> Authelia (SSO check)
+        --> Service (Sonarr, Radarr, Plex, etc.)
+
+Download Flow (automated media acquisition):
+  Prowlarr (indexer sync)
+    --> Sonarr/Radarr (search & grab)
+      --> qBittorrent (inside Gluetun VPN namespace)
+        --> VPN Tunnel --> Internet
+      --> Import & rename to /media/{movies,tv}
+        --> Plex (library scan)
+
+Generation Flow (sdbx init / sdbx regenerate):
+  .sdbx.yaml (user config)
+    --> Registry (resolve services + addons)
+      --> ComposeGenerator --> compose.yaml
+      --> IntegrationsGenerator --> Traefik, Homepage, Cloudflared configs
+      --> Templates --> Authelia, gluetun.env, static configs
+```
+
 ## 📋 Prerequisites
 
 - **OS**: Linux (Debian/Ubuntu) or macOS (Intel/Apple Silicon)
-- **Docker**: Engine 24.0+ & Compose v2
+- **Docker**: Engine 24.0+ & Compose v2 ([Install Docker](https://docs.docker.com/engine/install/))
 - **Domain**: A registered domain (e.g., `box.sdbx.one`)
 - **VPN**: Optional (Supported: NordVPN, ProtonVPN, PIA, Mullvad, Surfshark, Custom)
 

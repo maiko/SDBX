@@ -3,6 +3,7 @@ package generator
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"strings"
 	"text/template"
 
@@ -57,6 +58,31 @@ type ComposeService struct {
 	Devices       []string                      `yaml:"devices,omitempty"`
 	Secrets       []string                      `yaml:"secrets,omitempty"`
 	Command       string                        `yaml:"command,omitempty"`
+	ShmSize       string                        `yaml:"shm_size,omitempty"`
+	Sysctls       map[string]string             `yaml:"sysctls,omitempty"`
+	Deploy        *ComposeDeploy                `yaml:"deploy,omitempty"`
+}
+
+// ComposeDeploy represents Docker Compose deploy configuration
+type ComposeDeploy struct {
+	Resources *ComposeResources `yaml:"resources,omitempty"`
+}
+
+// ComposeResources represents resource reservations
+type ComposeResources struct {
+	Reservations *ComposeResourceSpec `yaml:"reservations,omitempty"`
+}
+
+// ComposeResourceSpec represents a resource specification
+type ComposeResourceSpec struct {
+	Devices []ComposeDeviceSpec `yaml:"devices,omitempty"`
+}
+
+// ComposeDeviceSpec represents a device reservation (e.g., GPU)
+type ComposeDeviceSpec struct {
+	Driver       string   `yaml:"driver,omitempty"`
+	Count        string   `yaml:"count,omitempty"`
+	Capabilities []string `yaml:"capabilities,omitempty"`
 }
 
 // DependsOnCondition represents a depends_on condition
@@ -205,6 +231,29 @@ func (g *ComposeGenerator) generateService(def *registry.ServiceDefinition) Comp
 
 	// Devices
 	svc.Devices = def.Spec.Container.Devices
+
+	// Shared memory size
+	svc.ShmSize = def.Spec.Container.ShmSize
+
+	// Sysctls
+	svc.Sysctls = def.Spec.Container.Sysctls
+
+	// GPU support via deploy.resources.reservations
+	if def.Spec.Container.GPUEnabled {
+		svc.Deploy = &ComposeDeploy{
+			Resources: &ComposeResources{
+				Reservations: &ComposeResourceSpec{
+					Devices: []ComposeDeviceSpec{
+						{
+							Driver:       "nvidia",
+							Count:        "all",
+							Capabilities: []string{"gpu"},
+						},
+					},
+				},
+			},
+		}
+	}
 
 	// Secrets
 	for _, secret := range def.Secrets {
@@ -422,6 +471,11 @@ func (g *ComposeGenerator) buildTraefikLabels(def *registry.ServiceDefinition, _
 		labels = append(labels, fmt.Sprintf("traefik.http.routers.%s.priority=%d", name, *def.Routing.Traefik.Priority))
 	}
 
+	// Custom Traefik labels from service definition
+	for key, value := range def.Routing.Traefik.CustomLabels {
+		labels = append(labels, fmt.Sprintf("%s=%s", key, value))
+	}
+
 	return labels
 }
 
@@ -485,11 +539,13 @@ func (g *ComposeGenerator) evalTemplate(tmpl string, ctx TemplateContext) string
 
 	t, err := template.New("").Funcs(g.funcMap).Parse(tmpl)
 	if err != nil {
+		log.Printf("Warning: template parse failed for %q: %v", tmpl, err)
 		return tmpl
 	}
 
 	var buf bytes.Buffer
 	if err := t.Execute(&buf, ctx); err != nil {
+		log.Printf("Warning: template execute failed for %q: %v", tmpl, err)
 		return tmpl
 	}
 
