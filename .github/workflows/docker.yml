@@ -93,8 +93,11 @@ jobs:
       - name: Scan container image for vulnerabilities
         if: github.event_name != 'pull_request'
         uses: aquasecurity/trivy-action@0.35.0
+        env:
+          # github.repository preserves case (maiko/SDBX) but GHCR requires lowercase
+          IMAGE_REF: ghcr.io/maiko/sdbx:${{ steps.version.outputs.commit }}
         with:
-          image-ref: ${{ format('{0}/{1}:{2}', env.REGISTRY, env.IMAGE_NAME, steps.version.outputs.commit) }}
+          image-ref: ${{ env.IMAGE_REF }}
           format: 'table'
           exit-code: '1'
           severity: 'CRITICAL,HIGH'
