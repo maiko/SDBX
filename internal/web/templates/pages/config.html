@@ -28,7 +28,10 @@
 
     <div class="editor-wrapper">
         <div class="line-numbers" id="line-numbers"></div>
-        <textarea id="config-editor" class="config-textarea" spellcheck="false">{{.ConfigContent}}</textarea>
+        <div class="editor-area">
+            <pre class="highlight-overlay" id="highlight-overlay" aria-hidden="true"><code id="highlight-code"></code></pre>
+            <textarea id="config-editor" class="config-textarea" spellcheck="false">{{.ConfigContent}}</textarea>
+        </div>
     </div>
 
     <div id="validation-result" class="validation-result" style="display: none;"></div>
@@ -90,26 +93,66 @@
         min-width: 3rem;
     }
 
-    .config-textarea {
+    .editor-area {
         flex: 1;
-        background: #1e293b;
-        color: #e2e8f0;
+        position: relative;
+        min-height: 500px;
+    }
+
+    .config-textarea {
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+        background: transparent;
+        color: transparent;
+        caret-color: #e2e8f0;
         border: none;
         padding: 1rem;
         font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
         font-size: 0.875rem;
         line-height: 1.6;
-        resize: vertical;
+        resize: none;
         min-height: 500px;
         outline: none;
         white-space: pre;
         overflow-wrap: normal;
         overflow-x: auto;
+        z-index: 2;
     }
 
     .config-textarea::selection {
         background: rgba(124, 58, 237, 0.3);
     }
+
+    .highlight-overlay {
+        margin: 0;
+        padding: 1rem;
+        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+        font-size: 0.875rem;
+        line-height: 1.6;
+        white-space: pre;
+        overflow-wrap: normal;
+        overflow-x: auto;
+        color: #e2e8f0;
+        background: #1e293b;
+        min-height: 500px;
+        z-index: 1;
+        pointer-events: none;
+    }
+
+    .highlight-overlay code {
+        font-family: inherit;
+        font-size: inherit;
+        line-height: inherit;
+    }
+
+    .yaml-key { color: #7dd3fc; }
+    .yaml-comment { color: #64748b; font-style: italic; }
+    .yaml-string { color: #86efac; }
+    .yaml-bool { color: #fdba74; }
+    .yaml-number { color: #c4b5fd; }
 
     .validation-result {
         margin-top: 1rem;
@@ -176,16 +219,98 @@
     const lineCount = document.getElementById('line-count');
     const charCount = document.getElementById('char-count');
     const validationResult = document.getElementById('validation-result');
+    const highlightOverlay = document.getElementById('highlight-overlay');
+    const highlightCode = document.getElementById('highlight-code');
+
+    // YAML syntax highlighting
+    // Note: innerHTML is used intentionally here for syntax highlighting.
+    // All content is escaped via escapeHTML() before insertion, preventing XSS.
+    function escapeHTML(str) {
+        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function highlightYAML(text) {
+        var lines = text.split('\n');
+        var result = [];
+        for (var i = 0; i < lines.length; i++) {
+            var line = lines[i];
+
+            // Comment lines
+            if (/^\s*#/.test(line)) {
+                result.push('<span class="yaml-comment">' + escapeHTML(line) + '</span>');
+                continue;
+            }
+
+            // Lines with key: value
+            var kvMatch = line.match(/^(\s*)([\w][\w.\-/]*)(:\s*)(.*)/);
+            if (kvMatch) {
+                var indent = escapeHTML(kvMatch[1]);
+                var key = '<span class="yaml-key">' + escapeHTML(kvMatch[2]) + '</span>';
+                var colon = escapeHTML(kvMatch[3]);
+                var rawValue = kvMatch[4];
+
+                if (rawValue === '') {
+                    result.push(indent + key + colon);
+                    continue;
+                }
+
+                var valuePart = rawValue;
+                var commentPart = '';
+                var commentMatch = rawValue.match(/^(.*?)(\s+#.*)$/);
+                if (commentMatch && !(/^["']/.test(rawValue))) {
+                    valuePart = commentMatch[1];
+                    commentPart = '<span class="yaml-comment">' + escapeHTML(commentMatch[2]) + '</span>';
+                }
+
+                result.push(indent + key + colon + highlightValue(valuePart) + commentPart);
+                continue;
+            }
+
+            // List items: - value
+            var listMatch = line.match(/^(\s*-\s+)(.*)/);
+            if (listMatch) {
+                result.push(escapeHTML(listMatch[1]) + highlightValue(listMatch[2]));
+                continue;
+            }
+
+            result.push(escapeHTML(line));
+        }
+        return result.join('\n');
+    }
+
+    function highlightValue(val) {
+        var trimmed = val.trim();
+
+        if (/^".*"$/.test(trimmed) || /^'.*'$/.test(trimmed)) {
+            return '<span class="yaml-string">' + escapeHTML(val) + '</span>';
+        }
+        if (/^(true|false|yes|no|on|off)$/i.test(trimmed)) {
+            return '<span class="yaml-bool">' + escapeHTML(val) + '</span>';
+        }
+        if (/^-?\d+(\.\d+)?$/.test(trimmed)) {
+            return '<span class="yaml-number">' + escapeHTML(val) + '</span>';
+        }
+        if (/^(null|~)$/i.test(trimmed)) {
+            return '<span class="yaml-bool">' + escapeHTML(val) + '</span>';
+        }
+        return escapeHTML(val);
+    }
+
+    function updateHighlight() {
+        // Safe: all content is escaped via escapeHTML before insertion
+        highlightCode.innerHTML = highlightYAML(editor.value);
+    }
 
     // Initialize
     updateLineNumbers();
     updateStats();
+    updateHighlight();
 
     // Update line numbers
     function updateLineNumbers() {
-        const lines = editor.value.split('\n').length;
-        let numbers = '';
-        for (let i = 1; i <= lines; i++) {
+        var lines = editor.value.split('\n').length;
+        var numbers = '';
+        for (var i = 1; i <= lines; i++) {
             numbers += i + '\n';
         }
         lineNumbers.textContent = numbers;
@@ -193,15 +318,17 @@
 
     // Update stats
     function updateStats() {
-        const lines = editor.value.split('\n').length;
-        const chars = editor.value.length;
-        lineCount.textContent = `Lines: ${lines}`;
-        charCount.textContent = `Chars: ${chars}`;
+        var lines = editor.value.split('\n').length;
+        var chars = editor.value.length;
+        lineCount.textContent = 'Lines: ' + lines;
+        charCount.textContent = 'Chars: ' + chars;
     }
 
     // Sync scroll
-    editor.addEventListener('scroll', () => {
+    editor.addEventListener('scroll', function() {
         lineNumbers.scrollTop = editor.scrollTop;
+        highlightOverlay.scrollTop = editor.scrollTop;
+        highlightOverlay.scrollLeft = editor.scrollLeft;
     });
 
     // U6: Track unsaved changes
@@ -215,23 +342,25 @@
     });
 
     // Update on input
-    editor.addEventListener('input', () => {
+    editor.addEventListener('input', function() {
         updateLineNumbers();
         updateStats();
+        updateHighlight();
         validationResult.style.display = 'none';
         hasUnsavedChanges = true;
     });
 
     // Tab handling
-    editor.addEventListener('keydown', (e) => {
+    editor.addEventListener('keydown', function(e) {
         if (e.key === 'Tab') {
             e.preventDefault();
-            const start = editor.selectionStart;
-            const end = editor.selectionEnd;
+            var start = editor.selectionStart;
+            var end = editor.selectionEnd;
             editor.value = editor.value.substring(0, start) + '  ' + editor.value.substring(end);
             editor.selectionStart = editor.selectionEnd = start + 2;
             updateLineNumbers();
             updateStats();
+            updateHighlight();
         }
     });
 
@@ -361,6 +490,7 @@
                 editor.value = content;
                 updateLineNumbers();
                 updateStats();
+                updateHighlight();
                 validationResult.style.display = 'none';
                 hasUnsavedChanges = false;
                 showToast('Configuration reloaded', 'success');
