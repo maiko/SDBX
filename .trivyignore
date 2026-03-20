@@ -1,0 +1,4 @@
+# DS-0002: Dockerfile runs as root at startup to dynamically match the
+# Docker socket GID, then drops to non-root user (sdbx:1000) via su-exec
+# in docker-entrypoint.sh. Adding USER would break socket GID detection.
+DS-0002
