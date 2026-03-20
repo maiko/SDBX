@@ -360,6 +360,14 @@ func (m *Manager) Restore(ctx context.Context, backupName string) error {
 		return fmt.Errorf("backup not found: %s", backupName)
 	}
 
+	// Create safety backup before restoring
+	safetyBackup, safetyErr := m.Create(ctx)
+	if safetyErr != nil {
+		fmt.Fprintf(os.Stderr, "Warning: could not create safety backup before restore: %v\n", safetyErr)
+	} else {
+		fmt.Fprintf(os.Stderr, "Safety backup created: %s\n", safetyBackup.Name)
+	}
+
 	// Open archive
 	f, err := os.Open(backupPath) //nolint:gosec // G304 - backupPath from validated backupName within backupDir
 	if err != nil {

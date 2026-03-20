@@ -4,7 +4,9 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 )
 
 func TestNewDoctor(t *testing.T) {
@@ -133,6 +135,29 @@ func TestCheckVPNIfEnabled_Skipped(t *testing.T) {
 	}
 	if msg != "Skipped (VPN not enabled)" {
 		t.Errorf("Expected 'Skipped (VPN not enabled)', got: %s", msg)
+	}
+}
+
+func TestCheckVPN_NoContainer(t *testing.T) {
+	// Use a short timeout context so that if docker exec hangs, we fail fast
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	doc := NewDoctor(".")
+	passed, msg := doc.CheckVPN(ctx)
+
+	// The result depends on whether a gluetun container is actually running.
+	// We verify the function returns a coherent result in either case.
+	if passed {
+		// If it passed, message should contain an IP
+		if !strings.Contains(msg, "Connected (IP:") {
+			t.Errorf("Expected 'Connected (IP: ...)' on success, got: %s", msg)
+		}
+	} else {
+		// If it failed, message should indicate container/tunnel issue
+		if msg != "VPN container unreachable or tunnel down" && msg != "VPN tunnel returned empty IP" {
+			t.Errorf("Expected failure message about container or tunnel, got: %s", msg)
+		}
 	}
 }
 

@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -316,14 +315,15 @@ func (d *Doctor) checkVPNIfEnabled(ctx context.Context) (bool, string) {
 }
 
 // CheckVPN verifies VPN connectivity (separate as it requires running containers)
-func (d *Doctor) CheckVPN(_ context.Context) (bool, string) {
-	// Try to reach a check IP service through the VPN container
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Get("https://api.ipify.org")
+func (d *Doctor) CheckVPN(ctx context.Context) (bool, string) {
+	cmd := exec.CommandContext(ctx, "docker", "exec", "sdbx-gluetun", "wget", "-qO-", "https://api.ipify.org")
+	output, err := cmd.Output()
 	if err != nil {
-		return false, "Could not reach IP check service"
+		return false, "VPN container unreachable or tunnel down"
 	}
-	defer resp.Body.Close()
-
-	return true, "Connected"
+	ip := strings.TrimSpace(string(output))
+	if ip == "" {
+		return false, "VPN tunnel returned empty IP"
+	}
+	return true, fmt.Sprintf("Connected (IP: %s)", ip)
 }

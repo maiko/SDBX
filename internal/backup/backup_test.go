@@ -176,6 +176,9 @@ func TestRestoreBackup(t *testing.T) {
 		t.Fatalf("failed to modify file: %v", err)
 	}
 
+	// Sleep to ensure safety backup gets a different timestamp-based filename
+	time.Sleep(1100 * time.Millisecond)
+
 	// Restore backup
 	err = manager.Restore(ctx, backup.Name)
 	if err != nil {
@@ -361,6 +364,9 @@ func TestBackupWithDirectories(t *testing.T) {
 		t.Fatalf("failed to remove configs: %v", err)
 	}
 
+	// Sleep to ensure safety backup gets a different timestamp-based filename
+	time.Sleep(1100 * time.Millisecond)
+
 	// Restore
 	err = manager.Restore(ctx, backup.Name)
 	if err != nil {
@@ -529,6 +535,9 @@ func TestRestoreSafeEntriesStillWork(t *testing.T) {
 		t.Fatalf("failed to modify file: %v", err)
 	}
 
+	// Sleep to ensure safety backup gets a different timestamp-based filename
+	time.Sleep(1100 * time.Millisecond)
+
 	// Restore should work with clean tar entries
 	if err := manager.Restore(ctx, backup.Name); err != nil {
 		t.Fatalf("Restore of clean backup failed: %v", err)
@@ -668,6 +677,56 @@ func TestBackupSkipsLargeFiles(t *testing.T) {
 	}
 	if foundLarge {
 		t.Error("large file (sonarr.db >100MB) should be skipped in backup")
+	}
+}
+
+// TestRestoreCreatesSafetyBackup verifies that a safety backup is created before restore
+func TestRestoreCreatesSafetyBackup(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create test file
+	if err := os.WriteFile(filepath.Join(tmpDir, ".sdbx.yaml"), []byte("domain: original.local"), 0644); err != nil {
+		t.Fatalf("failed to create test file: %v", err)
+	}
+
+	manager := NewManager(tmpDir)
+	ctx := context.Background()
+
+	// Create initial backup
+	backup, err := manager.Create(ctx)
+	if err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+
+	// Modify the file so the safety backup captures different content
+	if err := os.WriteFile(filepath.Join(tmpDir, ".sdbx.yaml"), []byte("domain: modified.local"), 0644); err != nil {
+		t.Fatalf("failed to modify file: %v", err)
+	}
+
+	// Count backups before restore
+	backupsBefore, err := manager.List(ctx)
+	if err != nil {
+		t.Fatalf("List failed: %v", err)
+	}
+	countBefore := len(backupsBefore)
+
+	// Sleep to ensure different timestamp in filename
+	time.Sleep(1100 * time.Millisecond)
+
+	// Restore should create a safety backup
+	err = manager.Restore(ctx, backup.Name)
+	if err != nil {
+		t.Fatalf("Restore failed: %v", err)
+	}
+
+	// Count backups after restore - should have one more (the safety backup)
+	backupsAfter, err := manager.List(ctx)
+	if err != nil {
+		t.Fatalf("List failed: %v", err)
+	}
+
+	if len(backupsAfter) != countBefore+1 {
+		t.Errorf("expected %d backups after restore (safety backup created), got %d", countBefore+1, len(backupsAfter))
 	}
 }
 

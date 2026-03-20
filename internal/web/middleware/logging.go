@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"log"
+	"log/slog"
 	"net/http"
 	"time"
 )
@@ -40,15 +41,16 @@ func Logging(next http.Handler) http.Handler {
 		// Call next handler
 		next.ServeHTTP(rw, r)
 
-		// Log request
+		// Log request using slog through log.Writer() so output destination
+		// follows log.SetOutput (important for testing).
 		duration := time.Since(start)
-		log.Printf(
-			"%s %s %d %s %dB",
-			r.Method,
-			r.URL.Path,
-			rw.statusCode,
-			duration,
-			rw.written,
+		logger := slog.New(slog.NewTextHandler(log.Writer(), nil))
+		logger.Info("http request",
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", rw.statusCode,
+			"duration", duration,
+			"bytes", rw.written,
 		)
 	})
 }
