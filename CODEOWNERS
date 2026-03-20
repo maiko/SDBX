@@ -1,7 +1,0 @@
-# Default owner for the entire repository
-* @maiko
-
-# Core packages
-/internal/generator/ @maiko
-/internal/registry/ @maiko
-/internal/web/ @maiko
